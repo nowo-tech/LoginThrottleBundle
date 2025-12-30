@@ -64,11 +64,15 @@ jobs:
       - name: Find missing and outdated releases
         id: missing
         uses: actions/github-script@v7
+        env:
+          TAGS: ${{ steps.tags.outputs.TAGS }}
+          EXISTING_RELEASES: ${{ steps.check-releases.outputs.tags }}
+          RELEASES_MAP: ${{ steps.check-releases.outputs.releases_map }}
         with:
           script: |
-            const tags = `${{ steps.tags.outputs.TAGS }}`.trim().split('\n').filter(t => t);
-            const existingReleases = JSON.parse(`${{ steps.check-releases.outputs.tags }}`);
-            const releasesMap = JSON.parse(`${{ steps.check-releases.outputs.releases_map }}`);
+            const tags = (process.env.TAGS || '').trim().split('\n').filter(t => t);
+            const existingReleases = JSON.parse(process.env.EXISTING_RELEASES || '[]');
+            const releasesMap = JSON.parse(process.env.RELEASES_MAP || '{}');
             
             const missingTags = tags.filter(tag => !existingReleases.includes(tag));
             const outdatedTags = tags.filter(tag => {
@@ -93,12 +97,17 @@ jobs:
       - name: Create or update releases
         if: steps.missing.outputs.found_missing == 'true'
         uses: actions/github-script@v7
+        env:
+          ALL_TAGS: ${{ steps.missing.outputs.all_tags }}
+          MISSING_TAGS: ${{ steps.missing.outputs.missing_tags }}
+          OUTDATED_TAGS: ${{ steps.missing.outputs.outdated_tags }}
+          RELEASES_MAP: ${{ steps.check-releases.outputs.releases_map }}
         with:
           script: |
-            const allTags = `${{ steps.missing.outputs.all_tags }}`.trim().split('\n').filter(t => t);
-            const missingTags = `${{ steps.missing.outputs.missing_tags }}`.trim().split('\n').filter(t => t);
-            const outdatedTags = `${{ steps.missing.outputs.outdated_tags }}`.trim().split('\n').filter(t => t);
-            const releasesMap = JSON.parse(`${{ steps.check-releases.outputs.releases_map }}`);
+            const allTags = (process.env.ALL_TAGS || '').trim().split('\n').filter(t => t);
+            const missingTags = (process.env.MISSING_TAGS || '').trim().split('\n').filter(t => t);
+            const outdatedTags = (process.env.OUTDATED_TAGS || '').trim().split('\n').filter(t => t);
+            const releasesMap = JSON.parse(process.env.RELEASES_MAP || '{}');
             
             const fs = require('fs');
             const { execSync } = require('child_process');
@@ -179,8 +188,8 @@ jobs:
         with:
           script: |
             const foundMissing = '${{ steps.missing.outputs.found_missing }}' === 'true';
-            const missingTags = foundMissing ? `${{ steps.missing.outputs.missing_tags }}`.trim().split('\n').filter(t => t) : [];
-            const outdatedTags = foundMissing ? `${{ steps.missing.outputs.outdated_tags }}`.trim().split('\n').filter(t => t) : [];
+            const missingTags = foundMissing ? (process.env.MISSING_TAGS || '').trim().split('\n').filter(t => t) : [];
+            const outdatedTags = foundMissing ? (process.env.OUTDATED_TAGS || '').trim().split('\n').filter(t => t) : [];
             
             let summary = '';
             if (foundMissing) {
