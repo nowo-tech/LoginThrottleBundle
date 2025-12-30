@@ -7,6 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.4] - 2025-01-15
+
+### Added
+- **Internationalization (i18n) Support**:
+  - Added translation files for Spanish (`messages.es.yaml`) and English (`messages.en.yaml`)
+  - Translation keys under `nowo_login_throttle` domain for error and info messages
+  - Support for displaying login attempt information in multiple languages
+  - `symfony/translation` added as suggested dependency for i18n support
+
+- **Login Attempt Information Service**:
+  - New `LoginThrottleInfoService` to retrieve login attempt information for display
+  - Service provides current attempts, remaining attempts, blocking status, and retry time
+  - Automatic detection of tracking type (by IP or by username/email)
+  - Support for both database and cache storage backends
+
+- **Enhanced Repository Methods**:
+  - Added `countAttemptsByIp()` method to count attempts by IP address only
+  - Added `countAttemptsByUsername()` method to count attempts by username/email only
+  - Updated `getAttempts()` to support filtering by IP only or username only
+
+- **Improved User Experience**:
+  - Login error messages now display attempt count and remaining attempts
+  - Different messages for IP-based vs email-based tracking
+  - Visual feedback showing when account is blocked and retry time
+  - Messages automatically adapt based on tracking method (IP or email)
+
+- **Demo Project Enhancements**:
+  - Updated login templates to use translations from the bundle
+  - Added attempt information display in error messages
+  - Fixed API login route to use named routes instead of hardcoded paths
+  - Improved form handling for API login with JSON submission
+
+### Changed
+- **Repository Methods**:
+  - `getAttempts()` now accepts empty string for IP to filter by username only
+  - `getAttempts()` now accepts null for username to filter by IP only
+
+- **Service Configuration**:
+  - `LoginThrottleInfoService` automatically detects tracking type based on username availability
+  - Service returns `tracking_type` field indicating whether tracking is by 'ip' or 'username'
+
+### Fixed
+- **Demo Project**:
+  - Fixed API login form to use named route `api_login` instead of hardcoded path
+  - Fixed migration to include `roles` column in `users` table
+  - Fixed migration to create `login_attempts` table with all required columns
+  - Improved Makefile to handle schema update errors gracefully
+
+### Testing
+- Added comprehensive test suite for `LoginThrottleInfoService`
+- Added tests for new repository methods (`countAttemptsByIp`, `countAttemptsByUsername`)
+- Tests cover all tracking scenarios (IP-based, username-based, blocked accounts)
+- Maintained 100% code coverage requirement
+
 ## [0.0.3] - 2025-12-30
 
 ### Added

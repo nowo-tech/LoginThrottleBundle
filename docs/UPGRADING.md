@@ -13,6 +13,135 @@ This guide provides step-by-step instructions for upgrading the Login Throttle B
 
 ## Upgrade Instructions by Version
 
+### Upgrading to 0.0.4
+
+**Release Date**: 2025-01-15
+
+#### What's New
+
+- **Internationalization (i18n) Support**: The bundle now includes translation files for Spanish and English. Messages for login attempt information are automatically translated based on your application's locale.
+
+- **Login Attempt Information Display**: When login fails, users now see helpful information including:
+  - Current number of attempts
+  - Remaining attempts before blocking
+  - Whether the account is blocked
+  - When they can try again (if blocked)
+
+- **Smart Tracking Detection**: The system automatically detects whether throttling is tracked by IP address or by email/username, and displays appropriate messages.
+
+- **Enhanced Repository Methods**: New methods for more granular control over attempt counting.
+
+#### Breaking Changes
+
+None - This is a minor release with new features. All existing functionality remains backward compatible.
+
+#### Upgrade Steps
+
+1. **Update composer**:
+   ```bash
+   composer update nowo-tech/login-throttle-bundle
+   ```
+
+2. **Install translation component (if not already installed)**:
+   ```bash
+   composer require symfony/translation
+   ```
+   
+   > **Note**: The translation component is optional but recommended for i18n support. The bundle will work without it, but messages will not be translated.
+
+3. **Configure translator in `config/packages/framework.yaml`** (if not already configured):
+   ```yaml
+   framework:
+       translator:
+           default_path: '%kernel.project_dir%/translations'
+           fallbacks:
+               - en
+   ```
+
+4. **Clear cache**:
+   ```bash
+   php bin/console cache:clear
+   ```
+
+5. **Update your login templates (optional)**:
+   
+   If you want to display attempt information in your login templates, inject the `LoginThrottleInfoService` in your controller:
+   
+   ```php
+   use Nowo\LoginThrottleBundle\Service\LoginThrottleInfoService;
+   
+   public function login(AuthenticationUtils $authenticationUtils, Request $request, LoginThrottleInfoService $throttleInfoService): Response
+   {
+       $error = $authenticationUtils->getLastAuthenticationError();
+       $attemptInfo = null;
+       
+       if ($error) {
+           $attemptInfo = $throttleInfoService->getAttemptInfo('main', $request);
+       }
+       
+       return $this->render('security/login.html.twig', [
+           'error' => $error,
+           'attempt_info' => $attemptInfo,
+       ]);
+   }
+   ```
+   
+   Then in your template, use the translations:
+   
+   ```twig
+   {% if error and attempt_info %}
+       {% if attempt_info.is_blocked %}
+           ⚠️ {{ 'nowo_login_throttle.error.account_blocked'|trans({'%max_attempts%': attempt_info.max_attempts}, 'messages') }}
+       {% else %}
+           📊 {% if attempt_info.tracking_type == 'username' %}
+               {{ 'nowo_login_throttle.info.attempts_count_by_email'|trans({'%current%': attempt_info.current_attempts, '%max%': attempt_info.max_attempts}, 'messages') }}
+           {% else %}
+               {{ 'nowo_login_throttle.info.attempts_count_by_ip'|trans({'%current%': attempt_info.current_attempts, '%max%': attempt_info.max_attempts}, 'messages') }}
+           {% endif %}
+       {% endif %}
+   {% endif %}
+   ```
+
+6. **Test your application**: Verify that login throttling works correctly and that attempt information is displayed when appropriate.
+
+#### New Features Usage
+
+**Using LoginThrottleInfoService in Controllers**:
+
+```php
+use Nowo\LoginThrottleBundle\Service\LoginThrottleInfoService;
+
+class SecurityController extends AbstractController
+{
+    public function login(
+        AuthenticationUtils $authenticationUtils,
+        Request $request,
+        LoginThrottleInfoService $throttleInfoService
+    ): Response {
+        $error = $authenticationUtils->getLastAuthenticationError();
+        $attemptInfo = $error ? $throttleInfoService->getAttemptInfo('main', $request) : null;
+        
+        return $this->render('security/login.html.twig', [
+            'error' => $error,
+            'attempt_info' => $attemptInfo,
+        ]);
+    }
+}
+```
+
+**Available Translation Keys**:
+
+- `nowo_login_throttle.error.account_blocked` - Account blocked message
+- `nowo_login_throttle.error.retry_after` - Retry after time message
+- `nowo_login_throttle.info.attempts_count_by_ip` - Attempts count by IP
+- `nowo_login_throttle.info.attempts_count_by_email` - Attempts count by email
+- `nowo_login_throttle.info.remaining_attempts` - Remaining attempts message
+- `nowo_login_throttle.info.last_attempt_warning` - Last attempt warning
+
+**Adding Custom Translations**:
+
+You can override translations by creating your own translation files in `translations/` directory with the same keys.
+
 ### Upgrading to 0.0.3
 
 **Release Date**: 2025-12-30
@@ -324,6 +453,7 @@ If you encounter issues during upgrade:
 
 | Bundle Version | Symfony Version | PHP Version | Features |
 |---------------|-----------------|-------------|----------|
+| 0.0.4         | 6.0, 7.0, 8.0   | 8.1, 8.2, 8.3, 8.4, 8.5 | Single & Multiple firewalls, Cache & Database storage, i18n support, Attempt info display |
 | 0.0.3         | 6.0, 7.0, 8.0   | 8.1, 8.2, 8.3, 8.4, 8.5 | Single & Multiple firewalls, Cache & Database storage, Improved demo |
 | 0.0.2         | 6.0, 7.0, 8.0   | 8.1, 8.2, 8.3, 8.4, 8.5 | Single & Multiple firewalls, Cache & Database storage |
 | 0.0.1         | 6.0, 7.0, 8.0   | 8.1, 8.2, 8.3, 8.4, 8.5 | Single & Multiple firewalls, Cache & Database storage |

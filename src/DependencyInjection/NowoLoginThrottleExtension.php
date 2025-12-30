@@ -74,6 +74,17 @@ class NowoLoginThrottleExtension extends Extension
             if ($config['enabled']) {
                 $this->configureSecurityThrottling($container, $config);
             }
+
+            // Store firewalls config for LoginThrottleInfoService (single firewall mode)
+            $container->setParameter('nowo_login_throttle.firewalls', [
+                $config['firewall'] => [
+                    'max_attempts' => $config['max_count_attempts'],
+                    'interval' => Configuration::secondsToInterval($config['timeout']),
+                    'timeout' => $config['timeout'], // Store timeout in seconds for easier access
+                    'storage' => $config['storage'],
+                    'firewall' => $config['firewall'],
+                ],
+            ]);
         }
     }
 
@@ -177,6 +188,7 @@ class NowoLoginThrottleExtension extends Extension
             $firewallsData[$firewallName] = [
                 'max_attempts' => $firewallConfig['max_count_attempts'],
                 'interval' => Configuration::secondsToInterval($firewallConfig['timeout']),
+                'timeout' => $firewallConfig['timeout'], // Store timeout in seconds for easier access
                 'limiter' => $limiterServiceId,
                 'cache_pool' => $firewallConfig['cache_pool'] ?? 'cache.rate_limiter',
                 'lock_factory' => $firewallConfig['lock_factory'] ?? null,

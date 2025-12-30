@@ -50,8 +50,8 @@ up-symfony7:
 		docker-compose exec -T php php bin/console doctrine:database:create --if-not-exists && \
 		echo "   Running migrations..." && \
 		docker-compose exec -T php php bin/console doctrine:migrations:migrate --no-interaction && \
-		echo "   Updating schema..." && \
-		docker-compose exec -T php php bin/console doctrine:schema:update --force --complete && \
+		echo "   Updating schema (if needed)..." && \
+		(docker-compose exec -T php php bin/console doctrine:schema:update --force --complete || echo "⚠️  Schema update skipped (migrations should be sufficient)") && \
 		echo "   Loading fixtures..." && \
 		docker-compose exec -T php php bin/console doctrine:fixtures:load --no-interaction && \
 		echo "✅ Database setup completed"; \

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use Nowo\LoginThrottleBundle\Service\LoginThrottleInfoService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -21,7 +22,7 @@ class SecurityController extends AbstractController
      * @return Response
      */
     #[Route('/', name: 'login')]
-    public function login(AuthenticationUtils $authenticationUtils, Request $request): Response
+    public function login(AuthenticationUtils $authenticationUtils, Request $request, LoginThrottleInfoService $throttleInfoService): Response
     {
         // Redirect authenticated users to home page
         if ($this->getUser()) {
@@ -33,6 +34,12 @@ class SecurityController extends AbstractController
         
         // Last username entered by the user
         $lastUsername = $authenticationUtils->getLastUsername();
+        
+        // Get login attempt information
+        $attemptInfo = null;
+        if ($error) {
+            $attemptInfo = $throttleInfoService->getAttemptInfo('main', $request);
+        }
         
         $session = $request->getSession();
         
@@ -53,6 +60,7 @@ class SecurityController extends AbstractController
         return $this->render('security/login.html.twig', [
             'last_username' => $lastUsername,
             'error' => $error,
+            'attempt_info' => $attemptInfo,
         ]);
     }
 

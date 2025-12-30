@@ -55,6 +55,46 @@ class LoginAttemptRepository extends ServiceEntityRepository
     }
 
     /**
+     * Count failed login attempts by IP address only (ignoring username).
+     *
+     * @param string $ipAddress IP address
+     * @param int    $seconds   Time period in seconds
+     *
+     * @return int Number of attempts
+     */
+    public function countAttemptsByIp(string $ipAddress, int $seconds): int
+    {
+        $qb = $this->createQueryBuilder('la')
+            ->select('COUNT(la.id)')
+            ->where('la.ipAddress = :ipAddress')
+            ->andWhere('la.createdAt >= :since')
+            ->setParameter('ipAddress', $ipAddress)
+            ->setParameter('since', new \DateTimeImmutable(sprintf('-%d seconds', $seconds)));
+
+        return (int) $qb->getQuery()->getSingleScalarResult();
+    }
+
+    /**
+     * Count failed login attempts by username/email only (ignoring IP).
+     *
+     * @param string $username Username/email
+     * @param int    $seconds  Time period in seconds
+     *
+     * @return int Number of attempts
+     */
+    public function countAttemptsByUsername(string $username, int $seconds): int
+    {
+        $qb = $this->createQueryBuilder('la')
+            ->select('COUNT(la.id)')
+            ->where('la.username = :username')
+            ->andWhere('la.createdAt >= :since')
+            ->setParameter('username', $username)
+            ->setParameter('since', new \DateTimeImmutable(sprintf('-%d seconds', $seconds)));
+
+        return (int) $qb->getQuery()->getSingleScalarResult();
+    }
+
+    /**
      * Check if IP/username is blocked (has exceeded max attempts).
      *
      * @param string      $ipAddress      IP address
@@ -108,8 +148,8 @@ class LoginAttemptRepository extends ServiceEntityRepository
     /**
      * Get all attempts for a given IP and username.
      *
-     * @param string      $ipAddress IP address
-     * @param string|null $username  Username (optional)
+     * @param string      $ipAddress IP address (empty string to ignore IP filter)
+     * @param string|null $username  Username (optional, null to ignore username filter)
      * @param int         $seconds   Time period in seconds
      *
      * @return LoginAttempt[]
@@ -117,11 +157,14 @@ class LoginAttemptRepository extends ServiceEntityRepository
     public function getAttempts(string $ipAddress, ?string $username, int $seconds): array
     {
         $qb = $this->createQueryBuilder('la')
-            ->where('la.ipAddress = :ipAddress')
-            ->andWhere('la.createdAt >= :since')
-            ->setParameter('ipAddress', $ipAddress)
+            ->where('la.createdAt >= :since')
             ->setParameter('since', new \DateTimeImmutable(sprintf('-%d seconds', $seconds)))
             ->orderBy('la.createdAt', 'DESC');
+
+        if ('' !== $ipAddress) {
+            $qb->andWhere('la.ipAddress = :ipAddress')
+                ->setParameter('ipAddress', $ipAddress);
+        }
 
         if (null !== $username) {
             $qb->andWhere('la.username = :username')

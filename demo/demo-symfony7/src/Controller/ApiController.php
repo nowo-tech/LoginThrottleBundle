@@ -41,6 +41,20 @@ class ApiController extends AbstractController
     }
 
     /**
+     * API login endpoint (matches check_path in security.yaml).
+     * This route is used by json_login authenticator.
+     *
+     * @return JsonResponse
+     */
+    #[Route('/api/login', name: 'api_login')]
+    public function login(): JsonResponse
+    {
+        // This route is handled by json_login authenticator
+        // It should not be reached directly
+        return new JsonResponse(['error' => 'Unauthorized'], 401);
+    }
+
+    /**
      * API login page (for testing).
      *
      * @param Request $request

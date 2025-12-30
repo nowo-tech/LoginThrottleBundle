@@ -68,9 +68,9 @@
         </div>
 
         <div class="login-form">
-            <p style="margin-bottom: 20px; color: #666;">For API testing, use JSON POST request to <code>/api/login</code> with <code>email</code> and <code>password</code> fields.</p>
+            <p style="margin-bottom: 20px; color: #666;">For API testing, use JSON POST request to <code>{{ path('api_login') }}</code> with <code>email</code> and <code>password</code> fields.</p>
             <p style="margin-bottom: 20px; color: #666;">Or test via this form (simulates API call):</p>
-            <form method="post" action="{{ path('api_login') }}" id="apiLoginForm">
+            <form id="apiLoginForm">
                 <div class="form-group">
                     <label for="inputEmail">Email</label>
                     <input type="email" name="email" id="inputEmail" class="form-control" autocomplete="email" required autofocus>
@@ -83,6 +83,35 @@
 
                 <button type="submit" class="btn login-button">API Login</button>
             </form>
+            <script>
+                document.getElementById('apiLoginForm').addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const formData = new FormData(this);
+                    const data = {
+                        email: formData.get('email'),
+                        password: formData.get('password')
+                    };
+                    
+                    fetch('{{ path('api_login') }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(data)
+                    })
+                    .then(response => {
+                        if (response.ok) {
+                            window.location.href = '{{ path('api_home') }}';
+                        } else {
+                            alert('Login failed. Please check your credentials.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('An error occurred. Please try again.');
+                    });
+                });
+            </script>
         </div>
 
         <div class="api-info">

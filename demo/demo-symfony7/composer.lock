@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "a3a12d5ea7ce07476542014d2de4d9ac",
+    "content-hash": "6596f1655288b2e2b8587c49c9cf9e53",
     "packages": [
         {
             "name": "doctrine/cache",
@@ -1500,16 +1500,16 @@
         },
         {
             "name": "nowo-tech/login-throttle-bundle",
-            "version": "v0.0.2",
+            "version": "v0.0.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/nowo-tech/LoginThrottleBundle.git",
-                "reference": "615f23f373b0b35f575a06a611dac1057947571a"
+                "reference": "54bcf4e90bfcbaec106a6a5e934bdc805c0eaf64"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/nowo-tech/LoginThrottleBundle/zipball/615f23f373b0b35f575a06a611dac1057947571a",
-                "reference": "615f23f373b0b35f575a06a611dac1057947571a",
+                "url": "https://api.github.com/repos/nowo-tech/LoginThrottleBundle/zipball/54bcf4e90bfcbaec106a6a5e934bdc805c0eaf64",
+                "reference": "54bcf4e90bfcbaec106a6a5e934bdc805c0eaf64",
                 "shasum": ""
             },
             "require": {
@@ -1562,7 +1562,7 @@
                 "issues": "https://github.com/nowo-tech/login-throttle-bundle/issues",
                 "source": "https://github.com/nowo-tech/login-throttle-bundle"
             },
-            "time": "2025-12-30T10:43:29+00:00"
+            "time": "2025-12-30T11:00:30+00:00"
         },
         {
             "name": "psr/cache",

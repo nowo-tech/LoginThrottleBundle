@@ -69,6 +69,37 @@
             <div class="alert alert-danger">
                 <div class="alert-title">Authentication Error</div>
                 <div class="alert-message">{{ error.messageKey|trans(error.messageData, 'security') }}</div>
+                {% if attempt_info %}
+                    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.3);">
+                        {% if attempt_info.is_blocked %}
+                            <p style="margin: 0; font-weight: bold; color: #fff;">
+                                ⚠️ {{ 'nowo_login_throttle.error.account_blocked'|trans({'%max_attempts%': attempt_info.max_attempts}, 'messages') }}
+                            </p>
+                            {% if attempt_info.retry_after %}
+                                <p style="margin: 10px 0 0 0; font-size: 14px;">
+                                    {{ 'nowo_login_throttle.error.retry_after'|trans({'%retry_after%': attempt_info.retry_after|date('H:i:s')}, 'messages') }}
+                                </p>
+                            {% endif %}
+                        {% else %}
+                            <p style="margin: 0; font-weight: bold;">
+                                📊 {% if attempt_info.tracking_type == 'username' %}
+                                    {{ 'nowo_login_throttle.info.attempts_count_by_email'|trans({'%current%': attempt_info.current_attempts, '%max%': attempt_info.max_attempts}, 'messages') }}
+                                {% else %}
+                                    {{ 'nowo_login_throttle.info.attempts_count_by_ip'|trans({'%current%': attempt_info.current_attempts, '%max%': attempt_info.max_attempts}, 'messages') }}
+                                {% endif %}
+                            </p>
+                            {% if attempt_info.remaining_attempts > 0 %}
+                                <p style="margin: 10px 0 0 0; font-size: 14px; color: #fff;">
+                                    {{ 'nowo_login_throttle.info.remaining_attempts'|trans({'%remaining%': attempt_info.remaining_attempts}, 'messages') }}
+                                </p>
+                            {% else %}
+                                <p style="margin: 10px 0 0 0; font-size: 14px; color: #fff;">
+                                    ⚠️ {{ 'nowo_login_throttle.info.last_attempt_warning'|trans({}, 'messages') }}
+                                </p>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                {% endif %}
             </div>
         {% endif %}
 

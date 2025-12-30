@@ -25,3 +25,11 @@ services:
   # This service is registered dynamically in NowoLoginThrottleExtension::registerDatabaseRateLimiter()
   # It implements RequestRateLimiterInterface and can be used as a limiter in security.yaml
 
+  # Login throttle info service (for displaying attempt information)
+  Nowo\LoginThrottleBundle\Service\LoginThrottleInfoService:
+    calls:
+      - method: setFirewallsConfig
+        arguments: ['%nowo_login_throttle.firewalls%']
+    # Repository is optional - only needed for database storage
+    # It will be autowired if available
+
