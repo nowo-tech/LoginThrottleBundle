@@ -89,4 +89,3 @@ final class LoginAttemptTest extends TestCase
         $this->assertFalse($attempt->isBlocked());
     }
 }
-

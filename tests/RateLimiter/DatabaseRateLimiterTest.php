@@ -297,4 +297,3 @@ final class DatabaseRateLimiterTest extends TestCase
         $this->assertInstanceOf(\DateTimeImmutable::class, $rateLimit->getRetryAfter());
     }
 }
-
