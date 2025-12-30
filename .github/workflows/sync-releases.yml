@@ -120,7 +120,7 @@ jobs:
               }
               
               if (!tagMessage) {
-                tagMessage = `Release ${tag}`;
+                tagMessage = 'Release ' + tag;
               }
               
               // Get changelog entry
@@ -146,22 +146,22 @@ jobs:
               
               if (isMissing) {
                 // Create new release
-                console.log(`Creating release for tag: ${tag}`);
+                console.log('Creating release for tag: ' + tag);
                 await github.rest.repos.createRelease({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   tag_name: tag,
-                  name: `Release ${tag}`,
+                  name: 'Release ' + tag,
                   body: releaseBody,
                   draft: false,
                   prerelease: isPrerelease,
                   generate_release_notes: true
                 });
-                console.log(`✅ Created release for ${tag}`);
+                console.log('✅ Created release for ' + tag);
               } else if (isOutdated) {
                 // Update existing release
                 const release = releasesMap[tag];
-                console.log(`Updating release for tag: ${tag} (release ID: ${release.id})`);
+                console.log('Updating release for tag: ' + tag + ' (release ID: ' + release.id + ')');
                 await github.rest.repos.updateRelease({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
@@ -169,7 +169,7 @@ jobs:
                   body: releaseBody,
                   prerelease: isPrerelease
                 });
-                console.log(`✅ Updated release for ${tag} with changelog`);
+                console.log('✅ Updated release for ' + tag + ' with changelog');
               }
             }
 
