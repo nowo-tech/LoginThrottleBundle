@@ -353,6 +353,7 @@ Complete documentation is available in the `docs/` directory:
 
 - [CHANGELOG.md](docs/CHANGELOG.md) - Version history and changes
 - [CONFIGURATION.md](docs/CONFIGURATION.md) - Detailed configuration guide
+- [TRANSLATIONS.md](docs/TRANSLATIONS.md) - Complete guide on handling translations, overriding messages, and adding new languages
 - [UPGRADING.md](docs/UPGRADING.md) - Upgrade instructions and migration guide
 - [SERVICES.md](docs/SERVICES.md) - Service configuration examples (Docker, Kubernetes)
 - [CONTRIBUTING.md](docs/CONTRIBUTING.md) - Contribution guidelines
