@@ -91,12 +91,12 @@ None - This is a minor release with new features. All existing functionality rem
    ```twig
    {% if error and attempt_info %}
        {% if attempt_info.is_blocked %}
-           ⚠️ {{ 'nowo_login_throttle.error.account_blocked'|trans({'%max_attempts%': attempt_info.max_attempts}, 'messages') }}
+           ⚠️ {{ 'nowo_login_throttle.error.account_blocked'|trans({'%max_attempts%': attempt_info.max_attempts}, 'nowo_login_throttle') }}
        {% else %}
            📊 {% if attempt_info.tracking_type == 'username' %}
-               {{ 'nowo_login_throttle.info.attempts_count_by_email'|trans({'%current%': attempt_info.current_attempts, '%max%': attempt_info.max_attempts}, 'messages') }}
+               {{ 'nowo_login_throttle.info.attempts_count_by_email'|trans({'%current%': attempt_info.current_attempts, '%max%': attempt_info.max_attempts}, 'nowo_login_throttle') }}
            {% else %}
-               {{ 'nowo_login_throttle.info.attempts_count_by_ip'|trans({'%current%': attempt_info.current_attempts, '%max%': attempt_info.max_attempts}, 'messages') }}
+               {{ 'nowo_login_throttle.info.attempts_count_by_ip'|trans({'%current%': attempt_info.current_attempts, '%max%': attempt_info.max_attempts}, 'nowo_login_throttle') }}
            {% endif %}
        {% endif %}
    {% endif %}
