@@ -27,13 +27,13 @@ class LoginAttempt
     #[ORM\Column(type: Types::INTEGER)]
     private ?int $id = null;
 
-    #[ORM\Column(type: Types::STRING, length: 45)]
+    #[ORM\Column(name: 'ip_address', type: Types::STRING, length: 45)]
     private string $ipAddress;
 
     #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
     private ?string $username = null;
 
-    #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
+    #[ORM\Column(name: 'created_at', type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
