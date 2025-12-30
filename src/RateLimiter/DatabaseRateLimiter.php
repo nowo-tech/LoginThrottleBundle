@@ -54,6 +54,7 @@ class DatabaseRateLimiter implements RequestRateLimiterInterface
         if ($isBlocked) {
             $remaining = 0;
             $retryAfter = $this->calculateRetryAfter($ipAddress, $username);
+            $accepted = false;
         } else {
             // Record the attempt
             $this->repository->recordAttempt($ipAddress, $username);
@@ -61,18 +62,28 @@ class DatabaseRateLimiter implements RequestRateLimiterInterface
             // Count current attempts
             $count = $this->repository->countAttempts($ipAddress, $username, $this->timeoutSeconds);
             $remaining = max(0, $this->maxAttempts - $count);
-            $retryAfter = null;
-
+            
             // Check if this attempt exceeded the limit
             if ($count >= $this->maxAttempts) {
                 $retryAfter = $this->calculateRetryAfter($ipAddress, $username);
+                $accepted = false;
+            } else {
+                // Not blocked, retry after is now (immediate retry allowed)
+                $retryAfter = new \DateTimeImmutable();
+                $accepted = true;
             }
+        }
+
+        // Ensure retryAfter is never null
+        if (null === $retryAfter) {
+            $retryAfter = new \DateTimeImmutable();
         }
 
         return new RateLimit(
             $remaining,
             $retryAfter,
-            $isBlocked || $remaining === 0
+            $accepted,
+            $this->maxAttempts
         );
     }
 

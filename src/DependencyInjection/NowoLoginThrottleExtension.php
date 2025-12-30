@@ -47,7 +47,8 @@ class NowoLoginThrottleExtension extends Extension
         $container->setParameter('nowo_login_throttle.config', $config);
 
         // Check if using multiple firewalls configuration
-        if (!empty($config['firewalls']) && is_array($config['firewalls'])) {
+        // Only use multiple firewalls if firewalls array is not empty
+        if (isset($config['firewalls']) && is_array($config['firewalls']) && !empty($config['firewalls'])) {
             // Multiple firewalls configuration
             $this->processMultipleFirewalls($container, $config['firewalls']);
         } else {
@@ -137,6 +138,15 @@ class NowoLoginThrottleExtension extends Extension
      */
     private function processMultipleFirewalls(ContainerBuilder $container, array $firewallsConfig): void
     {
+        // Set enabled parameter based on whether any firewall is enabled
+        $anyEnabled = false;
+        foreach ($firewallsConfig as $firewallConfig) {
+            if (($firewallConfig['enabled'] ?? true) === true) {
+                $anyEnabled = true;
+                break;
+            }
+        }
+        $container->setParameter('nowo_login_throttle.enabled', $anyEnabled);
         $firewallsData = [];
         $sharedLimiters = []; // Track shared rate limiters by config key
 

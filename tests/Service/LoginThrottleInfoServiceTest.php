@@ -253,24 +253,21 @@ final class LoginThrottleInfoServiceTest extends TestCase
         $this->service->setFirewallsConfig($config);
 
         // Test with _username
-        $request = Request::create('/login', 'POST', ['_username' => 'user1@example.com']);
+        $request1 = Request::create('/login', 'POST', ['_username' => 'user1@example.com']);
         $this->repository
-            ->expects($this->once())
+            ->expects($this->exactly(2))
             ->method('countAttemptsByUsername')
-            ->with('user1@example.com', 600)
+            ->withConsecutive(
+                ['user1@example.com', 600],
+                ['user2@example.com', 600]
+            )
             ->willReturn(0);
 
-        $this->service->getAttemptInfo('main', $request);
+        $this->service->getAttemptInfo('main', $request1);
 
         // Test with email
-        $request = Request::create('/login', 'POST', ['email' => 'user2@example.com']);
-        $this->repository
-            ->expects($this->once())
-            ->method('countAttemptsByUsername')
-            ->with('user2@example.com', 600)
-            ->willReturn(0);
-
-        $this->service->getAttemptInfo('main', $request);
+        $request2 = Request::create('/login', 'POST', ['email' => 'user2@example.com']);
+        $this->service->getAttemptInfo('main', $request2);
     }
 
     public function testGetAttemptInfoWithEmptyUsername(): void
@@ -430,9 +427,12 @@ final class LoginThrottleInfoServiceTest extends TestCase
         $request->server->set('REMOTE_ADDR', '192.168.1.1');
 
         $this->repository
-            ->expects($this->once())
+            ->expects($this->exactly(2))
             ->method('countAttemptsByIp')
-            ->with('192.168.1.1', 30)
+            ->withConsecutive(
+                ['192.168.1.1', 30],
+                ['192.168.1.1', 300] // 5 minutes = 300 seconds
+            )
             ->willReturn(0);
 
         $this->service->getAttemptInfo('main', $request);
@@ -440,11 +440,6 @@ final class LoginThrottleInfoServiceTest extends TestCase
         // Test minutes
         $config['main']['interval'] = '5 minutes';
         $this->service->setFirewallsConfig($config);
-        $this->repository
-            ->expects($this->once())
-            ->method('countAttemptsByIp')
-            ->with('192.168.1.1', 300) // 5 minutes = 300 seconds
-            ->willReturn(0);
 
         $this->service->getAttemptInfo('main', $request);
     }
