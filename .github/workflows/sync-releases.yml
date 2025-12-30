@@ -138,11 +138,7 @@ jobs:
               // Build release body
               let releaseBody = tagMessage;
               if (changelogEntry) {
-                releaseBody = `${tagMessage}
-
-## Changelog
-
-${changelogEntry}`;
+                releaseBody = tagMessage + '\n\n## Changelog\n\n' + changelogEntry;
               }
               
               // Determine if prerelease

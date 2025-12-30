@@ -122,11 +122,7 @@ jobs:
             // Build release body - always include changelog if available
             let releaseBody = tagMessage;
             if (hasChangelog && changelogEntry) {
-              releaseBody = `${tagMessage}
-
-## Changelog
-
-${changelogEntry}`;
+              releaseBody = tagMessage + '\n\n## Changelog\n\n' + changelogEntry;
             }
             
             try {
@@ -180,11 +176,7 @@ ${CHANGELOG_ENTRY}"
             // Build release body
             let releaseBody = tagMessage;
             if (hasChangelog && changelogEntry) {
-              releaseBody = `${tagMessage}
-
-## Changelog
-
-${changelogEntry}`;
+              releaseBody = tagMessage + '\n\n## Changelog\n\n' + changelogEntry;
             }
             
             try {
