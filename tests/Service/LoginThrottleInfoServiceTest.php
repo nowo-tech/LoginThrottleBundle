@@ -264,6 +264,7 @@ final class LoginThrottleInfoServiceTest extends TestCase
                 if ($username === 'user2@example.com' && $seconds === 600) {
                     return 0;
                 }
+
                 return 0;
             });
 
@@ -443,6 +444,7 @@ final class LoginThrottleInfoServiceTest extends TestCase
                     $this->assertEquals('192.168.1.1', $ip);
                     $this->assertEquals(300, $seconds); // 5 minutes = 300 seconds
                 }
+
                 return 0;
             });
 

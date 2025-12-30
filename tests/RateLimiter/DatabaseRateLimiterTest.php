@@ -225,6 +225,7 @@ final class DatabaseRateLimiterTest extends TestCase
                 if ($ip === '192.168.1.1' && $username === 'email@example.com' && $maxAttempts === 3 && $timeout === 600) {
                     return false;
                 }
+
                 return false;
             });
 
