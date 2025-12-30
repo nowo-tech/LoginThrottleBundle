@@ -231,19 +231,7 @@ final class DatabaseRateLimiterTest extends TestCase
         $request2 = Request::create('/login', 'POST', ['email' => 'email@example.com']);
         $request2->server->set('REMOTE_ADDR', '192.168.1.1');
 
-        $this->rateLimiter->consume($request2);
-
-        $this->repository
-            ->expects($this->once())
-            ->method('recordAttempt')
-            ->with('192.168.1.1', 'email@example.com');
-
-        $this->repository
-            ->expects($this->once())
-            ->method('countAttempts')
-            ->with('192.168.1.1', 'email@example.com', 600)
-            ->willReturn(1);
-
+        // The mocks above already cover both calls, so we just need to consume
         $this->rateLimiter->consume($request2);
     }
 

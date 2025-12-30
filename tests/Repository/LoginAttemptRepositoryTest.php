@@ -38,22 +38,26 @@ final class LoginAttemptRepositoryTest extends TestCase
             ->with(LoginAttempt::class)
             ->willReturn($this->entityManager);
 
-        $this->repository = new LoginAttemptRepository($this->registry);
+        // Create a partial mock of the repository that overrides createQueryBuilder
+        $this->repository = $this->getMockBuilder(LoginAttemptRepository::class)
+            ->setConstructorArgs([$this->registry])
+            ->onlyMethods(['createQueryBuilder'])
+            ->getMock();
+
+        // Mock createQueryBuilder to return our mocked QueryBuilder
+        $this->repository
+            ->method('createQueryBuilder')
+            ->willReturn($this->queryBuilder);
     }
 
     public function testCountAttemptsByIp(): void
     {
-        $query = $this->getMockBuilder(AbstractQuery::class)
+        $query = $this->getMockBuilder(Query::class)
             ->disableOriginalConstructor()
             ->getMock();
         $query->expects($this->once())
             ->method('getSingleScalarResult')
             ->willReturn('5');
-
-        $this->entityManager
-            ->expects($this->once())
-            ->method('createQueryBuilder')
-            ->willReturn($this->queryBuilder);
 
         $this->queryBuilder
             ->expects($this->once())
@@ -92,17 +96,12 @@ final class LoginAttemptRepositoryTest extends TestCase
 
     public function testCountAttemptsByUsername(): void
     {
-        $query = $this->getMockBuilder(AbstractQuery::class)
+        $query = $this->getMockBuilder(Query::class)
             ->disableOriginalConstructor()
             ->getMock();
         $query->expects($this->once())
             ->method('getSingleScalarResult')
             ->willReturn('3');
-
-        $this->entityManager
-            ->expects($this->once())
-            ->method('createQueryBuilder')
-            ->willReturn($this->queryBuilder);
 
         $this->queryBuilder
             ->expects($this->once())
@@ -141,17 +140,12 @@ final class LoginAttemptRepositoryTest extends TestCase
 
     public function testGetAttemptsWithEmptyIp(): void
     {
-        $query = $this->getMockBuilder(AbstractQuery::class)
+        $query = $this->getMockBuilder(Query::class)
             ->disableOriginalConstructor()
             ->getMock();
         $query->expects($this->once())
             ->method('getResult')
             ->willReturn([]);
-
-        $this->entityManager
-            ->expects($this->once())
-            ->method('createQueryBuilder')
-            ->willReturn($this->queryBuilder);
 
         $this->queryBuilder
             ->expects($this->once())
@@ -190,17 +184,12 @@ final class LoginAttemptRepositoryTest extends TestCase
 
     public function testGetAttemptsWithNullUsername(): void
     {
-        $query = $this->getMockBuilder(AbstractQuery::class)
+        $query = $this->getMockBuilder(Query::class)
             ->disableOriginalConstructor()
             ->getMock();
         $query->expects($this->once())
             ->method('getResult')
             ->willReturn([]);
-
-        $this->entityManager
-            ->expects($this->once())
-            ->method('createQueryBuilder')
-            ->willReturn($this->queryBuilder);
 
         $this->queryBuilder
             ->expects($this->once())

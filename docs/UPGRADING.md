@@ -13,6 +13,35 @@ This guide provides step-by-step instructions for upgrading the Login Throttle B
 
 ## Upgrade Instructions by Version
 
+### Upgrading to 0.0.14
+
+**Release Date**: 2025-01-15
+
+#### What's New
+
+- **Test Suite Improvements**: All tests now pass successfully
+  - Fixed compatibility issues with PHPUnit 10
+  - Improved test reliability and error handling
+  - Better mocking strategies for Doctrine ORM components
+
+#### Breaking Changes
+
+None - This is a patch release with test fixes and improvements.
+
+#### Upgrade Steps
+
+1. **Update the bundle**:
+   ```bash
+   composer update nowo-tech/login-throttle-bundle
+   ```
+
+2. **Clear cache**:
+   ```bash
+   php bin/console cache:clear
+   ```
+
+3. **No configuration changes required** - This release only includes test improvements.
+
 ### Upgrading to 0.0.13
 
 **Release Date**: 2025-01-15

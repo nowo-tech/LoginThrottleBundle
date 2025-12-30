@@ -68,10 +68,8 @@ class NowoLoginThrottleExtension extends Extension
                 ], $config['firewall']);
             }
 
-            // Store security config for single firewall
-            if ($config['enabled']) {
-                $this->configureSecurityThrottling($container, $config);
-            }
+            // Store security config for single firewall (always set, even if disabled)
+            $this->configureSecurityThrottling($container, $config);
 
             // Store firewalls config for LoginThrottleInfoService (single firewall mode)
             $container->setParameter('nowo_login_throttle.firewalls', [
