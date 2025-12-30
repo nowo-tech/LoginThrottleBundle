@@ -62,4 +62,3 @@ final class DatabaseRateLimiterFactoryTest extends TestCase
         $this->assertNotSame($rateLimiter1, $rateLimiter2);
     }
 }
-
