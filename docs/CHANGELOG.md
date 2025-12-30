@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.13] - 2025-01-15
+
+### Added
+- **Extended Translation Support**: Added 20 additional language translations
+  - French (fr), German (de), Italian (it), Portuguese (pt), Brazilian Portuguese (pt_BR)
+  - Dutch (nl), Polish (pl), Russian (ru), Simplified Chinese (zh_CN), Traditional Chinese (zh_TW)
+  - Japanese (ja), Korean (ko), Arabic (ar), Turkish (tr), Czech (cs)
+  - Swedish (sv), Norwegian (no), Danish (da), Finnish (fi), Greek (el)
+  - Hungarian (hu), Romanian (ro)
+  - Total of 24 supported languages (including existing English and Spanish)
+  - All translations follow the same structure and include all error and info messages
+
+### Fixed
+- **Extension Service Loading**: Fixed service loading order in `NowoLoginThrottleExtension`
+  - Moved `services.yaml` loading after parameter definition to prevent reference errors
+  - Ensures all parameters are available when services are registered
+  - Fixes potential issues with parameter references in service definitions
+
+- **Test Suite Improvements**: Enhanced test mocks for better compatibility
+  - Updated `DatabaseRateLimiterTest` to properly mock `recordAttempt` return values
+  - Improved mock expectations for multiple method calls
+
 ## [0.0.12] - 2025-01-15
 
 ### Fixed

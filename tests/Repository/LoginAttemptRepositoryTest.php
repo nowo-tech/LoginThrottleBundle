@@ -6,6 +6,7 @@ namespace Nowo\LoginThrottleBundle\Tests\Repository;
 
 use Doctrine\ORM\AbstractQuery;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Query;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 use Nowo\LoginThrottleBundle\Entity\LoginAttempt;
@@ -80,7 +81,9 @@ final class LoginAttemptRepositoryTest extends TestCase
         $this->queryBuilder
             ->expects($this->once())
             ->method('getQuery')
-            ->willReturn($query);
+            ->willReturnCallback(function () use ($query) {
+                return $query;
+            });
 
         $result = $this->repository->countAttemptsByIp('192.168.1.1', 600);
 
@@ -127,7 +130,9 @@ final class LoginAttemptRepositoryTest extends TestCase
         $this->queryBuilder
             ->expects($this->once())
             ->method('getQuery')
-            ->willReturn($query);
+            ->willReturnCallback(function () use ($query) {
+                return $query;
+            });
 
         $result = $this->repository->countAttemptsByUsername('test@example.com', 600);
 
@@ -174,7 +179,9 @@ final class LoginAttemptRepositoryTest extends TestCase
         $this->queryBuilder
             ->expects($this->once())
             ->method('getQuery')
-            ->willReturn($query);
+            ->willReturnCallback(function () use ($query) {
+                return $query;
+            });
 
         $result = $this->repository->getAttempts('', 'test@example.com', 600);
 
@@ -221,7 +228,9 @@ final class LoginAttemptRepositoryTest extends TestCase
         $this->queryBuilder
             ->expects($this->once())
             ->method('getQuery')
-            ->willReturn($query);
+            ->willReturnCallback(function () use ($query) {
+                return $query;
+            });
 
         $result = $this->repository->getAttempts('192.168.1.1', null, 600);
 

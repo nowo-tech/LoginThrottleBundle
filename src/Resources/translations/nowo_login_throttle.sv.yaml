@@ -1,0 +1,13 @@
+# Swedish translations for Login Throttle Bundle
+nowo_login_throttle:
+    error:
+        authentication_failed: "Ogiltiga inloggningsuppgifter."
+        account_blocked: "Kontot är tillfälligt blockerat. Du har överskridit det maximala antalet försök (%max_attempts%)."
+        retry_after: "Du kan försöka igen efter: %retry_after%"
+    info:
+        attempts_count: "Inloggningsförsök: %current% av %max%"
+        attempts_count_by_ip: "Inloggningsförsök från denna IP: %current% av %max%"
+        attempts_count_by_email: "Inloggningsförsök för denna e-post: %current% av %max%"
+        remaining_attempts: "Återstående försök före blockering: %remaining%"
+        last_attempt_warning: "Sista tillgängliga försöket. Nästa misslyckande kommer att blockera ditt konto."
+

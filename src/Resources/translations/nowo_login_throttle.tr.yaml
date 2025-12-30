@@ -1,0 +1,13 @@
+# Turkish translations for Login Throttle Bundle
+nowo_login_throttle:
+    error:
+        authentication_failed: "Geçersiz kimlik bilgileri."
+        account_blocked: "Hesap geçici olarak engellendi. Maksimum deneme sayısını (%max_attempts%) aştınız."
+        retry_after: "Şu tarihten sonra tekrar deneyebilirsiniz: %retry_after%"
+    info:
+        attempts_count: "Giriş denemeleri: %current%/%max%"
+        attempts_count_by_ip: "Bu IP'den giriş denemeleri: %current%/%max%"
+        attempts_count_by_email: "Bu e-posta için giriş denemeleri: %current%/%max%"
+        remaining_attempts: "Engellemeden önce kalan denemeler: %remaining%"
+        last_attempt_warning: "Son mevcut deneme. Bir sonraki başarısızlık hesabınızı engelleyecektir."
+

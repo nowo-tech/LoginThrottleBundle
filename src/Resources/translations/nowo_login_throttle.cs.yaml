@@ -1,0 +1,13 @@
+# Czech translations for Login Throttle Bundle
+nowo_login_throttle:
+    error:
+        authentication_failed: "Neplatné přihlašovací údaje."
+        account_blocked: "Účet je dočasně zablokován. Překročili jste maximální počet pokusů (%max_attempts%)."
+        retry_after: "Můžete to zkusit znovu po: %retry_after%"
+    info:
+        attempts_count: "Pokusy o přihlášení: %current% z %max%"
+        attempts_count_by_ip: "Pokusy o přihlášení z této IP: %current% z %max%"
+        attempts_count_by_email: "Pokusy o přihlášení pro tento email: %current% z %max%"
+        remaining_attempts: "Zbývající pokusy před zablokováním: %remaining%"
+        last_attempt_warning: "Poslední dostupný pokus. Další neúspěch zablokuje váš účet."
+

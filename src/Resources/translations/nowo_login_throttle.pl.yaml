@@ -1,0 +1,13 @@
+# Polish translations for Login Throttle Bundle
+nowo_login_throttle:
+    error:
+        authentication_failed: "Nieprawidłowe dane logowania."
+        account_blocked: "Konto tymczasowo zablokowane. Przekroczono maksymalną liczbę prób (%max_attempts%)."
+        retry_after: "Możesz spróbować ponownie po: %retry_after%"
+    info:
+        attempts_count: "Próby logowania: %current% z %max%"
+        attempts_count_by_ip: "Próby logowania z tego adresu IP: %current% z %max%"
+        attempts_count_by_email: "Próby logowania dla tego adresu e-mail: %current% z %max%"
+        remaining_attempts: "Pozostałe próby przed blokadą: %remaining%"
+        last_attempt_warning: "Ostatnia dostępna próba. Następna nieudana próba zablokuje Twoje konto."
+

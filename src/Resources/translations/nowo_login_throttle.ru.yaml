@@ -1,0 +1,13 @@
+# Russian translations for Login Throttle Bundle
+nowo_login_throttle:
+    error:
+        authentication_failed: "Неверные учетные данные."
+        account_blocked: "Аккаунт временно заблокирован. Превышено максимальное количество попыток (%max_attempts%)."
+        retry_after: "Вы сможете попробовать снова после: %retry_after%"
+    info:
+        attempts_count: "Попытки входа: %current% из %max%"
+        attempts_count_by_ip: "Попытки входа с этого IP: %current% из %max%"
+        attempts_count_by_email: "Попытки входа для этого email: %current% из %max%"
+        remaining_attempts: "Оставшиеся попытки перед блокировкой: %remaining%"
+        last_attempt_warning: "Последняя доступная попытка. Следующая неудача заблокирует ваш аккаунт."
+

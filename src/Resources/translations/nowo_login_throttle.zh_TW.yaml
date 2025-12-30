@@ -1,0 +1,13 @@
+# Traditional Chinese translations for Login Throttle Bundle
+nowo_login_throttle:
+    error:
+        authentication_failed: "憑證無效。"
+        account_blocked: "帳戶暫時被鎖定。您已超過最大嘗試次數（%max_attempts%）。"
+        retry_after: "您可以在以下時間後重試：%retry_after%"
+    info:
+        attempts_count: "登入嘗試：%current%/%max%"
+        attempts_count_by_ip: "來自此IP的登入嘗試：%current%/%max%"
+        attempts_count_by_email: "此電子郵件的登入嘗試：%current%/%max%"
+        remaining_attempts: "鎖定前剩餘嘗試次數：%remaining%"
+        last_attempt_warning: "最後一次可用嘗試。下次失敗將鎖定您的帳戶。"
+

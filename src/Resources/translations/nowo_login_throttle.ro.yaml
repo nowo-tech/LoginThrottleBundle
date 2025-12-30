@@ -1,0 +1,13 @@
+# Romanian translations for Login Throttle Bundle
+nowo_login_throttle:
+    error:
+        authentication_failed: "Date de autentificare invalide."
+        account_blocked: "Contul este blocat temporar. Ați depășit numărul maxim de încercări (%max_attempts%)."
+        retry_after: "Puteți încerca din nou după: %retry_after%"
+    info:
+        attempts_count: "Încercări de autentificare: %current% din %max%"
+        attempts_count_by_ip: "Încercări de autentificare de la acest IP: %current% din %max%"
+        attempts_count_by_email: "Încercări de autentificare pentru acest email: %current% din %max%"
+        remaining_attempts: "Încercări rămase înainte de blocare: %remaining%"
+        last_attempt_warning: "Ultima încercare disponibilă. Următoarea eșec va bloca contul dvs."
+

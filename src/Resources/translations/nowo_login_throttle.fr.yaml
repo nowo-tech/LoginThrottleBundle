@@ -1,0 +1,13 @@
+# French translations for Login Throttle Bundle
+nowo_login_throttle:
+    error:
+        authentication_failed: "Identifiants invalides."
+        account_blocked: "Compte temporairement bloqué. Vous avez dépassé le nombre maximum de tentatives (%max_attempts%)."
+        retry_after: "Vous pourrez réessayer après : %retry_after%"
+    info:
+        attempts_count: "Tentatives de connexion : %current% sur %max%"
+        attempts_count_by_ip: "Tentatives de connexion depuis cette IP : %current% sur %max%"
+        attempts_count_by_email: "Tentatives de connexion pour cet email : %current% sur %max%"
+        remaining_attempts: "Tentatives restantes avant blocage : %remaining%"
+        last_attempt_warning: "Dernière tentative disponible. L'échec suivant bloquera votre compte."
+

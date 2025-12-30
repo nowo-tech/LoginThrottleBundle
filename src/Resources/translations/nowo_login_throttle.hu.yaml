@@ -1,0 +1,13 @@
+# Hungarian translations for Login Throttle Bundle
+nowo_login_throttle:
+    error:
+        authentication_failed: "Érvénytelen bejelentkezési adatok."
+        account_blocked: "A fiók ideiglenesen le van tiltva. Túllépte a maximális próbálkozások számát (%max_attempts%)."
+        retry_after: "A következő időpont után próbálhatja újra: %retry_after%"
+    info:
+        attempts_count: "Bejelentkezési kísérletek: %current%/%max%"
+        attempts_count_by_ip: "Bejelentkezési kísérletek erről az IP-címről: %current%/%max%"
+        attempts_count_by_email: "Bejelentkezési kísérletek erre az e-mail címre: %current%/%max%"
+        remaining_attempts: "Hátralévő kísérletek a tiltás előtt: %remaining%"
+        last_attempt_warning: "Utolsó elérhető kísérlet. A következő sikertelenség tiltja le a fiókját."
+

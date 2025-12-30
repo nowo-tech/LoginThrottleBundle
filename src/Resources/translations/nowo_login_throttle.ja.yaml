@@ -1,0 +1,13 @@
+# Japanese translations for Login Throttle Bundle
+nowo_login_throttle:
+    error:
+        authentication_failed: "認証情報が無効です。"
+        account_blocked: "アカウントが一時的にブロックされました。最大試行回数（%max_attempts%回）を超過しました。"
+        retry_after: "再試行可能時間：%retry_after%"
+    info:
+        attempts_count: "ログイン試行回数：%current%/%max%"
+        attempts_count_by_ip: "このIPからのログイン試行回数：%current%/%max%"
+        attempts_count_by_email: "このメールアドレスのログイン試行回数：%current%/%max%"
+        remaining_attempts: "ブロック前の残り試行回数：%remaining%"
+        last_attempt_warning: "最後の試行回数です。次回の失敗でアカウントがブロックされます。"
+

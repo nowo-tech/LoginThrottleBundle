@@ -1,0 +1,13 @@
+# Norwegian translations for Login Throttle Bundle
+nowo_login_throttle:
+    error:
+        authentication_failed: "Ugyldige innloggingsdetaljer."
+        account_blocked: "Kontoen er midlertidig blokkert. Du har overskredet maksimalt antall forsøk (%max_attempts%)."
+        retry_after: "Du kan prøve igjen etter: %retry_after%"
+    info:
+        attempts_count: "Innloggingsforsøk: %current% av %max%"
+        attempts_count_by_ip: "Innloggingsforsøk fra denne IP: %current% av %max%"
+        attempts_count_by_email: "Innloggingsforsøk for denne e-post: %current% av %max%"
+        remaining_attempts: "Gjenstående forsøk før blokkering: %remaining%"
+        last_attempt_warning: "Siste tilgjengelige forsøk. Neste feil vil blokkere kontoen din."
+

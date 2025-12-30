@@ -1,0 +1,13 @@
+# Arabic translations for Login Throttle Bundle
+nowo_login_throttle:
+    error:
+        authentication_failed: "بيانات الاعتماد غير صحيحة."
+        account_blocked: "تم حظر الحساب مؤقتاً. لقد تجاوزت الحد الأقصى لعدد المحاولات (%max_attempts%)."
+        retry_after: "يمكنك المحاولة مرة أخرى بعد: %retry_after%"
+    info:
+        attempts_count: "محاولات تسجيل الدخول: %current% من %max%"
+        attempts_count_by_ip: "محاولات تسجيل الدخول من هذا العنوان: %current% من %max%"
+        attempts_count_by_email: "محاولات تسجيل الدخول لهذا البريد الإلكتروني: %current% من %max%"
+        remaining_attempts: "المحاولات المتبقية قبل الحظر: %remaining%"
+        last_attempt_warning: "المحاولة الأخيرة المتاحة. الفشل التالي سيحظر حسابك."
+

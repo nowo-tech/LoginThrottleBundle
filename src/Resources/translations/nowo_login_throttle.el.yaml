@@ -1,0 +1,13 @@
+# Greek translations for Login Throttle Bundle
+nowo_login_throttle:
+    error:
+        authentication_failed: "Μη έγκυρα διαπιστευτήρια."
+        account_blocked: "Ο λογαριασμός έχει προσωρινά αποκλειστεί. Έχετε υπερβεί τον μέγιστο αριθμό προσπαθειών (%max_attempts%)."
+        retry_after: "Μπορείτε να δοκιμάσετε ξανά μετά τις: %retry_after%"
+    info:
+        attempts_count: "Προσπάθειες σύνδεσης: %current% από %max%"
+        attempts_count_by_ip: "Προσπάθειες σύνδεσης από αυτή τη διεύθυνση IP: %current% από %max%"
+        attempts_count_by_email: "Προσπάθειες σύνδεσης για αυτό το email: %current% από %max%"
+        remaining_attempts: "Υπολείποντες προσπάθειες πριν τον αποκλεισμό: %remaining%"
+        last_attempt_warning: "Τελευταία διαθέσιμη προσπάθεια. Η επόμενη αποτυχία θα αποκλείσει τον λογαριασμό σας."
+

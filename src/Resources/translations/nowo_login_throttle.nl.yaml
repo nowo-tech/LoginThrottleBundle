@@ -1,0 +1,13 @@
+# Dutch translations for Login Throttle Bundle
+nowo_login_throttle:
+    error:
+        authentication_failed: "Ongeldige inloggegevens."
+        account_blocked: "Account tijdelijk geblokkeerd. U heeft het maximum aantal pogingen (%max_attempts%) overschreden."
+        retry_after: "U kunt het opnieuw proberen na: %retry_after%"
+    info:
+        attempts_count: "Inlogpogingen: %current% van %max%"
+        attempts_count_by_ip: "Inlogpogingen van dit IP-adres: %current% van %max%"
+        attempts_count_by_email: "Inlogpogingen voor dit e-mailadres: %current% van %max%"
+        remaining_attempts: "Resterende pogingen voor blokkering: %remaining%"
+        last_attempt_warning: "Laatste poging beschikbaar. De volgende mislukking zal uw account blokkeren."
+

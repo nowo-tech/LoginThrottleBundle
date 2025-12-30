@@ -1,0 +1,13 @@
+# Korean translations for Login Throttle Bundle
+nowo_login_throttle:
+    error:
+        authentication_failed: "잘못된 자격 증명입니다."
+        account_blocked: "계정이 일시적으로 차단되었습니다. 최대 시도 횟수(%max_attempts%회)를 초과했습니다."
+        retry_after: "다시 시도할 수 있는 시간: %retry_after%"
+    info:
+        attempts_count: "로그인 시도: %current%/%max%"
+        attempts_count_by_ip: "이 IP의 로그인 시도: %current%/%max%"
+        attempts_count_by_email: "이 이메일의 로그인 시도: %current%/%max%"
+        remaining_attempts: "차단 전 남은 시도 횟수: %remaining%"
+        last_attempt_warning: "마지막 시도입니다. 다음 실패 시 계정이 차단됩니다."
+

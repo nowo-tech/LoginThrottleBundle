@@ -40,9 +40,6 @@ class NowoLoginThrottleExtension extends Extension
         $configuration = new Configuration();
         $config = $processor->processConfiguration($configuration, $configs);
 
-        $loader = new YamlFileLoader($container, new FileLocator(__DIR__ . '/../Resources/config'));
-        $loader->load('services.yaml');
-
         // Store configuration as container parameters
         $container->setParameter('nowo_login_throttle.config', $config);
 
@@ -87,6 +84,10 @@ class NowoLoginThrottleExtension extends Extension
                 ],
             ]);
         }
+
+        // Load services.yaml after parameters are set (needed for parameter references)
+        $loader = new YamlFileLoader($container, new FileLocator(__DIR__ . '/../Resources/config'));
+        $loader->load('services.yaml');
     }
 
     /**

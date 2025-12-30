@@ -1,0 +1,13 @@
+# Finnish translations for Login Throttle Bundle
+nowo_login_throttle:
+    error:
+        authentication_failed: "Virheelliset kirjautumistiedot."
+        account_blocked: "Tili on tilapäisesti estetty. Olet ylittänyt suurimman sallitun yritysten määrän (%max_attempts%)."
+        retry_after: "Voit yrittää uudelleen: %retry_after%"
+    info:
+        attempts_count: "Kirjautumisyritykset: %current%/%max%"
+        attempts_count_by_ip: "Kirjautumisyritykset tästä IP-osoitteesta: %current%/%max%"
+        attempts_count_by_email: "Kirjautumisyritykset tälle sähköpostille: %current%/%max%"
+        remaining_attempts: "Jäljellä olevat yritykset ennen estämistä: %remaining%"
+        last_attempt_warning: "Viimeinen saatavilla oleva yritys. Seuraava epäonnistuminen estää tilisi."
+

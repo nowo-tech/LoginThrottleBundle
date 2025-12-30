@@ -13,6 +13,48 @@ This guide provides step-by-step instructions for upgrading the Login Throttle B
 
 ## Upgrade Instructions by Version
 
+### Upgrading to 0.0.13
+
+**Release Date**: 2025-01-15
+
+#### What's New
+
+- **Extended Translation Support**: Added 20 additional language translations
+  - The bundle now supports 24 languages total (English, Spanish, and 22 additional languages)
+  - All new translations are automatically available in `src/Resources/translations/`
+  - No configuration changes required - translations are loaded automatically based on Symfony's locale settings
+
+#### Breaking Changes
+
+None - This is a minor release with new translations and bug fixes.
+
+#### Upgrade Steps
+
+1. **Update the bundle**:
+   ```bash
+   composer update nowo-tech/login-throttle-bundle
+   ```
+
+2. **Clear cache**:
+   ```bash
+   php bin/console cache:clear
+   ```
+
+3. **Verify translations** (optional):
+   - Check that translations are available in `vendor/nowo-tech/login-throttle-bundle/src/Resources/translations/`
+   - If you have custom translations, ensure they follow the same structure
+
+#### New Features
+
+- **24 Language Support**: The bundle now includes translations for:
+  - English (en), Spanish (es), French (fr), German (de), Italian (it)
+  - Portuguese (pt), Brazilian Portuguese (pt_BR), Dutch (nl), Polish (pl), Russian (ru)
+  - Simplified Chinese (zh_CN), Traditional Chinese (zh_TW), Japanese (ja), Korean (ko)
+  - Arabic (ar), Turkish (tr), Czech (cs), Swedish (sv), Norwegian (no)
+  - Danish (da), Finnish (fi), Greek (el), Hungarian (hu), Romanian (ro)
+
+- **Automatic Translation Loading**: Translations are automatically loaded based on your Symfony application's locale configuration
+
 ### Upgrading to 0.0.12
 
 **Release Date**: 2025-01-15

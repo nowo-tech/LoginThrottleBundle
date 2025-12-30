@@ -193,29 +193,6 @@ final class DatabaseRateLimiterTest extends TestCase
         $request->server->set('REMOTE_ADDR', '192.168.1.1');
 
         $this->repository
-            ->expects($this->once())
-            ->method('isBlocked')
-            ->with('192.168.1.1', 'user@example.com', 3, 600)
-            ->willReturn(false);
-
-        $this->repository
-            ->expects($this->once())
-            ->method('recordAttempt')
-            ->with('192.168.1.1', 'user@example.com');
-
-        $this->repository
-            ->expects($this->once())
-            ->method('countAttempts')
-            ->with('192.168.1.1', 'user@example.com', 600)
-            ->willReturn(1);
-
-        $this->rateLimiter->consume($request);
-
-        // Test with 'email' field
-        $request2 = Request::create('/login', 'POST', ['email' => 'email@example.com']);
-        $request2->server->set('REMOTE_ADDR', '192.168.1.1');
-
-        $this->repository
             ->expects($this->exactly(2))
             ->method('isBlocked')
             ->willReturnCallback(function ($ip, $username, $maxAttempts, $timeout) {
@@ -227,6 +204,34 @@ final class DatabaseRateLimiterTest extends TestCase
                 }
                 return false;
             });
+
+        $this->repository
+            ->expects($this->exactly(2))
+            ->method('recordAttempt')
+            ->willReturnCallback(function ($ip, $username) {
+                return new \Nowo\LoginThrottleBundle\Entity\LoginAttempt($ip, $username);
+            });
+
+        $this->repository
+            ->expects($this->exactly(2))
+            ->method('countAttempts')
+            ->willReturnCallback(function ($ip, $username, $timeout) {
+                if ($ip === '192.168.1.1' && $username === 'user@example.com' && $timeout === 600) {
+                    return 1;
+                }
+                if ($ip === '192.168.1.1' && $username === 'email@example.com' && $timeout === 600) {
+                    return 1;
+                }
+                return 0;
+            });
+
+        $this->rateLimiter->consume($request);
+
+        // Test with 'email' field
+        $request2 = Request::create('/login', 'POST', ['email' => 'email@example.com']);
+        $request2->server->set('REMOTE_ADDR', '192.168.1.1');
+
+        $this->rateLimiter->consume($request2);
 
         $this->repository
             ->expects($this->once())

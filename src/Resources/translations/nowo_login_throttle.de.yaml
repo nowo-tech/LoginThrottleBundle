@@ -1,0 +1,13 @@
+# German translations for Login Throttle Bundle
+nowo_login_throttle:
+    error:
+        authentication_failed: "Ungültige Anmeldedaten."
+        account_blocked: "Konto vorübergehend gesperrt. Sie haben die maximale Anzahl von Versuchen (%max_attempts%) überschritten."
+        retry_after: "Sie können es erneut versuchen nach: %retry_after%"
+    info:
+        attempts_count: "Anmeldeversuche: %current% von %max%"
+        attempts_count_by_ip: "Anmeldeversuche von dieser IP: %current% von %max%"
+        attempts_count_by_email: "Anmeldeversuche für diese E-Mail: %current% von %max%"
+        remaining_attempts: "Verbleibende Versuche vor der Sperrung: %remaining%"
+        last_attempt_warning: "Letzter Versuch verfügbar. Der nächste Fehlschlag wird Ihr Konto sperren."
+
