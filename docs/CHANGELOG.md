@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.7] - 2025-01-15
+
+### Fixed
+- **Workflow Syntax Errors**: Fixed YAML syntax errors in GitHub Actions workflows
+  - Corrected multiline template literals in `release.yml` (line 129)
+  - Corrected multiline template literals in `sync-releases.yml` (line 145)
+  - Replaced problematic template literals with string concatenation for proper YAML parsing
+
+- **Entity Column Mapping**: Added explicit column names to `LoginAttempt` entity
+  - Added `ip_address` column name mapping
+  - Added `created_at` column name mapping
+  - Ensures proper database column mapping and compatibility
+
+### Changed
+- **Release Workflow Improvements**: Enhanced release creation workflow
+  - Improved error handling and logging in release workflows
+  - Better consistency using GitHub Script API for both create and update operations
+  - More reliable release creation process
+
 ## [0.0.6] - 2025-01-15
 
 ### Added
