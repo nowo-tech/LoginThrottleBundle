@@ -139,4 +139,3 @@ class DatabaseRateLimiter implements RequestRateLimiterInterface
         return $retryAfter;
     }
 }
-
