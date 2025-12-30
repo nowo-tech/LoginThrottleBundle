@@ -62,7 +62,7 @@ class DatabaseRateLimiter implements RequestRateLimiterInterface
             // Count current attempts
             $count = $this->repository->countAttempts($ipAddress, $username, $this->timeoutSeconds);
             $remaining = max(0, $this->maxAttempts - $count);
-            
+
             // Check if this attempt exceeded the limit
             if ($count >= $this->maxAttempts) {
                 $retryAfter = $this->calculateRetryAfter($ipAddress, $username);
