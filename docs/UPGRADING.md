@@ -263,7 +263,6 @@ If you encounter issues during upgrade:
 
 | Bundle Version | Symfony Version | PHP Version | Features |
 |---------------|-----------------|-------------|----------|
-| 0.0.2 (unreleased) | 6.0, 7.0, 8.0 | 8.1, 8.2, 8.3, 8.4, 8.5 | Multiple firewalls, Database storage |
 | 0.0.1         | 6.0, 7.0, 8.0   | 8.1, 8.2, 8.3, 8.4, 8.5 | Single & Multiple firewalls, Cache & Database storage |
 
 ## Additional Resources
