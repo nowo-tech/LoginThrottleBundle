@@ -13,6 +13,53 @@ This guide provides step-by-step instructions for upgrading the Login Throttle B
 
 ## Upgrade Instructions by Version
 
+### Upgrading to 0.0.3
+
+**Release Date**: 2025-12-30
+
+#### What's New
+
+- **Demo Project Improvements**:
+  - Navigation links between different firewall login pages
+  - Automatic fixtures loading on project startup
+  - Improved database setup with `doctrine:schema:update`
+  - Better error handling and informative messages
+
+#### Breaking Changes
+
+None - This is a patch release with demo improvements only.
+
+#### Upgrade Steps
+
+1. **Update composer**:
+   ```bash
+   composer update nowo-tech/login-throttle-bundle
+   ```
+
+2. **Clear cache**:
+   ```bash
+   php bin/console cache:clear
+   ```
+
+No configuration changes required. This release only improves the demo project.
+
+### Upgrading to 0.0.2
+
+**Release Date**: 2025-12-30
+
+#### What's New
+
+- **Demo Project Improvements**:
+  - Added `bin/console` file for Symfony demo project
+  - Updated `docker-compose.yml` to properly load `.env` file
+  - Updated `composer.json` to use Symfony ^7.4 (fixes security advisories)
+  - Fixed `doctrine.yaml` configuration (removed invalid options)
+  - Improved `Makefile` to handle `bin/console` existence checks
+
+#### Breaking Changes
+
+None - This is a patch release with demo improvements only.
+
 ### Upgrading to Next Version (Unreleased)
 
 **Release Date**: TBD
@@ -277,6 +324,8 @@ If you encounter issues during upgrade:
 
 | Bundle Version | Symfony Version | PHP Version | Features |
 |---------------|-----------------|-------------|----------|
+| 0.0.3         | 6.0, 7.0, 8.0   | 8.1, 8.2, 8.3, 8.4, 8.5 | Single & Multiple firewalls, Cache & Database storage, Improved demo |
+| 0.0.2         | 6.0, 7.0, 8.0   | 8.1, 8.2, 8.3, 8.4, 8.5 | Single & Multiple firewalls, Cache & Database storage |
 | 0.0.1         | 6.0, 7.0, 8.0   | 8.1, 8.2, 8.3, 8.4, 8.5 | Single & Multiple firewalls, Cache & Database storage |
 
 ## Additional Resources

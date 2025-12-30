@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.3] - 2025-12-30
+
+### Added
+- **Demo Project Improvements**:
+  - Added navigation links between different firewall login pages
+  - Each login page now includes links to test other firewalls (Main, API, Admin)
+  - Navigation shows configuration summary (max attempts, timeout) for each firewall
+  - Improved Makefile with step-by-step database setup messages
+  - Added `doctrine:schema:update` to automatically create `login_attempts` table from entity mapping
+  - Fixtures now load automatically when running `make up-symfony7`
+
+### Fixed
+- **Demo Database Setup**:
+  - Fixed migration to use `doctrine:schema:update` for automatic `login_attempts` table creation
+  - Removed manual `login_attempts` table creation from migration (now created automatically from entity)
+  - Improved error handling in Makefile for database setup
+  - Fixed `AppFixtures.php` to include demo users (demo@example.com and admin@example.com)
+
+### Changed
+- **Demo Project Configuration**:
+  - Updated `composer.json` database script to include `doctrine:schema:update --force --complete`
+  - Makefile now executes database commands step-by-step with informative messages
+  - Better user experience when setting up the demo project
+
 ## [0.0.2] - 2025-12-30
 
 ### Fixed
