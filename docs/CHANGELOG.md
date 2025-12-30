@@ -10,6 +10,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.0.4] - 2025-01-15
 
 ### Added
+- **Automated Release Management**:
+  - New `sync-releases.yml` workflow to automatically find and create releases for tags without releases
+  - Workflow can be triggered manually via GitHub Actions UI
+  - Automatic daily check at 2 AM UTC for missing releases
+  - Backup trigger when new tags are pushed
+  - Automatically extracts changelog entries and tag messages for releases
+
+### Changed
+- **Release Workflow Improvements**:
+  - Improved CHANGELOG pattern matching in `release.yml` workflow
+  - Fixed regex pattern to properly escape dots in version numbers
+  - Better error messages when changelog entries are not found
 - **Internationalization (i18n) Support**:
   - Added translation files for Spanish (`messages.es.yaml`) and English (`messages.en.yaml`)
   - Translation keys under `nowo_login_throttle` domain for error and info messages

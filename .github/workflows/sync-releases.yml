@@ -54,43 +54,29 @@ jobs:
 
       - name: Find missing releases
         id: missing
-        run: |
-          TAGS="${{ steps.tags.outputs.TAGS }}"
-          EXISTING_RELEASES_JSON='${{ steps.check-releases.outputs.tags }}'
-          
-          # Convert JSON array to space-separated list for easier checking
-          EXISTING_RELEASES=$(echo "$EXISTING_RELEASES_JSON" | jq -r '.[]' | tr '\n' ' ')
-          
-          MISSING_TAGS=""
-          
-          while IFS= read -r tag; do
-            # Check if tag exists in releases
-            if ! echo "$EXISTING_RELEASES" | grep -qw "$tag"; then
-              if [ -z "$MISSING_TAGS" ]; then
-                MISSING_TAGS="$tag"
-              else
-                MISSING_TAGS="$MISSING_TAGS"$'\n'"$tag"
-              fi
-              echo "Missing release for tag: $tag"
-            fi
-          done <<< "$TAGS"
-          
-          if [ -n "$MISSING_TAGS" ]; then
-            echo "MISSING_TAGS<<EOF" >> $GITHUB_OUTPUT
-            echo "$MISSING_TAGS" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
-            echo "found_missing=true" >> $GITHUB_OUTPUT
-          else
-            echo "found_missing=false" >> $GITHUB_OUTPUT
-            echo "All tags have releases ✅"
-          fi
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tags = `${{ steps.tags.outputs.TAGS }}`.trim().split('\n').filter(t => t);
+            const existingReleases = JSON.parse(`${{ steps.check-releases.outputs.tags }}`);
+            
+            const missingTags = tags.filter(tag => !existingReleases.includes(tag));
+            
+            if (missingTags.length > 0) {
+              console.log('Missing releases for tags:', missingTags);
+              core.setOutput('missing_tags', missingTags.join('\n'));
+              core.setOutput('found_missing', 'true');
+            } else {
+              console.log('All tags have releases ✅');
+              core.setOutput('found_missing', 'false');
+            }
 
       - name: Create missing releases
         if: steps.missing.outputs.found_missing == 'true'
         uses: actions/github-script@v7
         with:
           script: |
-            const missingTags = `${{ steps.missing.outputs.MISSING_TAGS }}`.trim().split('\n').filter(t => t);
+            const missingTags = `${{ steps.missing.outputs.missing_tags }}`.trim().split('\n').filter(t => t);
             
             for (const tag of missingTags) {
               console.log(`Creating release for tag: ${tag}`);
@@ -154,19 +140,21 @@ ${changelogEntry}`;
 
       - name: Summary
         if: always()
-        run: |
-          if [ "${{ steps.missing.outputs.found_missing }}" == "true" ]; then
-            echo "## ✅ Sync Complete" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Created releases for the following tags:" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            echo "${{ steps.missing.outputs.MISSING_TAGS }}" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-          else
-            echo "## ✅ All tags have releases" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "No missing releases found. Everything is in sync! 🎉" >> $GITHUB_STEP_SUMMARY
-          fi
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const foundMissing = '${{ steps.missing.outputs.found_missing }}' === 'true';
+            const missingTags = foundMissing ? `${{ steps.missing.outputs.missing_tags }}`.trim().split('\n') : [];
+            
+            let summary = '';
+            if (foundMissing) {
+              summary = `## ✅ Sync Complete\n\nCreated releases for the following tags:\n\`\`\`\n${missingTags.join('\n')}\n\`\`\``;
+            } else {
+              summary = '## ✅ All tags have releases\n\nNo missing releases found. Everything is in sync! 🎉';
+            }
+            
+            core.summary.addRaw(summary);
+            await core.summary.write();
 
 # Maintainer: Héctor Franco Aceituno (@HecFranco)
 # Organization: nowo-tech (https://github.com/nowo-tech)

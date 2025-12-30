@@ -31,6 +31,8 @@ This guide provides step-by-step instructions for upgrading the Login Throttle B
 
 - **Enhanced Repository Methods**: New methods for more granular control over attempt counting.
 
+- **Automated Release Management**: New GitHub Actions workflow (`sync-releases.yml`) that automatically detects and creates releases for tags that don't have releases. This ensures all tags are properly documented with releases.
+
 #### Breaking Changes
 
 None - This is a minor release with new features. All existing functionality remains backward compatible.
