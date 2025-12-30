@@ -185,9 +185,13 @@ jobs:
       - name: Summary
         if: always()
         uses: actions/github-script@v7
+        env:
+          FOUND_MISSING: ${{ steps.missing.outputs.found_missing }}
+          MISSING_TAGS: ${{ steps.missing.outputs.missing_tags }}
+          OUTDATED_TAGS: ${{ steps.missing.outputs.outdated_tags }}
         with:
           script: |
-            const foundMissing = '${{ steps.missing.outputs.found_missing }}' === 'true';
+            const foundMissing = process.env.FOUND_MISSING === 'true';
             const missingTags = foundMissing ? (process.env.MISSING_TAGS || '').trim().split('\n').filter(t => t) : [];
             const outdatedTags = foundMissing ? (process.env.OUTDATED_TAGS || '').trim().split('\n').filter(t => t) : [];
             
