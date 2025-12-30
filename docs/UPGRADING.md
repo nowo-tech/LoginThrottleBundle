@@ -13,6 +13,34 @@ This guide provides step-by-step instructions for upgrading the Login Throttle B
 
 ## Upgrade Instructions by Version
 
+### Upgrading to 0.0.5
+
+**Release Date**: 2025-01-15
+
+#### What's New
+
+- **Enhanced Test Coverage**: Complete test suite now covers all classes including Entity, RateLimiter, and Factory classes, ensuring 100% code coverage.
+
+- **Improved Release Workflows**: Better reliability and error handling in automated release management workflows.
+
+#### Breaking Changes
+
+None - This is a patch release with test improvements and workflow enhancements.
+
+#### Upgrade Steps
+
+1. **Update composer**:
+   ```bash
+   composer update nowo-tech/login-throttle-bundle
+   ```
+
+2. **Clear cache**:
+   ```bash
+   php bin/console cache:clear
+   ```
+
+No configuration changes required. This release only improves test coverage and workflow reliability.
+
 ### Upgrading to 0.0.4
 
 **Release Date**: 2025-01-15
@@ -455,6 +483,7 @@ If you encounter issues during upgrade:
 
 | Bundle Version | Symfony Version | PHP Version | Features |
 |---------------|-----------------|-------------|----------|
+| 0.0.5         | 6.0, 7.0, 8.0   | 8.1, 8.2, 8.3, 8.4, 8.5 | Single & Multiple firewalls, Cache & Database storage, i18n support, Attempt info display, 100% test coverage |
 | 0.0.4         | 6.0, 7.0, 8.0   | 8.1, 8.2, 8.3, 8.4, 8.5 | Single & Multiple firewalls, Cache & Database storage, i18n support, Attempt info display |
 | 0.0.3         | 6.0, 7.0, 8.0   | 8.1, 8.2, 8.3, 8.4, 8.5 | Single & Multiple firewalls, Cache & Database storage, Improved demo |
 | 0.0.2         | 6.0, 7.0, 8.0   | 8.1, 8.2, 8.3, 8.4, 8.5 | Single & Multiple firewalls, Cache & Database storage |

@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.5] - 2025-01-15
+
+### Added
+- **Comprehensive Test Coverage**:
+  - Added `LoginAttemptTest` for complete entity coverage
+  - Added `DatabaseRateLimiterTest` with all scenarios (blocked, not blocked, max attempts, etc.)
+  - Added `DatabaseRateLimiterFactoryTest` for factory pattern
+  - Tests cover all methods and edge cases
+  - Ensures 100% code coverage requirement
+
+### Changed
+- **Release Workflow Improvements**:
+  - Improved `sync-releases.yml` workflow to use GitHub Script instead of jq for better reliability
+  - Fixed output variable names in workflow
+  - Better error handling and summary reporting
+
+### Fixed
+- **Workflow Reliability**:
+  - Fixed sync-releases workflow to properly detect and create missing releases
+  - Improved changelog pattern matching in release workflows
+
 ## [0.0.4] - 2025-01-15
 
 ### Added
