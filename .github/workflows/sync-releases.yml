@@ -137,7 +137,8 @@ jobs:
               if (fs.existsSync('docs/CHANGELOG.md')) {
                 const changelog = fs.readFileSync('docs/CHANGELOG.md', 'utf-8');
                 const versionEscaped = version.replace(/\./g, '\\.');
-                const regex = new RegExp(`^## \\[${versionEscaped}\\]([\\s\\S]*?)(?=^## \\[?[0-9]|$)`);
+                const regexPattern = '^## \\[' + versionEscaped + '\\]([\\s\\S]*?)(?=^## \\[?[0-9]|$)';
+                const regex = new RegExp(regexPattern);
                 const match = changelog.match(regex);
                 if (match) {
                   changelogEntry = match[1].trim();
