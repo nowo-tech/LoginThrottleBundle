@@ -97,10 +97,10 @@ jobs:
                 core.setOutput('exists', 'true');
                 core.setOutput('release_id', existingRelease.id.toString());
                 core.setOutput('has_changelog', hasChangelog ? 'true' : 'false');
-                console.log(`Release ${tagName} already exists (ID: ${existingRelease.id}), has changelog: ${hasChangelog}`);
+                console.log('Release ' + tagName + ' already exists (ID: ' + existingRelease.id + '), has changelog: ' + hasChangelog);
               } else {
                 core.setOutput('exists', 'false');
-                console.log(`Release ${tagName} does not exist, will create new one`);
+                console.log('Release ' + tagName + ' does not exist, will create new one');
               }
             } catch (error) {
               console.log('Error checking existing releases:', error.message);
