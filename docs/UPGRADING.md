@@ -81,7 +81,7 @@ nowo_login_throttle:
 
 ### Upgrading to 0.0.1 (Initial Release)
 
-**Release Date**: TBD
+**Release Date**: 2025-12-30
 
 #### What's New
 
@@ -92,6 +92,8 @@ nowo_login_throttle:
 - Command to automatically configure `security.yaml`
 - Support for custom rate limiters
 - Configuration options compatible with `anyx/login-gate-bundle`
+- **Multiple Firewalls Support**: Configure independent throttling settings for each firewall
+- **Database Storage Support**: Store login attempts in database instead of cache for auditing
 
 #### Breaking Changes
 
@@ -262,7 +264,7 @@ If you encounter issues during upgrade:
 | Bundle Version | Symfony Version | PHP Version | Features |
 |---------------|-----------------|-------------|----------|
 | 0.0.2 (unreleased) | 6.0, 7.0, 8.0 | 8.1, 8.2, 8.3, 8.4, 8.5 | Multiple firewalls, Database storage |
-| 0.0.1         | 6.0, 7.0, 8.0   | 8.1, 8.2, 8.3, 8.4, 8.5 | Single firewall, Cache storage |
+| 0.0.1         | 6.0, 7.0, 8.0   | 8.1, 8.2, 8.3, 8.4, 8.5 | Single & Multiple firewalls, Cache & Database storage |
 
 ## Additional Resources
 

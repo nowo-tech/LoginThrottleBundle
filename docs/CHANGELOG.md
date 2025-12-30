@@ -7,8 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.1] - 2025-12-30
+
 ### Added
+- **Initial release of Login Throttle Bundle**
+  - Native Symfony `login_throttling` integration
+  - Pre-configured settings with sensible defaults
+  - Automatic configuration file generation
+  - Command to automatically configure `security.yaml`
+  - Support for custom rate limiters
+  - Configuration options compatible with `anyx/login-gate-bundle`
+
 - **Multiple Firewalls Support**: Added support for configuring multiple firewalls with independent throttling settings. Each firewall can have its own `max_count_attempts`, `timeout`, `storage`, and `rate_limiter` configuration. Firewalls with identical database storage configurations automatically share rate limiters. See [CONFIGURATION.md](docs/CONFIGURATION.md#multiple-firewalls) for examples.
+
 - **Database Storage Support**: Added option to store login attempts in database instead of cache
   - New `storage` configuration option with values `'cache'` (default) or `'database'`
   - `DatabaseRateLimiter` service for database-backed rate limiting
@@ -20,22 +31,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Repository methods for querying and auditing login attempts
   - Cleanup functionality for old login attempts
 
-## [0.0.1] - 2025-01-XX
-
-### Added
-- **Initial release of Login Throttle Bundle**
-  - Native Symfony `login_throttling` integration
-  - Pre-configured settings with sensible defaults
-  - Automatic configuration file generation
-  - Command to automatically configure `security.yaml`
-  - Support for custom rate limiters
-  - Configuration options compatible with `anyx/login-gate-bundle`
-
 - **Configuration Options**:
   - `max_count_attempts` (maps to `max_attempts` in Symfony)
   - `timeout` (maps to `interval` in Symfony, converted from seconds)
   - `watch_period` (for informational purposes)
-  - `firewall` (firewall name configuration)
+  - `firewall` (firewall name configuration, for single firewall setup)
+  - `firewalls` (multiple firewalls configuration)
+  - `storage` (storage backend: `'cache'` or `'database'`)
   - `rate_limiter` (optional custom rate limiter service)
   - `cache_pool` (cache pool for rate limiter state)
   - `lock_factory` (optional lock factory for rate limiter)
@@ -88,6 +90,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ✅ Command to automatically configure `security.yaml`
 - ✅ Custom rate limiter support
 - ✅ Database storage support (optional, via Doctrine ORM)
+- ✅ Multiple firewalls support
 - ✅ Easy migration from `anyx/login-gate-bundle`
 - ✅ Compatible with Symfony 6.0, 7.0, and 8.0
 - ✅ Configurable via YAML
