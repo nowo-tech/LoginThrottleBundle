@@ -5,12 +5,12 @@
     "license": "MIT",
     "require": {
         "php": ">=8.2,<8.6",
-        "nowo-tech/login-throttle-bundle": "^0.0.1",
         "doctrine/doctrine-bundle": "^2.10",
-        "doctrine/orm": "^2.15",
-        "doctrine/migrations": "^3.6",
-        "doctrine/doctrine-migrations-bundle": "^3.2",
         "doctrine/doctrine-fixtures-bundle": "^3.4",
+        "doctrine/doctrine-migrations-bundle": "^3.2",
+        "doctrine/migrations": "^3.6",
+        "doctrine/orm": "^2.15",
+        "nowo-tech/login-throttle-bundle": "0.0.2",
         "symfony/console": "^7.4",
         "symfony/dotenv": "^7.4",
         "symfony/flex": "^2.0",
@@ -74,6 +74,7 @@
         "database": [
             "@php bin/console doctrine:database:create --if-not-exists",
             "@php bin/console doctrine:migrations:migrate --no-interaction",
+            "@php bin/console doctrine:schema:update --force --complete",
             "@php bin/console doctrine:fixtures:load --no-interaction"
         ]
     },

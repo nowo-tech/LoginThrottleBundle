@@ -14,7 +14,7 @@ final class Version20250101000000 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'Create users and login_attempts tables';
+        return 'Create users table';
     }
 
     public function up(Schema $schema): void
@@ -27,23 +27,14 @@ final class Version20250101000000 extends AbstractMigration
             UNIQUE INDEX UNIQ_1483A5E9E7927C74 (email),
             PRIMARY KEY(id)
         ) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
-
-        // Create login_attempts table for Login Throttle Bundle
-        $this->addSql('CREATE TABLE login_attempts (
-            id INT AUTO_INCREMENT NOT NULL,
-            ip_address VARCHAR(45) NOT NULL,
-            username VARCHAR(255) DEFAULT NULL,
-            created_at DATETIME NOT NULL COMMENT \'(DC2Type:datetime_immutable)\',
-            is_blocked TINYINT(1) DEFAULT 0 NOT NULL,
-            INDEX idx_ip_username (ip_address, username),
-            INDEX idx_created_at (created_at),
-            PRIMARY KEY(id)
-        ) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
+        
+        // Note: login_attempts table will be created automatically by Doctrine
+        // when running doctrine:migrations:diff or doctrine:schema:update
+        // because the LoginAttempt entity is mapped in doctrine.yaml
     }
 
     public function down(Schema $schema): void
     {
-        $this->addSql('DROP TABLE login_attempts');
         $this->addSql('DROP TABLE users');
     }
 }

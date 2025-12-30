@@ -9,4 +9,3 @@ return [
     Symfony\Bundle\TwigBundle\TwigBundle::class => ['all' => true],
     Nowo\LoginThrottleBundle\NowoLoginThrottleBundle::class => ['all' => true],
 ];
-
