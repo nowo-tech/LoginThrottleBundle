@@ -89,6 +89,7 @@ class LoginThrottleInfoService
                     'tracking_type' => null !== $username && '' !== $username ? 'username' : 'ip',
                 ];
             }
+
             return $this->getAttemptInfoFromDatabase($ipAddress, $username, $maxAttempts, $timeout);
         }
 
