@@ -46,7 +46,15 @@ up-symfony7:
 	(docker-compose exec -T php test -f bin/console && docker-compose exec -T php composer run-script post-install-cmd || echo "⚠️  Skipping post-install scripts (bin/console not found)") && \
 	echo "🗄️  Setting up database..." && \
 	if docker-compose exec -T php test -f bin/console; then \
-		docker-compose exec -T php composer database || (echo "❌ Error: Database setup failed. Check logs with: make logs-symfony7" && exit 1); \
+		echo "   Creating database..." && \
+		docker-compose exec -T php php bin/console doctrine:database:create --if-not-exists && \
+		echo "   Running migrations..." && \
+		docker-compose exec -T php php bin/console doctrine:migrations:migrate --no-interaction && \
+		echo "   Updating schema..." && \
+		docker-compose exec -T php php bin/console doctrine:schema:update --force --complete && \
+		echo "   Loading fixtures..." && \
+		docker-compose exec -T php php bin/console doctrine:fixtures:load --no-interaction && \
+		echo "✅ Database setup completed"; \
 	else \
 		echo "❌ Error: bin/console not found. Cannot setup database." && exit 1; \
 	fi && \

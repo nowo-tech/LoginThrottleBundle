@@ -27,7 +27,7 @@ final class Version20250101000000 extends AbstractMigration
             UNIQUE INDEX UNIQ_1483A5E9E7927C74 (email),
             PRIMARY KEY(id)
         ) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB');
-        
+
         // Note: login_attempts table will be created automatically by Doctrine
         // when running doctrine:migrations:diff or doctrine:schema:update
         // because the LoginAttempt entity is mapped in doctrine.yaml
