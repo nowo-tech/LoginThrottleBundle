@@ -50,22 +50,22 @@ class ConfigureSecurityCommand extends Command
             ->addOption('force', 'f', InputOption::VALUE_NONE, 'Force update even if login_throttling is already configured')
             ->setHelp(
                 <<<'HELP'
-The <info>%command.name%</info> command configures your <comment>security.yaml</comment> file
-with the login_throttling settings based on your bundle configuration.
+                    The <info>%command.name%</info> command configures your <comment>security.yaml</comment> file
+                    with the login_throttling settings based on your bundle configuration.
 
-<info>php %command.full_name%</info>
+                    <info>php %command.full_name%</info>
 
-This command will:
-1. Read your <comment>nowo_login_throttle.yaml</comment> configuration
-2. Add or update <comment>login_throttling</comment> in your <comment>security.yaml</comment>
-3. Configure all firewalls specified in your bundle configuration
+                    This command will:
+                    1. Read your <comment>nowo_login_throttle.yaml</comment> configuration
+                    2. Add or update <comment>login_throttling</comment> in your <comment>security.yaml</comment>
+                    3. Configure all firewalls specified in your bundle configuration
 
-For single firewall configuration, it uses the <comment>firewall</comment> option.
-For multiple firewalls, it processes each firewall in the <comment>firewalls</comment> section.
+                    For single firewall configuration, it uses the <comment>firewall</comment> option.
+                    For multiple firewalls, it processes each firewall in the <comment>firewalls</comment> section.
 
-If <comment>login_throttling</comment> is already configured, the command will skip
-the update unless you use the <comment>--force</comment> option.
-HELP
+                    If <comment>login_throttling</comment> is already configured, the command will skip
+                    the update unless you use the <comment>--force</comment> option.
+                    HELP
             );
     }
 
@@ -131,12 +131,12 @@ HELP
     /**
      * Configures a single firewall.
      *
-     * @param SymfonyStyle $io Symfony style output
-     * @param Filesystem $filesystem Filesystem component
-     * @param string $securityYamlPath Path to security.yaml
-     * @param string $firewall Firewall name
-     * @param array<string, mixed> $config Firewall configuration
-     * @param bool $force Force update
+     * @param SymfonyStyle         $io               Symfony style output
+     * @param Filesystem           $filesystem       Filesystem component
+     * @param string               $securityYamlPath Path to security.yaml
+     * @param string               $firewall         Firewall name
+     * @param array<string, mixed> $config           Firewall configuration
+     * @param bool                 $force            Force update
      *
      * @return int Command exit code
      */
@@ -231,11 +231,11 @@ HELP
     /**
      * Configures multiple firewalls.
      *
-     * @param SymfonyStyle $io Symfony style output
-     * @param Filesystem $filesystem Filesystem component
-     * @param string $securityYamlPath Path to security.yaml
-     * @param array<string, array<string, mixed>> $firewallsConfig Firewalls configuration
-     * @param bool $force Force update
+     * @param SymfonyStyle                        $io               Symfony style output
+     * @param Filesystem                          $filesystem       Filesystem component
+     * @param string                              $securityYamlPath Path to security.yaml
+     * @param array<string, array<string, mixed>> $firewallsConfig  Firewalls configuration
+     * @param bool                                $force            Force update
      *
      * @return int Command exit code
      */
@@ -387,4 +387,3 @@ HELP
         return sprintf('%d hour%s', $hours, $hours > 1 ? 's' : '');
     }
 }
-

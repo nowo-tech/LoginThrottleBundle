@@ -116,4 +116,3 @@ class LoginAttempt
         return $this;
     }
 }
-

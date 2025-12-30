@@ -4,10 +4,8 @@ declare(strict_types=1);
 
 namespace Nowo\LoginThrottleBundle\Tests;
 
-use Nowo\LoginThrottleBundle\DependencyInjection\Configuration;
 use Nowo\LoginThrottleBundle\NowoLoginThrottleBundle;
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\DependencyInjection\Container;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\Filesystem\Filesystem;
 
@@ -208,4 +206,3 @@ final class NowoLoginThrottleBundleBootTest extends TestCase
         $this->assertDirectoryExists($this->testDir . '/config/packages');
     }
 }
-

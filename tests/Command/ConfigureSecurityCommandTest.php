@@ -285,7 +285,7 @@ final class ConfigureSecurityCommandTest extends TestCase
         // Create a read-only directory to simulate write failure
         $readOnlyDir = $this->testDir . '/readonly';
         $this->filesystem->mkdir($readOnlyDir);
-        $this->filesystem->chmod($readOnlyDir, 0555);
+        $this->filesystem->chmod($readOnlyDir, 0o555);
 
         $readOnlySecurityPath = $readOnlyDir . '/security.yaml';
         $this->filesystem->dumpFile($readOnlySecurityPath, "security:\n    firewalls:\n        main: {}\n");
@@ -303,7 +303,7 @@ final class ConfigureSecurityCommandTest extends TestCase
         $this->assertStringContainsString('Failed to update', $commandTester->getDisplay());
 
         // Clean up
-        $this->filesystem->chmod($readOnlyDir, 0755);
+        $this->filesystem->chmod($readOnlyDir, 0o755);
     }
 
     public function testCommandUsesCurrentDirectoryWhenProjectDirIsNull(): void
@@ -312,4 +312,3 @@ final class ConfigureSecurityCommandTest extends TestCase
         $this->assertNotNull($command);
     }
 }
-

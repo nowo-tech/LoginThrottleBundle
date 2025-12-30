@@ -57,9 +57,9 @@ class LoginAttemptRepository extends ServiceEntityRepository
     /**
      * Check if IP/username is blocked (has exceeded max attempts).
      *
-     * @param string      $ipAddress IP address
-     * @param string|null $username  Username (optional)
-     * @param int         $maxAttempts Maximum number of attempts
+     * @param string      $ipAddress      IP address
+     * @param string|null $username       Username (optional)
+     * @param int         $maxAttempts    Maximum number of attempts
      * @param int         $timeoutSeconds Timeout period in seconds
      *
      * @return bool True if blocked
@@ -131,4 +131,3 @@ class LoginAttemptRepository extends ServiceEntityRepository
         return $qb->getQuery()->getResult();
     }
 }
-

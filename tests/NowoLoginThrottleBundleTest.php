@@ -58,4 +58,3 @@ final class NowoLoginThrottleBundleTest extends TestCase
         $this->assertSame($extension1, $extension2);
     }
 }
-

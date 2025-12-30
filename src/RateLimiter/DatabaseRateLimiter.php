@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Nowo\LoginThrottleBundle\RateLimiter;
 
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepository;
+use Symfony\Component\HttpFoundation\RateLimiter\RateLimit;
 use Symfony\Component\HttpFoundation\RateLimiter\RequestRateLimiterInterface;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\RateLimiter\RateLimit;
 
 /**
  * Database-backed rate limiter for login throttling.
@@ -139,4 +139,3 @@ class DatabaseRateLimiter implements RequestRateLimiterInterface
         return $retryAfter;
     }
 }
-
