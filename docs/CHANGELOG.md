@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.10] - 2025-01-15
+
+### Fixed
+- **Symfony 7 RateLimit Compatibility**: Updated `DatabaseRateLimiter` to use correct `RateLimit` constructor signature
+  - Added 4th parameter `limit` to `RateLimit` constructor calls
+  - Fixed `calculateRetryAfter` to return `DateTimeImmutable` instead of `null` when no attempts found
+  - Ensures compatibility with Symfony 7.x rate limiter component
+
+- **Extension Configuration Processing**: Fixed `processMultipleFirewalls` to handle empty firewalls array correctly
+  - Only processes multiple firewalls configuration when array is not empty
+  - Prevents incorrect parameter setting when using single firewall configuration
+  - Ensures `nowo_login_throttle.enabled` parameter is set correctly
+
+- **Test Suite Updates**: Fixed multiple test issues for Symfony 7 compatibility
+  - Updated test expectations for `isAccepted()` behavior (false when blocked, true when not blocked)
+  - Fixed Doctrine Query mocks to use `AbstractQuery` instead of `Query` for compatibility
+  - Updated test expectations for multiple method calls using `withConsecutive`
+  - Fixed IP address handling in tests to account for `getClientIp()` fallback behavior
+
+### Changed
+- **Test Coverage**: Improved test reliability and compatibility with Symfony 7.x
+  - All tests now properly handle Symfony 7 RateLimit constructor requirements
+  - Better error handling in test mocks and expectations
+
 ## [0.0.9] - 2025-01-15
 
 ### Fixed
