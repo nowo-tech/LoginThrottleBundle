@@ -38,7 +38,8 @@ class SecurityController extends AbstractController
         // Get login attempt information
         $attemptInfo = null;
         if ($error) {
-            $attemptInfo = $throttleInfoService->getAttemptInfo('main', $request);
+            // Pass the last username to ensure we can track attempts correctly
+            $attemptInfo = $throttleInfoService->getAttemptInfo('main', $request, $lastUsername);
         }
         
         $session = $request->getSession();

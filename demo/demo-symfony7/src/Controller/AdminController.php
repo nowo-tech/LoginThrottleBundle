@@ -38,7 +38,8 @@ class AdminController extends AbstractController
         // Get login attempt information
         $attemptInfo = null;
         if ($error) {
-            $attemptInfo = $throttleInfoService->getAttemptInfo('admin', $request);
+            // Pass the last username to ensure we can track attempts correctly
+            $attemptInfo = $throttleInfoService->getAttemptInfo('admin', $request, $lastUsername);
         }
 
         $session = $request->getSession();

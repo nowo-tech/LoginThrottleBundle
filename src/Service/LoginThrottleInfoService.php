@@ -46,12 +46,13 @@ class LoginThrottleInfoService
     /**
      * Get login attempt information for a given firewall and request.
      *
-     * @param string  $firewallName The firewall name
-     * @param Request $request      The request
+     * @param string       $firewallName The firewall name
+     * @param Request      $request      The request
+     * @param string|null  $username     Optional username (if not available in request)
      *
      * @return array{current_attempts: int, max_attempts: int, remaining_attempts: int, is_blocked: bool, retry_after: \DateTimeImmutable|null, tracking_type: string}
      */
-    public function getAttemptInfo(string $firewallName, Request $request): array
+    public function getAttemptInfo(string $firewallName, Request $request, ?string $username = null): array
     {
         $config = $this->getFirewallConfig($firewallName);
         if (null === $config) {
@@ -71,7 +72,10 @@ class LoginThrottleInfoService
         $storage = $config['storage'] ?? 'cache';
 
         $ipAddress = $request->getClientIp() ?? 'unknown';
-        $username = $this->extractUsername($request);
+        // Use provided username or try to extract from request
+        if (null === $username || '' === $username) {
+            $username = $this->extractUsername($request);
+        }
 
         if ('database' === $storage && null !== $this->repository) {
             return $this->getAttemptInfoFromDatabase($ipAddress, $username, $maxAttempts, $timeout);
@@ -105,6 +109,8 @@ class LoginThrottleInfoService
         if (null !== $username && '' !== $username) {
             // Track by username/email
             $trackingType = 'username';
+            // Count attempts by username only (as requested by user)
+            // This shows attempts for this email regardless of IP
             $currentAttempts = $this->repository->countAttemptsByUsername($username, $timeout);
             $isBlocked = $currentAttempts >= $maxAttempts;
 
@@ -121,6 +127,8 @@ class LoginThrottleInfoService
         } else {
             // Track by IP address
             $trackingType = 'ip';
+            // Count attempts by IP only (as requested by user)
+            // This shows attempts from this IP regardless of username
             $currentAttempts = $this->repository->countAttemptsByIp($ipAddress, $timeout);
             $isBlocked = $currentAttempts >= $maxAttempts;
 
