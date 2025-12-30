@@ -6,7 +6,6 @@ namespace Nowo\LoginThrottleBundle\Service;
 
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepository;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Contracts\Service\Attribute\Required;
 
 /**
@@ -81,7 +80,7 @@ class LoginThrottleInfoService
         // For cache storage, try to use rate limiter if available
         $result = $this->getAttemptInfoFromCache($config, $request, $maxAttempts, $timeout);
         $result['tracking_type'] = null !== $username && '' !== $username ? 'username' : 'ip';
-        
+
         return $result;
     }
 
@@ -90,7 +89,7 @@ class LoginThrottleInfoService
      *
      * @param string      $ipAddress   IP address
      * @param string|null $username    Username
-     * @param int         $maxAttempts  Maximum attempts
+     * @param int         $maxAttempts Maximum attempts
      * @param int         $timeout     Timeout in seconds
      *
      * @return array{current_attempts: int, max_attempts: int, remaining_attempts: int, is_blocked: bool, retry_after: \DateTimeImmutable|null, tracking_type: string}
@@ -108,7 +107,7 @@ class LoginThrottleInfoService
             $trackingType = 'username';
             $currentAttempts = $this->repository->countAttemptsByUsername($username, $timeout);
             $isBlocked = $currentAttempts >= $maxAttempts;
-            
+
             if ($isBlocked) {
                 // Get attempts by username to calculate retry_after (pass empty string for IP to ignore it)
                 $attempts = $this->repository->getAttempts('', $username, $timeout);
@@ -124,7 +123,7 @@ class LoginThrottleInfoService
             $trackingType = 'ip';
             $currentAttempts = $this->repository->countAttemptsByIp($ipAddress, $timeout);
             $isBlocked = $currentAttempts >= $maxAttempts;
-            
+
             if ($isBlocked) {
                 // Get attempts by IP to calculate retry_after
                 $attempts = $this->repository->getAttempts($ipAddress, null, $timeout);
@@ -194,6 +193,7 @@ class LoginThrottleInfoService
             if ($firewallName === $configuredFirewall) {
                 return $this->firewallsConfig;
             }
+
             return null;
         }
 
@@ -246,4 +246,3 @@ class LoginThrottleInfoService
         return 600; // Default to 10 minutes
     }
 }
-

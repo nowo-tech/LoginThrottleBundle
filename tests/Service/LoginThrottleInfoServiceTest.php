@@ -467,4 +467,3 @@ final class LoginThrottleInfoServiceTest extends TestCase
         $this->assertSame('ip', $result['tracking_type']);
     }
 }
-
