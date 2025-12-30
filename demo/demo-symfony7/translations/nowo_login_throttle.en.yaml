@@ -1,0 +1,13 @@
+# English translations for Login Throttle Bundle Demo
+nowo_login_throttle:
+    error:
+        authentication_failed: "Invalid credentials."
+        account_blocked: "Account temporarily blocked. You have exceeded the maximum number of attempts (%max_attempts%)."
+        retry_after: "You can try again after: %retry_after%"
+    info:
+        attempts_count: "Login attempts: %current% of %max%"
+        attempts_count_by_ip: "Login attempts from this IP: %current% of %max%"
+        attempts_count_by_email: "Login attempts for this email: %current% of %max%"
+        remaining_attempts: "Remaining attempts before blocking: %remaining%"
+        last_attempt_warning: "Last attempt available. The next failure will block your account."
+

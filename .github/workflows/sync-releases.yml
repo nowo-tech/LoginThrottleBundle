@@ -155,19 +155,27 @@ jobs:
               const isPrerelease = tag.includes('-alpha') || tag.includes('-beta') || tag.includes('-rc');
               
               if (isMissing) {
-                // Create new release
-                console.log('Creating release for tag: ' + tag);
-                await github.rest.repos.createRelease({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  tag_name: tag,
-                  name: 'Release ' + tag,
-                  body: releaseBody,
-                  draft: false,
-                  prerelease: isPrerelease,
-                  generate_release_notes: true
-                });
-                console.log('✅ Created release for ' + tag);
+                // Create new release (check if it exists first to avoid errors)
+                try {
+                  console.log('Creating release for tag: ' + tag);
+                  await github.rest.repos.createRelease({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    tag_name: tag,
+                    name: 'Release ' + tag,
+                    body: releaseBody,
+                    draft: false,
+                    prerelease: isPrerelease,
+                    generate_release_notes: true
+                  });
+                  console.log('✅ Created release for ' + tag);
+                } catch (error) {
+                  if (error.status === 422 && error.response?.data?.errors?.[0]?.code === 'already_exists') {
+                    console.log('⚠️ Release for ' + tag + ' already exists, skipping creation');
+                  } else {
+                    throw error;
+                  }
+                }
               } else if (isOutdated) {
                 // Update existing release
                 const release = releasesMap[tag];

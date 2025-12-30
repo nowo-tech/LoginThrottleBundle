@@ -55,6 +55,24 @@ services:
       timeout: 3s
       retries: 10
 
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: login-throttle-demo-symfony7-phpmyadmin
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: ${MYSQL_USER:-demo}
+      PMA_PASSWORD: ${MYSQL_PASSWORD:-demo}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      UPLOAD_LIMIT: 300M
+    ports:
+      - "${PHPMYADMIN_PORT:-8081}:80"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - login-throttle-demo-network
+
 volumes:
   composer-cache:
     driver: local

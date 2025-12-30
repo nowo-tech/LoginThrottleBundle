@@ -42,7 +42,9 @@ final class LoginAttemptRepositoryTest extends TestCase
 
     public function testCountAttemptsByIp(): void
     {
-        $query = $this->createMock(AbstractQuery::class);
+        $query = $this->getMockBuilder(AbstractQuery::class)
+            ->disableOriginalConstructor()
+            ->getMock();
         $query->expects($this->once())
             ->method('getSingleScalarResult')
             ->willReturn('5');
@@ -87,7 +89,9 @@ final class LoginAttemptRepositoryTest extends TestCase
 
     public function testCountAttemptsByUsername(): void
     {
-        $query = $this->createMock(AbstractQuery::class);
+        $query = $this->getMockBuilder(AbstractQuery::class)
+            ->disableOriginalConstructor()
+            ->getMock();
         $query->expects($this->once())
             ->method('getSingleScalarResult')
             ->willReturn('3');
@@ -132,7 +136,9 @@ final class LoginAttemptRepositoryTest extends TestCase
 
     public function testGetAttemptsWithEmptyIp(): void
     {
-        $query = $this->createMock(AbstractQuery::class);
+        $query = $this->getMockBuilder(AbstractQuery::class)
+            ->disableOriginalConstructor()
+            ->getMock();
         $query->expects($this->once())
             ->method('getResult')
             ->willReturn([]);
@@ -177,7 +183,9 @@ final class LoginAttemptRepositoryTest extends TestCase
 
     public function testGetAttemptsWithNullUsername(): void
     {
-        $query = $this->createMock(AbstractQuery::class);
+        $query = $this->getMockBuilder(AbstractQuery::class)
+            ->disableOriginalConstructor()
+            ->getMock();
         $query->expects($this->once())
             ->method('getResult')
             ->willReturn([]);

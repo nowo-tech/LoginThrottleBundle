@@ -257,11 +257,15 @@ final class LoginThrottleInfoServiceTest extends TestCase
         $this->repository
             ->expects($this->exactly(2))
             ->method('countAttemptsByUsername')
-            ->withConsecutive(
-                ['user1@example.com', 600],
-                ['user2@example.com', 600]
-            )
-            ->willReturn(0);
+            ->willReturnCallback(function ($username, $seconds) {
+                if ($username === 'user1@example.com' && $seconds === 600) {
+                    return 0;
+                }
+                if ($username === 'user2@example.com' && $seconds === 600) {
+                    return 0;
+                }
+                return 0;
+            });
 
         $this->service->getAttemptInfo('main', $request1);
 
@@ -426,14 +430,21 @@ final class LoginThrottleInfoServiceTest extends TestCase
         $request = Request::create('/login', 'POST');
         $request->server->set('REMOTE_ADDR', '192.168.1.1');
 
+        $callCount = 0;
         $this->repository
             ->expects($this->exactly(2))
             ->method('countAttemptsByIp')
-            ->withConsecutive(
-                ['192.168.1.1', 30],
-                ['192.168.1.1', 300] // 5 minutes = 300 seconds
-            )
-            ->willReturn(0);
+            ->willReturnCallback(function ($ip, $seconds) use (&$callCount) {
+                $callCount++;
+                if ($callCount === 1) {
+                    $this->assertEquals('192.168.1.1', $ip);
+                    $this->assertEquals(30, $seconds);
+                } else {
+                    $this->assertEquals('192.168.1.1', $ip);
+                    $this->assertEquals(300, $seconds); // 5 minutes = 300 seconds
+                }
+                return 0;
+            });
 
         $this->service->getAttemptInfo('main', $request);
 

@@ -125,7 +125,7 @@ final class DatabaseRateLimiterTest extends TestCase
 
         $this->assertInstanceOf(RateLimit::class, $rateLimit);
         $this->assertSame(0, $rateLimit->getRemainingTokens());
-        $this->assertTrue($rateLimit->isAccepted());
+        $this->assertFalse($rateLimit->isAccepted()); // When max attempts reached, should be rejected
         $this->assertNotNull($rateLimit->getRetryAfter());
     }
 
@@ -216,10 +216,17 @@ final class DatabaseRateLimiterTest extends TestCase
         $request2->server->set('REMOTE_ADDR', '192.168.1.1');
 
         $this->repository
-            ->expects($this->once())
+            ->expects($this->exactly(2))
             ->method('isBlocked')
-            ->with('192.168.1.1', 'email@example.com', 3, 600)
-            ->willReturn(false);
+            ->willReturnCallback(function ($ip, $username, $maxAttempts, $timeout) {
+                if ($ip === '192.168.1.1' && $username === 'user@example.com' && $maxAttempts === 3 && $timeout === 600) {
+                    return false;
+                }
+                if ($ip === '192.168.1.1' && $username === 'email@example.com' && $maxAttempts === 3 && $timeout === 600) {
+                    return false;
+                }
+                return false;
+            });
 
         $this->repository
             ->expects($this->once())

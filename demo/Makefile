@@ -20,8 +20,9 @@ help:
 	@echo "Other commands:"
 	@echo "  clean              Remove vendor and cache from demo"
 	@echo ""
-	@echo "Access URL:"
+	@echo "Access URLs:"
 	@echo "  Symfony 7.0: http://localhost:8001"
+	@echo "  phpMyAdmin: http://localhost:8081"
 
 # Symfony 7.0 Demo
 up-symfony7:
@@ -58,7 +59,8 @@ up-symfony7:
 	else \
 		echo "❌ Error: bin/console not found. Cannot setup database." && exit 1; \
 	fi && \
-	echo "✅ Symfony 7.0 demo is ready at http://localhost:8001"
+	echo "✅ Symfony 7.0 demo is ready at http://localhost:8001" && \
+	echo "✅ phpMyAdmin is ready at http://localhost:8081"
 
 down-symfony7:
 	cd demo-symfony7 && docker-compose down
