@@ -54,8 +54,10 @@ jobs:
           
           if [ -f "$CHANGELOG_FILE" ]; then
             # Search changelog section for this version
-            # Search for lines starting with ## followed by version (with or without v)
-            CHANGELOG_ENTRY=$(awk "/^## \[?$VERSION\]?/ {flag=1; next} /^## \[?[0-9]/ {flag=0} flag" "$CHANGELOG_FILE" 2>/dev/null || echo "")
+            # Match patterns like: ## [0.0.4] or ## 0.0.4
+            # Escape dots in version for regex
+            VERSION_ESCAPED=$(echo "$VERSION" | sed 's/\./\\./g')
+            CHANGELOG_ENTRY=$(awk "/^## \[$VERSION_ESCAPED\]/ {flag=1; next} /^## \[?[0-9]/ {flag=0} flag" "$CHANGELOG_FILE" 2>/dev/null || echo "")
             
             if [ -n "$CHANGELOG_ENTRY" ]; then
               # Preserve newlines using heredoc (no escaping needed)
@@ -67,9 +69,11 @@ jobs:
               } >> $GITHUB_OUTPUT
             else
               echo "HAS_CHANGELOG=false" >> $GITHUB_OUTPUT
+              echo "Warning: No changelog entry found for version $VERSION" >&2
             fi
           else
             echo "HAS_CHANGELOG=false" >> $GITHUB_OUTPUT
+            echo "Warning: CHANGELOG file not found at $CHANGELOG_FILE" >&2
           fi
 
       - name: Create Release
