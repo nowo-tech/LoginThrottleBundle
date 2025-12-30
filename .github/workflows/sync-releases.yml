@@ -186,12 +186,12 @@ jobs:
             if (foundMissing) {
               let parts = [];
               if (missingTags.length > 0) {
-                parts.push(`Created releases for the following tags:\n\`\`\`\n${missingTags.join('\n')}\n\`\`\``);
+                parts.push('Created releases for the following tags:\n```\n' + missingTags.join('\n') + '\n```');
               }
               if (outdatedTags.length > 0) {
-                parts.push(`Updated releases (added changelog) for the following tags:\n\`\`\`\n${outdatedTags.join('\n')}\n\`\`\``);
+                parts.push('Updated releases (added changelog) for the following tags:\n```\n' + outdatedTags.join('\n') + '\n```');
               }
-              summary = `## ✅ Sync Complete\n\n${parts.join('\n\n')}`;
+              summary = '## ✅ Sync Complete\n\n' + parts.join('\n\n');
             } else {
               summary = '## ✅ All tags have releases with changelog\n\nNo missing or outdated releases found. Everything is in sync! 🎉';
             }
