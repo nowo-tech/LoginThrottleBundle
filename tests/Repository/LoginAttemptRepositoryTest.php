@@ -219,4 +219,3 @@ final class LoginAttemptRepositoryTest extends TestCase
         $this->assertIsArray($result);
     }
 }
-
