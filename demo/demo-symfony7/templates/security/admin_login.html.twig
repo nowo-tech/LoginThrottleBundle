@@ -105,6 +105,25 @@
             </ul>
             <p style="margin: 10px 0 0 0; font-size: 14px; color: #856404;"><strong>💡 Tip:</strong> Admin panel has the strictest throttling. After 3 failed attempts, you'll be blocked for 30 minutes!</p>
         </div>
+
+        <div style="margin-top: 30px; padding: 20px; background: #fff3cd; border-radius: 8px; border: 2px solid #ffc107;">
+            <h3 style="margin-top: 0; font-size: 16px; color: #856404;">🔗 Test Other Firewalls:</h3>
+            <p style="margin-bottom: 15px; font-size: 14px; color: #856404;">This demo includes <strong>3 different firewalls</strong> with independent throttling. Each firewall has its own throttling state:</p>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <a href="{{ path('login') }}" class="btn" style="flex: 1; min-width: 150px; text-align: center;">
+                    🔐 Main Login<br>
+                    <small style="font-size: 11px;">3 attempts, 10 min</small>
+                </a>
+                <a href="{{ path('api_login_page') }}" class="btn" style="flex: 1; min-width: 150px; text-align: center;">
+                    🔌 API Login<br>
+                    <small style="font-size: 11px;">5 attempts, 5 min</small>
+                </a>
+                <a href="{{ path('demo_home') }}" class="btn btn-secondary" style="flex: 1; min-width: 150px; text-align: center;">
+                    🏠 Home<br>
+                    <small style="font-size: 11px;">Overview</small>
+                </a>
+            </div>
+        </div>
     </div>
 {% endblock %}
 

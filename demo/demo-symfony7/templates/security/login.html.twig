@@ -108,6 +108,25 @@
             <p style="margin: 10px 0 0 0; font-size: 14px;"><strong>💡 Tip:</strong> Try logging in with wrong credentials multiple times (3 attempts) to see login throttling in action! After 3 failed attempts, you'll be blocked for 10 minutes.</p>
         </div>
 
+        <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6;">
+            <h3 style="margin-top: 0; font-size: 16px;">🔗 Test Other Firewalls:</h3>
+            <p style="margin-bottom: 15px; font-size: 14px;">This demo includes <strong>3 different firewalls</strong> with independent throttling. Each firewall has its own throttling state:</p>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <a href="{{ path('api_login_page') }}" class="btn" style="flex: 1; min-width: 150px; text-align: center;">
+                    🔌 API Login<br>
+                    <small style="font-size: 11px;">5 attempts, 5 min</small>
+                </a>
+                <a href="{{ path('admin_login') }}" class="btn btn-warning" style="flex: 1; min-width: 150px; text-align: center;">
+                    🔒 Admin Login<br>
+                    <small style="font-size: 11px;">3 attempts, 30 min</small>
+                </a>
+                <a href="{{ path('demo_home') }}" class="btn btn-secondary" style="flex: 1; min-width: 150px; text-align: center;">
+                    🏠 Home<br>
+                    <small style="font-size: 11px;">Overview</small>
+                </a>
+            </div>
+        </div>
+
     </div>
 {% endblock %}
 

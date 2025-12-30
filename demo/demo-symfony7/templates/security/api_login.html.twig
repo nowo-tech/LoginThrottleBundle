@@ -93,6 +93,25 @@
             </ul>
             <p style="margin: 10px 0 0 0; font-size: 14px;"><strong>💡 Tip:</strong> Try 5 wrong attempts to see API throttling (more lenient than main firewall).</p>
         </div>
+
+        <div style="margin-top: 30px; padding: 20px; background: #e7f3ff; border-radius: 8px; border: 1px solid #b8daff;">
+            <h3 style="margin-top: 0; font-size: 16px;">🔗 Test Other Firewalls:</h3>
+            <p style="margin-bottom: 15px; font-size: 14px;">This demo includes <strong>3 different firewalls</strong> with independent throttling. Each firewall has its own throttling state:</p>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <a href="{{ path('login') }}" class="btn" style="flex: 1; min-width: 150px; text-align: center;">
+                    🔐 Main Login<br>
+                    <small style="font-size: 11px;">3 attempts, 10 min</small>
+                </a>
+                <a href="{{ path('admin_login') }}" class="btn btn-warning" style="flex: 1; min-width: 150px; text-align: center;">
+                    🔒 Admin Login<br>
+                    <small style="font-size: 11px;">3 attempts, 30 min</small>
+                </a>
+                <a href="{{ path('demo_home') }}" class="btn btn-secondary" style="flex: 1; min-width: 150px; text-align: center;">
+                    🏠 Home<br>
+                    <small style="font-size: 11px;">Overview</small>
+                </a>
+            </div>
+        </div>
     </div>
 {% endblock %}
 
