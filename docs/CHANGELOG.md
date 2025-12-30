@@ -20,6 +20,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added `created_at` column name mapping
   - Ensures proper database column mapping and compatibility
 
+- **Login Attempt Information Display**: Fixed issue where attempt counts were not displayed correctly
+  - Added optional `username` parameter to `LoginThrottleInfoService::getAttemptInfo()` method
+  - Updated `SecurityController` and `AdminController` to pass `lastUsername` from `AuthenticationUtils`
+  - Ensures username is available even after authentication error redirect, allowing correct attempt counting
+  - Fixes display of current attempts, max attempts, and remaining attempts in error messages
+
 ### Changed
 - **Release Workflow Improvements**: Enhanced release creation workflow
   - Improved error handling and logging in release workflows

@@ -139,29 +139,6 @@ jobs:
               throw error;
             }
 
-      - name: Build release body
-        id: build-body
-        run: |
-          TAG_MESSAGE="${{ steps.tag_message.outputs.MESSAGE }}"
-          CHANGELOG_ENTRY="${{ steps.changelog.outputs.ENTRY }}"
-          HAS_CHANGELOG="${{ steps.changelog.outputs.HAS_CHANGELOG }}"
-          
-          if [ "$HAS_CHANGELOG" = "true" ] && [ -n "$CHANGELOG_ENTRY" ]; then
-            BODY="${TAG_MESSAGE}
-
-## Changelog
-
-${CHANGELOG_ENTRY}"
-          else
-            BODY="${TAG_MESSAGE}"
-          fi
-          
-          {
-            echo "BODY<<EOF"
-            echo "$BODY"
-            echo "EOF"
-          } >> $GITHUB_OUTPUT
-
       - name: Create Release
         if: steps.check-existing.outputs.exists != 'true'
         uses: actions/github-script@v7
