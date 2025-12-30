@@ -119,7 +119,7 @@ jobs:
             const hasChangelog = '${{ steps.changelog.outputs.HAS_CHANGELOG }}' === 'true';
             const isPrerelease = tagName.includes('-alpha') || tagName.includes('-beta') || tagName.includes('-rc');
             
-            // Build release body
+            // Build release body - always include changelog if available
             let releaseBody = tagMessage;
             if (hasChangelog && changelogEntry) {
               releaseBody = `${tagMessage}
@@ -129,15 +129,19 @@ jobs:
 ${changelogEntry}`;
             }
             
-            await github.rest.repos.updateRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              release_id: releaseId,
-              body: releaseBody,
-              prerelease: isPrerelease
-            });
-            
-            console.log(`✅ Updated release ${tagName} with changelog`);
+            try {
+              await github.rest.repos.updateRelease({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                release_id: releaseId,
+                body: releaseBody,
+                prerelease: isPrerelease
+              });
+              console.log(`✅ Updated release ${tagName} with changelog`);
+            } catch (error) {
+              console.error(`❌ Error updating release ${tagName}:`, error.message);
+              throw error;
+            }
 
       - name: Build release body
         id: build-body
@@ -164,14 +168,41 @@ ${CHANGELOG_ENTRY}"
 
       - name: Create Release
         if: steps.check-existing.outputs.exists != 'true'
-        uses: softprops/action-gh-release@v2
+        uses: actions/github-script@v7
         with:
-          tag_name: ${{ steps.tag.outputs.TAG_NAME }}
-          name: Release ${{ steps.tag.outputs.TAG_NAME }}
-          body: ${{ steps.build-body.outputs.BODY }}
-          draft: false
-          prerelease: ${{ contains(steps.tag.outputs.TAG_NAME, '-alpha') || contains(steps.tag.outputs.TAG_NAME, '-beta') || contains(steps.tag.outputs.TAG_NAME, '-rc') }}
-          generate_release_notes: true
+          script: |
+            const tagName = '${{ steps.tag.outputs.TAG_NAME }}';
+            const tagMessage = `${{ steps.tag_message.outputs.MESSAGE }}`;
+            const changelogEntry = `${{ steps.changelog.outputs.ENTRY }}`;
+            const hasChangelog = '${{ steps.changelog.outputs.HAS_CHANGELOG }}' === 'true';
+            const isPrerelease = tagName.includes('-alpha') || tagName.includes('-beta') || tagName.includes('-rc');
+            
+            // Build release body
+            let releaseBody = tagMessage;
+            if (hasChangelog && changelogEntry) {
+              releaseBody = `${tagMessage}
+
+## Changelog
+
+${changelogEntry}`;
+            }
+            
+            try {
+              await github.rest.repos.createRelease({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag_name: tagName,
+                name: `Release ${tagName}`,
+                body: releaseBody,
+                draft: false,
+                prerelease: isPrerelease,
+                generate_release_notes: true
+              });
+              console.log(`✅ Created release ${tagName} with changelog`);
+            } catch (error) {
+              console.error(`❌ Error creating release ${tagName}:`, error.message);
+              throw error;
+            }
 
 # Maintainer: Héctor Franco Aceituno (@HecFranco)
 # Organization: nowo-tech (https://github.com/nowo-tech)
