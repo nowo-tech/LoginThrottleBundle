@@ -1,0 +1,46 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Admin Panel - Login Throttle Demo{% endblock %}
+
+{% block body %}
+    <div class="container">
+        <h1>{{ title }}</h1>
+        
+        <div class="alert alert-success">
+            <div class="alert-title">✅ Admin Access Granted</div>
+            <div class="alert-message">{{ message }}</div>
+        </div>
+
+        <div class="card">
+            <h2>🔒 Admin Firewall Configuration</h2>
+            <p>This page is protected by the <strong>admin</strong> firewall with strict throttling:</p>
+            <ul>
+                <li><strong>Firewall:</strong> {{ firewall_config.name }}</li>
+                <li><strong>Max Attempts:</strong> {{ firewall_config.max_attempts }}</li>
+                <li><strong>Timeout:</strong> {{ firewall_config.timeout }}</li>
+                <li><strong>Storage:</strong> {{ firewall_config.storage }}</li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <h2>🧪 Testing Multiple Firewalls</h2>
+            <p>This demo showcases three different firewalls with different throttling configurations:</p>
+            <ul>
+                <li><strong>Main Firewall</strong> (<a href="{{ path('login') }}">/login</a>): 3 attempts, 10 minutes</li>
+                <li><strong>API Firewall</strong> (<a href="{{ path('api_login_page') }}">/api/login-page</a>): 5 attempts, 5 minutes</li>
+                <li><strong>Admin Firewall</strong> (current): 3 attempts, 30 minutes</li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <h2>📊 Current User</h2>
+            <p><strong>Email:</strong> {{ app.user.userIdentifier }}</p>
+            <p><strong>Roles:</strong> {{ app.user.roles|join(', ') }}</p>
+        </div>
+
+        <div style="margin-top: 20px;">
+            <a href="{{ path('admin_logout') }}" class="btn">Logout</a>
+        </div>
+    </div>
+{% endblock %}
+

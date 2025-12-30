@@ -1,0 +1,98 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}API Login - Login Throttle Demo{% endblock %}
+
+{% block styles %}
+    {{ parent() }}
+    <style>
+        .login-container {
+            max-width: 500px;
+            margin: 50px auto;
+        }
+        .login-form {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #495057;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        .api-info {
+            background: #e7f3ff;
+            border: 1px solid #b8daff;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+        .api-info h3 {
+            margin-top: 0;
+            font-size: 16px;
+        }
+        .config-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            background: #007bff;
+            color: white;
+            border-radius: 4px;
+            font-size: 12px;
+            margin: 2px;
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+    <div class="login-container">
+        <h1 style="text-align: center; margin-bottom: 30px;">🔌 API Login</h1>
+
+        <div class="api-info">
+            <h3>📋 API Firewall Configuration:</h3>
+            <p><strong>Max Attempts:</strong> <span class="config-badge">5</span></p>
+            <p><strong>Timeout:</strong> <span class="config-badge">5 minutes</span></p>
+            <p><strong>Storage:</strong> <span class="config-badge">Database</span></p>
+            <p style="margin-top: 10px; font-size: 14px;">This firewall is more lenient for API usage (5 attempts vs 3 for main).</p>
+        </div>
+
+        <div class="login-form">
+            <p style="margin-bottom: 20px; color: #666;">For API testing, use JSON POST request to <code>/api/login</code> with <code>email</code> and <code>password</code> fields.</p>
+            <p style="margin-bottom: 20px; color: #666;">Or test via this form (simulates API call):</p>
+            <form method="post" action="{{ path('api_login') }}" id="apiLoginForm">
+                <div class="form-group">
+                    <label for="inputEmail">Email</label>
+                    <input type="email" name="email" id="inputEmail" class="form-control" autocomplete="email" required autofocus>
+                </div>
+
+                <div class="form-group">
+                    <label for="inputPassword">Password</label>
+                    <input type="password" name="password" id="inputPassword" class="form-control" autocomplete="current-password" required>
+                </div>
+
+                <button type="submit" class="btn login-button">API Login</button>
+            </form>
+        </div>
+
+        <div class="api-info">
+            <h3>🧪 Demo Credentials:</h3>
+            <ul>
+                <li><strong>demo@example.com</strong> / <code>demo123</code></li>
+                <li><strong>admin@example.com</strong> / <code>admin123</code></li>
+            </ul>
+            <p style="margin: 10px 0 0 0; font-size: 14px;"><strong>💡 Tip:</strong> Try 5 wrong attempts to see API throttling (more lenient than main firewall).</p>
+        </div>
+    </div>
+{% endblock %}
+

@@ -1,0 +1,27 @@
+services:
+  _defaults:
+    autowire: true
+    autoconfigure: true
+    public: false
+
+  Nowo\LoginThrottleBundle\:
+    resource: '../../'
+    exclude:
+      - '../../DependencyInjection/'
+      - '../../NowoLoginThrottleBundle.php'
+
+  Nowo\LoginThrottleBundle\Command\ConfigureSecurityCommand:
+    arguments:
+      $projectDir: '%kernel.project_dir%'
+    tags:
+      - { name: 'console.command' }
+
+  # Repository for LoginAttempt entity (optional, only if Doctrine is installed)
+  Nowo\LoginThrottleBundle\Repository\LoginAttemptRepository:
+    arguments:
+      $registry: '@doctrine'
+
+  # Database rate limiter (registered conditionally in Extension when storage=database)
+  # This service is registered dynamically in NowoLoginThrottleExtension::registerDatabaseRateLimiter()
+  # It implements RequestRateLimiterInterface and can be used as a limiter in security.yaml
+

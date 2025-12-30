@@ -1,0 +1,24 @@
+doctrine:
+    dbal:
+        url: '%env(resolve:DATABASE_URL)%'
+    orm:
+        auto_generate_proxy_classes: true
+        enable_lazy_ghost_objects: true
+        report_fields_where_declared: true
+        validate_attributes: true
+        entity_managers:
+            default:
+                auto_mapping: true
+                mappings:
+                    App:
+                        is_bundle: false
+                        dir: '%kernel.project_dir%/src/Entity'
+                        prefix: 'App\Entity'
+                        alias: App
+                    NowoLoginThrottleBundle:
+                        type: attribute
+                        is_bundle: true
+                        dir: 'Entity'
+                        prefix: 'Nowo\LoginThrottleBundle\Entity'
+                        alias: NowoLoginThrottleBundle
+

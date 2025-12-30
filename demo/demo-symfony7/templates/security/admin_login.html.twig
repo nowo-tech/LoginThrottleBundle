@@ -1,0 +1,110 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Admin Login - Login Throttle Demo{% endblock %}
+
+{% block styles %}
+    {{ parent() }}
+    <style>
+        .login-container {
+            max-width: 500px;
+            margin: 50px auto;
+        }
+        .login-form {
+            background: #fff3cd;
+            padding: 30px;
+            border-radius: 8px;
+            border: 2px solid #ffc107;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #495057;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        .admin-info {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+        .admin-info h3 {
+            margin-top: 0;
+            font-size: 16px;
+            color: #856404;
+        }
+        .config-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            background: #ffc107;
+            color: #856404;
+            border-radius: 4px;
+            font-size: 12px;
+            margin: 2px;
+            font-weight: bold;
+        }
+        .warning-badge {
+            background: #dc3545;
+            color: white;
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+    <div class="login-container">
+        <h1 style="text-align: center; margin-bottom: 30px;">🔒 Admin Panel Login</h1>
+
+        {% if error %}
+            <div class="alert alert-danger">
+                <div class="alert-title">Authentication Error</div>
+                <div class="alert-message">{{ error.messageKey|trans(error.messageData, 'security') }}</div>
+            </div>
+        {% endif %}
+
+        <div class="admin-info">
+            <h3>⚠️ Admin Firewall - Very Strict Configuration:</h3>
+            <p><strong>Max Attempts:</strong> <span class="config-badge warning-badge">3</span></p>
+            <p><strong>Timeout:</strong> <span class="config-badge warning-badge">30 minutes</span></p>
+            <p><strong>Storage:</strong> <span class="config-badge">Database</span></p>
+            <p style="margin-top: 10px; font-size: 14px; color: #856404;"><strong>⚠️ Warning:</strong> Admin panel has the strictest throttling. Only 3 attempts allowed with 30 minutes timeout!</p>
+        </div>
+
+        <div class="login-form">
+            <form method="post">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+
+                <div class="form-group">
+                    <label for="inputEmail">Email</label>
+                    <input type="email" value="{{ last_username }}" name="_username" id="inputEmail" class="form-control" autocomplete="email" required autofocus>
+                </div>
+
+                <div class="form-group">
+                    <label for="inputPassword">Password</label>
+                    <input type="password" name="_password" id="inputPassword" class="form-control" autocomplete="current-password" required>
+                </div>
+
+                <button type="submit" class="btn login-button" style="background: #ffc107; color: #856404; font-weight: bold;">Admin Login</button>
+            </form>
+        </div>
+
+        <div class="admin-info">
+            <h3>🧪 Admin Credentials:</h3>
+            <ul>
+                <li><strong>admin@example.com</strong> / <code>admin123</code> - <span class="badge badge-success">Admin User Only</span></li>
+            </ul>
+            <p style="margin: 10px 0 0 0; font-size: 14px; color: #856404;"><strong>💡 Tip:</strong> Admin panel has the strictest throttling. After 3 failed attempts, you'll be blocked for 30 minutes!</p>
+        </div>
+    </div>
+{% endblock %}
+

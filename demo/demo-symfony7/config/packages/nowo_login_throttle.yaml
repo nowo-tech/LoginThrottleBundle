@@ -1,0 +1,28 @@
+nowo_login_throttle:
+    # Multiple firewalls configuration demonstrating different throttling settings
+    firewalls:
+        # Main firewall - Standard web login
+        # Configuration: Cache storage, 3 attempts, 10 minutes timeout
+        main:
+            enabled: true
+            max_count_attempts: 3
+            timeout: 600  # 10 minutes
+            watch_period: 3600
+            storage: 'database'  # Using database for demo purposes
+        # API firewall - API authentication
+        # Configuration: Database storage, 5 attempts, 5 minutes timeout (more lenient for API)
+        api:
+            enabled: true
+            max_count_attempts: 5
+            timeout: 300  # 5 minutes
+            watch_period: 3600
+            storage: 'database'
+        # Admin firewall - Admin panel
+        # Configuration: Database storage, 3 attempts, 30 minutes timeout (very strict)
+        admin:
+            enabled: true
+            max_count_attempts: 3
+            timeout: 1800  # 30 minutes
+            watch_period: 3600
+            storage: 'database'
+
