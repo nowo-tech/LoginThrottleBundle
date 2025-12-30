@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.15] - 2025-01-15
+
+### Added
+- **Countdown Timer Documentation**: Added comprehensive guide for implementing real-time countdown timers
+  - Complete JavaScript implementation guide in `docs/TRANSLATIONS.md`
+  - Examples for basic and advanced usage
+  - Customization options and best practices
+  - Support for multiple timers on the same page
+
+### Changed
+- **Human-Readable Rate Limiter Service Names**: Improved service ID generation for database rate limiters
+  - Changed from MD5 hash-based names to descriptive format: `nowo_login_throttle.database_rate_limiter.shared_{max}_{timeout}s_{watch}s`
+  - Example: `nowo_login_throttle.database_rate_limiter.shared_3_600s_3600s` (3 attempts, 600s timeout, 3600s watch period)
+  - Makes it easy to identify configuration by looking at the service name
+  - Updated `ConfigureSecurityCommand` to generate human-readable service IDs
+  - Added comprehensive comments explaining the naming convention
+  - Updated documentation in `CONFIGURATION.md` and `DATABASE_STORAGE.md`
+
+- **Demo Enhancements**: Added real-time countdown timer to login templates
+  - JavaScript countdown timer that updates every second
+  - Displays remaining time in `HH:MM:SS` format
+  - Auto-reloads page when countdown reaches zero
+  - Applied to both main and admin login templates
+
+### Documentation
+- **Enhanced Translation Guide**: Added "Countdown Timer" section to `docs/TRANSLATIONS.md`
+  - Step-by-step implementation guide
+  - Complete code examples
+  - Customization options
+  - Multiple timer support
+  - Best practices and tips
+
 ## [0.0.14] - 2025-01-15
 
 ### Fixed

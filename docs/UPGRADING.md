@@ -13,6 +13,68 @@ This guide provides step-by-step instructions for upgrading the Login Throttle B
 
 ## Upgrade Instructions by Version
 
+### Upgrading to 0.0.15
+
+**Release Date**: 2025-01-15
+
+#### What's New
+
+- **Human-Readable Rate Limiter Service Names**: Database rate limiter services now use descriptive names instead of MD5 hashes
+  - Old format: `nowo_login_throttle.database_rate_limiter.shared_140eca5c8f17f7276926bf9f93b6d859`
+  - New format: `nowo_login_throttle.database_rate_limiter.shared_3_600s_3600s` (3 attempts, 600s timeout, 3600s watch period)
+  - Service names now clearly show the configuration values
+  - Existing configurations will continue to work, but new configurations will use the new naming format
+
+- **Countdown Timer Documentation**: Comprehensive guide for implementing real-time countdown timers
+  - See `docs/TRANSLATIONS.md#countdown-timer-cuenta-regresiva` for complete implementation guide
+  - Includes JavaScript examples and customization options
+
+#### Breaking Changes
+
+None - This is a minor release with improvements and documentation updates.
+
+#### Upgrade Steps
+
+1. **Update the bundle**:
+   ```bash
+   composer update nowo-tech/login-throttle-bundle
+   ```
+
+2. **Clear cache**:
+   ```bash
+   php bin/console cache:clear
+   ```
+
+3. **Update service names (optional)**: If you have manually configured rate limiter service IDs in `security.yaml`, you can regenerate them using the new human-readable format:
+   ```bash
+   php bin/console nowo:login-throttle:configure-security --force
+   ```
+   
+   This will update service IDs to the new descriptive format (e.g., `shared_3_600s_3600s` instead of hash-based names).
+
+4. **No configuration changes required** - Existing configurations will continue to work as-is.
+
+#### New Features Usage
+
+**Using Human-Readable Service Names**:
+
+When using database storage with multiple firewalls, the bundle automatically generates descriptive service IDs:
+
+```yaml
+# config/packages/security.yaml
+security:
+    firewalls:
+        main:
+            login_throttling:
+                limiter: nowo_login_throttle.database_rate_limiter.shared_3_600s_3600s
+```
+
+The service name format is: `shared_{max_attempts}_{timeout}s_{watch_period}s`
+
+**Implementing Countdown Timer**:
+
+See `docs/TRANSLATIONS.md` for complete examples on implementing real-time countdown timers in your login templates.
+
 ### Upgrading to 0.0.14
 
 **Release Date**: 2025-01-15

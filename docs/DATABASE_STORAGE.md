@@ -94,7 +94,11 @@ php bin/console nowo:login-throttle:configure-security
 
 This will automatically configure `security.yaml` to use the database rate limiter with the correct service IDs.
 
-**Note**: The command automatically generates and sets the correct rate limiter service IDs (e.g., `nowo_login_throttle.database_rate_limiter.shared_...`) for database storage. For multiple firewalls with the same configuration, they will share the same rate limiter service ID.
+**Note**: The command automatically generates and sets human-readable rate limiter service IDs for database storage. The service ID format is:
+- `nowo_login_throttle.database_rate_limiter.shared_{max_attempts}_{timeout}s_{watch_period}s`
+- Example: `nowo_login_throttle.database_rate_limiter.shared_5_300s_3600s` (5 attempts, 300 seconds timeout, 3600 seconds watch period)
+
+For multiple firewalls with the same configuration (max_attempts, timeout, watch_period), they will automatically share the same rate limiter service to optimize resource usage and ensure consistent behavior.
 
 ### Step 5: Clear Cache
 

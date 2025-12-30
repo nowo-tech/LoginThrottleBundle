@@ -77,8 +77,42 @@
                             </p>
                             {% if attempt_info.retry_after %}
                                 <p style="margin: 10px 0 0 0; font-size: 14px;">
-                                    {{ 'nowo_login_throttle.error.retry_after'|trans({'%retry_after%': attempt_info.retry_after|date('H:i:s')}, 'nowo_login_throttle') }}
+                                    {% set retryAfterDate = attempt_info.retry_after|date('c') %}
+                                    {% set retryAfterTime = attempt_info.retry_after|date('H:i:s') %}
+                                    {{ 'nowo_login_throttle.error.retry_after'|trans({'%retry_after%': '<span id="countdown-timer-admin">' ~ retryAfterTime ~ '</span>'}, 'nowo_login_throttle')|raw }}
                                 </p>
+                                <script>
+                                    (function() {
+                                        const retryAfter = new Date('{{ retryAfterDate }}');
+                                        const timerElement = document.getElementById('countdown-timer-admin');
+                                        
+                                        if (!timerElement) return;
+                                        
+                                        function updateCountdown() {
+                                            const now = new Date();
+                                            const diff = Math.max(0, Math.floor((retryAfter - now) / 1000));
+                                            
+                                            if (diff <= 0) {
+                                                timerElement.textContent = '00:00:00';
+                                                setTimeout(function() { location.reload(); }, 1000);
+                                                return;
+                                            }
+                                            
+                                            const hours = Math.floor(diff / 3600);
+                                            const minutes = Math.floor((diff % 3600) / 60);
+                                            const seconds = diff % 60;
+                                            
+                                            timerElement.textContent = 
+                                                String(hours).padStart(2, '0') + ':' +
+                                                String(minutes).padStart(2, '0') + ':' +
+                                                String(seconds).padStart(2, '0');
+                                        }
+                                        
+                                        // Update immediately and then every second
+                                        updateCountdown();
+                                        setInterval(updateCountdown, 1000);
+                                    })();
+                                </script>
                             {% endif %}
                         {% else %}
                             <p style="margin: 0; font-weight: bold;">

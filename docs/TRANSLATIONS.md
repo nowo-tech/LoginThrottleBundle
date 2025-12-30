@@ -201,6 +201,177 @@ When using `LoginThrottleInfoService` to display attempt information, you'll typ
 {% endif %}
 ```
 
+## Countdown Timer (Cuenta Regresiva)
+
+When a user's account is blocked due to too many failed login attempts, the `retry_after` field contains a `DateTimeImmutable` object indicating when they can try again. You can implement a real-time countdown timer using JavaScript to show the remaining time.
+
+### Basic Implementation
+
+Here's how to add a countdown timer to your login template:
+
+```twig
+{% if attempt_info.retry_after %}
+    {% set retryAfterDate = attempt_info.retry_after|date('c') %}
+    {% set retryAfterTime = attempt_info.retry_after|date('H:i:s') %}
+    <p>
+        {{ 'nowo_login_throttle.error.retry_after'|trans({'%retry_after%': '<span id="countdown-timer">' ~ retryAfterTime ~ '</span>'}, 'nowo_login_throttle')|raw }}
+    </p>
+    <script>
+        (function() {
+            const retryAfter = new Date('{{ retryAfterDate }}');
+            const timerElement = document.getElementById('countdown-timer');
+            
+            if (!timerElement) return;
+            
+            function updateCountdown() {
+                const now = new Date();
+                const diff = Math.max(0, Math.floor((retryAfter - now) / 1000));
+                
+                if (diff <= 0) {
+                    timerElement.textContent = '00:00:00';
+                    setTimeout(function() { location.reload(); }, 1000);
+                    return;
+                }
+                
+                const hours = Math.floor(diff / 3600);
+                const minutes = Math.floor((diff % 3600) / 60);
+                const seconds = diff % 60;
+                
+                timerElement.textContent = 
+                    String(hours).padStart(2, '0') + ':' +
+                    String(minutes).padStart(2, '0') + ':' +
+                    String(seconds).padStart(2, '0');
+            }
+            
+            // Update immediately and then every second
+            updateCountdown();
+            setInterval(updateCountdown, 1000);
+        })();
+    </script>
+{% endif %}
+```
+
+### How It Works
+
+1. **Date Format**: The `date('c')` filter formats the `retry_after` datetime as ISO 8601, which JavaScript can parse correctly.
+2. **Initial Display**: The timer initially shows the formatted time using `date('H:i:s')`.
+3. **JavaScript Timer**: The script calculates the difference between the target time and current time every second.
+4. **Format**: The countdown displays in `HH:MM:SS` format (e.g., `00:09:45`, `00:05:23`).
+5. **Auto-Reload**: When the countdown reaches zero, the page automatically reloads after 1 second.
+
+### Complete Example
+
+Here's a complete example showing how to integrate the countdown timer in your login template:
+
+```twig
+{# templates/security/login.html.twig #}
+{% if error %}
+    <div class="alert alert-danger">
+        {{ error.messageKey|trans(error.messageData, 'security') }}
+        
+        {% if attempt_info %}
+            {% if attempt_info.is_blocked %}
+                <p style="margin-top: 15px; font-weight: bold;">
+                    ⚠️ {{ 'nowo_login_throttle.error.account_blocked'|trans({
+                        '%max_attempts%': attempt_info.max_attempts
+                    }, 'nowo_login_throttle') }}
+                </p>
+                
+                {% if attempt_info.retry_after %}
+                    <p style="margin: 10px 0 0 0; font-size: 14px;">
+                        {% set retryAfterDate = attempt_info.retry_after|date('c') %}
+                        {% set retryAfterTime = attempt_info.retry_after|date('H:i:s') %}
+                        {{ 'nowo_login_throttle.error.retry_after'|trans({
+                            '%retry_after%': '<span id="countdown-timer">' ~ retryAfterTime ~ '</span>'
+                        }, 'nowo_login_throttle')|raw }}
+                    </p>
+                    <script>
+                        (function() {
+                            const retryAfter = new Date('{{ retryAfterDate }}');
+                            const timerElement = document.getElementById('countdown-timer');
+                            
+                            if (!timerElement) return;
+                            
+                            function updateCountdown() {
+                                const now = new Date();
+                                const diff = Math.max(0, Math.floor((retryAfter - now) / 1000));
+                                
+                                if (diff <= 0) {
+                                    timerElement.textContent = '00:00:00';
+                                    setTimeout(function() { location.reload(); }, 1000);
+                                    return;
+                                }
+                                
+                                const hours = Math.floor(diff / 3600);
+                                const minutes = Math.floor((diff % 3600) / 60);
+                                const seconds = diff % 60;
+                                
+                                timerElement.textContent = 
+                                    String(hours).padStart(2, '0') + ':' +
+                                    String(minutes).padStart(2, '0') + ':' +
+                                    String(seconds).padStart(2, '0');
+                            }
+                            
+                            updateCountdown();
+                            setInterval(updateCountdown, 1000);
+                        })();
+                    </script>
+                {% endif %}
+            {% endif %}
+        {% endif %}
+    </div>
+{% endif %}
+```
+
+### Customization Options
+
+You can customize the countdown timer behavior:
+
+**Change the format** (e.g., show only minutes and seconds):
+
+```javascript
+const minutes = Math.floor(diff / 60);
+const seconds = diff % 60;
+timerElement.textContent = 
+    String(minutes).padStart(2, '0') + ':' +
+    String(seconds).padStart(2, '0');
+```
+
+**Disable auto-reload** (remove the reload functionality):
+
+```javascript
+if (diff <= 0) {
+    timerElement.textContent = '00:00:00';
+    // Remove the reload line
+    return;
+}
+```
+
+**Add custom styling** to the timer element:
+
+```twig
+<span id="countdown-timer" style="font-weight: bold; color: #dc3545;">{{ retryAfterTime }}</span>
+```
+
+### Multiple Timers on the Same Page
+
+If you have multiple timers on the same page, use unique IDs:
+
+```twig
+{% if attempt_info.retry_after %}
+    {% set retryAfterDate = attempt_info.retry_after|date('c') %}
+    {% set retryAfterTime = attempt_info.retry_after|date('H:i:s') %}
+    <span id="countdown-timer-main">{{ retryAfterTime }}</span>
+    <script>
+        (function() {
+            const retryAfter = new Date('{{ retryAfterDate }}');
+            const timerElement = document.getElementById('countdown-timer-main');
+            // ... rest of the code
+        })();
+    </script>
+{% endif %}
+```
+
 ### Parameter Handling
 
 Always use default values for parameters to prevent display issues:
