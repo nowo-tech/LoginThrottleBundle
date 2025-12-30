@@ -147,4 +147,3 @@ final class NowoLoginThrottleExtensionTest extends TestCase
         $this->assertSame('lock.factory', $securityConfig['lock_factory']);
     }
 }
-

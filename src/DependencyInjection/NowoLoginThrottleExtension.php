@@ -83,8 +83,8 @@ class NowoLoginThrottleExtension extends Extension
      * Sets up parameters that can be used to configure security.yaml.
      * The actual security.yaml configuration should be done manually or via a recipe.
      *
-     * @param ContainerBuilder $container The container builder
-     * @param array<string, mixed> $config The processed configuration
+     * @param ContainerBuilder     $container The container builder
+     * @param array<string, mixed> $config    The processed configuration
      *
      * @return void
      */
@@ -119,7 +119,7 @@ class NowoLoginThrottleExtension extends Extension
     /**
      * Processes multiple firewalls configuration.
      *
-     * @param ContainerBuilder $container The container builder
+     * @param ContainerBuilder                    $container       The container builder
      * @param array<string, array<string, mixed>> $firewallsConfig Firewalls configuration
      *
      * @return void
@@ -191,9 +191,9 @@ class NowoLoginThrottleExtension extends Extension
     /**
      * Registers the database rate limiter service.
      *
-     * @param ContainerBuilder $container The container builder
-     * @param array<string, mixed> $config The processed configuration
-     * @param string $firewallName The firewall name (used for service ID when multiple firewalls)
+     * @param ContainerBuilder     $container    The container builder
+     * @param array<string, mixed> $config       The processed configuration
+     * @param string               $firewallName The firewall name (used for service ID when multiple firewalls)
      *
      * @return string The service ID of the registered rate limiter
      */
@@ -218,9 +218,9 @@ class NowoLoginThrottleExtension extends Extension
     /**
      * Registers a database rate limiter service with a specific service ID.
      *
-     * @param ContainerBuilder $container The container builder
-     * @param string $serviceId The service ID to use
-     * @param array<string, mixed> $config The processed configuration (must contain max_count_attempts, timeout, watch_period)
+     * @param ContainerBuilder     $container The container builder
+     * @param string               $serviceId The service ID to use
+     * @param array<string, mixed> $config    The processed configuration (must contain max_count_attempts, timeout, watch_period)
      *
      * @return void
      */
@@ -252,4 +252,3 @@ class NowoLoginThrottleExtension extends Extension
         return Configuration::ALIAS;
     }
 }
-

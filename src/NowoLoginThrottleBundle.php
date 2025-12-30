@@ -105,4 +105,3 @@ class NowoLoginThrottleBundle extends Bundle
         return false;
     }
 }
-

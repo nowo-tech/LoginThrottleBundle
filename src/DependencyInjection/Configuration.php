@@ -217,4 +217,3 @@ class Configuration implements ConfigurationInterface
         return sprintf('%d hour%s', $hours, $hours > 1 ? 's' : '');
     }
 }
-

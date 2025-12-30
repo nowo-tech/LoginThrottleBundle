@@ -72,6 +72,4 @@ final class ConfigurationGenerateConfigFileTest extends TestCase
         $this->assertSame('cache.rate_limiter', $config['nowo_login_throttle']['cache_pool']);
         $this->assertNull($config['nowo_login_throttle']['lock_factory']);
     }
-
 }
-
