@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.11] - 2025-01-15
+
+### Fixed
+- **GitHub Actions Workflow Syntax Errors**: Fixed critical JavaScript syntax errors in release workflows
+  - Replaced all template literals with environment variables and string concatenation
+  - Fixed `SyntaxError: Unexpected identifier` errors caused by multiline content in CHANGELOG
+  - Fixed `SyntaxError: missing ) after argument list` errors in workflow scripts
+  - All workflow variables now use `process.env` instead of direct interpolation
+  - RegExp construction now uses string concatenation instead of template literals
+  - Console.log statements use string concatenation for better compatibility
+
+- **Release Workflow Reliability**: Improved release creation and update process
+  - Multiline content (tag messages, CHANGELOG entries) now handled safely via environment variables
+  - Prevents workflow failures when content contains special characters or code references
+  - Better error handling and logging in workflow scripts
+
+### Changed
+- **Workflow Architecture**: Refactored GitHub Actions workflows for better maintainability
+  - `release.yml`: Uses environment variables for all multiline content
+  - `sync-releases.yml`: Enhanced with environment variable support throughout
+  - Improved separation of concerns between workflow steps
+  - Better handling of edge cases in release synchronization
+
 ## [0.0.10] - 2025-01-15
 
 ### Fixed

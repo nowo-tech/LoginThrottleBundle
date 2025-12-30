@@ -13,6 +13,34 @@ This guide provides step-by-step instructions for upgrading the Login Throttle B
 
 ## Upgrade Instructions by Version
 
+### Upgrading to 0.0.11
+
+**Release Date**: 2025-01-15
+
+#### What's New
+
+- **Workflow Fixes**: Fixed critical JavaScript syntax errors in GitHub Actions workflows
+- **Release Reliability**: Improved release creation and synchronization workflows
+- **Better Error Handling**: Enhanced workflow error handling and logging
+
+#### Breaking Changes
+
+None - This is a patch release with workflow fixes and improvements.
+
+#### Upgrade Steps
+
+1. **Update composer**:
+   ```bash
+   composer update nowo-tech/login-throttle-bundle
+   ```
+
+2. **Clear cache**:
+   ```bash
+   php bin/console cache:clear
+   ```
+
+No configuration changes required. This release only includes workflow fixes and improvements.
+
 ### Upgrading to 0.0.10
 
 **Release Date**: 2025-01-15
