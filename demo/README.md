@@ -29,6 +29,23 @@ This directory contains a demo project for Symfony 7.0 demonstrating the usage o
 
 ## Quick Start with Docker
 
+The easiest way to start the demo is using the Makefile:
+
+```bash
+cd demo
+make up-symfony7  # Automatically creates .env, installs dependencies, sets up database, and runs migrations
+```
+
+**Note**: The `make up-symfony7` command automatically:
+- Creates `.env` file from `.env.example` if it doesn't exist
+- Installs Composer dependencies (requires the bundle to be published on Packagist)
+- Creates database and runs migrations
+- Sets up initial data with demo users
+
+### Manual Setup
+
+If you prefer to set up manually:
+
 ```bash
 # Navigate to the demo directory
 cd demo/demo-symfony7
@@ -47,18 +64,6 @@ docker-compose exec php composer database
 
 # Access at: http://localhost:8001 (port configured in .env file)
 ```
-
-Or using the Makefile from the `demo/` directory:
-
-```bash
-cd demo
-make up-symfony7  # Automatically installs dependencies, sets up database, and runs migrations
-```
-
-**Note**: The `make up-symfony7` command automatically:
-- Installs Composer dependencies
-- Creates database and runs migrations
-- Sets up initial data with demo users
 
 ## Demo Users
 

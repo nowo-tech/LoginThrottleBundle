@@ -27,7 +27,15 @@ help:
 up-symfony7:
 	@echo "🚀 Starting Symfony 7.0 demo..."
 	cd demo-symfony7 && \
-	if [ ! -f .env ]; then cp .env.example .env 2>/dev/null || true; fi && \
+	if [ ! -f .env ]; then \
+		if [ -f .env.example ]; then \
+			cp .env.example .env && \
+			echo "✅ Created .env from .env.example"; \
+		else \
+			echo "⚠️  Warning: .env.example not found, creating basic .env file"; \
+			echo "# Environment variables" > .env; \
+		fi; \
+	fi && \
 	docker-compose build && \
 	docker-compose up -d && \
 	echo "⏳ Waiting for containers to be ready..." && \
