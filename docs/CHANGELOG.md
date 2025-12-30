@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.0.1] - 2025-12-30
 
+### Fixed
+- **Critical Bug Fix**: Corrected `RateLimit` namespace import in `DatabaseRateLimiter`
+  - Changed from incorrect `Symfony\Component\HttpFoundation\RateLimiter\RateLimit` 
+  - To correct `Symfony\Component\RateLimiter\RateLimit`
+  - This fix resolves fatal errors when using database storage with Symfony 7.x
+  - Affects: `DatabaseRateLimiter` class when `storage='database'` is configured
+
 ### Added
 - **Initial release of Login Throttle Bundle**
   - Native Symfony `login_throttling` integration

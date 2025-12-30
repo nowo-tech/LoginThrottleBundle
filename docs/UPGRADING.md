@@ -251,6 +251,20 @@ php bin/console cache:warmup
    php bin/console cache:clear
    ```
 
+#### Issue: Fatal error "Class Symfony\Component\HttpFoundation\RateLimiter\RateLimit not found" when using database storage
+
+**Affected Versions**: v0.0.1 (initial release, before bug fix)
+
+**Solution**: 
+This bug was fixed in v0.0.1 (updated release). Update to the latest version:
+```bash
+composer update nowo-tech/login-throttle-bundle
+```
+
+**What was fixed**: The `DatabaseRateLimiter` class was using an incorrect namespace for `RateLimit`. The correct namespace is `Symfony\Component\RateLimiter\RateLimit` (not `Symfony\Component\HttpFoundation\RateLimiter\RateLimit`).
+
+**Note**: This only affects users who have configured `storage: 'database'`. Users with `storage: 'cache'` (default) are not affected.
+
 ### Getting Help
 
 If you encounter issues during upgrade:
