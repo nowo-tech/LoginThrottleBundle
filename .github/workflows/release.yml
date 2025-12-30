@@ -79,8 +79,11 @@ jobs:
           name: Release ${{ steps.tag.outputs.TAG_NAME }}
           body: |
             ${{ steps.tag_message.outputs.MESSAGE }}
-            
-            ${{ steps.changelog.outputs.HAS_CHANGELOG == 'true' && format('## Changelog\n\n{0}', steps.changelog.outputs.ENTRY) || '' }}
+            ${{ steps.changelog.outputs.HAS_CHANGELOG == 'true' && format('
+
+## Changelog
+
+{0}', steps.changelog.outputs.ENTRY) || '' }}
           draft: false
           # GitHub automatically marks the latest release as "latest" if it's stable (not draft, not prerelease)
           prerelease: ${{ contains(steps.tag.outputs.TAG_NAME, '-alpha') || contains(steps.tag.outputs.TAG_NAME, '-beta') || contains(steps.tag.outputs.TAG_NAME, '-rc') }}
