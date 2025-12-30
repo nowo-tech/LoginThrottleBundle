@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.12] - 2025-01-15
+
+### Fixed
+- **Release Workflow Error Handling**: Fixed sync-releases workflow to handle already existing releases gracefully
+  - Added error handling for 422 "already_exists" errors when release is created by release.yml before sync-releases runs
+  - Prevents workflow failures when multiple workflows attempt to create the same release
+  - Better logging and error messages for release creation conflicts
+
+- **PHPUnit 10 Compatibility**: Fixed test suite for PHPUnit 10 compatibility
+  - Replaced deprecated `withConsecutive()` with `willReturnCallback()` for PHPUnit 10
+  - Fixed AbstractQuery mocks using `getMockBuilder()` for better compatibility with Doctrine ORM
+  - Corrected `testConsumeWhenMaxAttemptsReached` assertion (should assert `false` when blocked)
+  - Fixed `testConsumeWithDifferentUsernameFields` to allow multiple `isBlocked()` calls
+
+- **Demo Translation Files**: Fixed translation file structure in demo
+  - Created domain-specific translation files (`nowo_login_throttle.es.yaml`, `nowo_login_throttle.en.yaml`)
+  - Corrected YAML structure to match bundle translation format
+  - Translations now load correctly in demo application
+
+### Added
+- **Demo Development Tools**: Enhanced demo with development and database management tools
+  - Added Symfony Web Profiler Bundle for debugging and profiling
+  - Added Symfony Debug Bundle for enhanced error handling
+  - Added phpMyAdmin service to docker-compose for easy database management
+  - Updated Makefile to include phpMyAdmin URL in help and completion messages
+
+### Changed
+- **Translation Files**: Improved translation file organization
+  - Moved translation files from `messages.*.yaml` to domain-specific `nowo_login_throttle.*.yaml` format
+  - Better alignment with Symfony translation best practices
+
 ## [0.0.11] - 2025-01-15
 
 ### Fixed
