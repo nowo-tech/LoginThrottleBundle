@@ -77,7 +77,18 @@ class LoginThrottleInfoService
             $username = $this->extractUsername($request);
         }
 
-        if ('database' === $storage && null !== $this->repository) {
+        if ('database' === $storage) {
+            if (null === $this->repository) {
+                // Repository not available, return default values
+                return [
+                    'current_attempts' => 0,
+                    'max_attempts' => $maxAttempts,
+                    'remaining_attempts' => $maxAttempts,
+                    'is_blocked' => false,
+                    'retry_after' => null,
+                    'tracking_type' => null !== $username && '' !== $username ? 'username' : 'ip',
+                ];
+            }
             return $this->getAttemptInfoFromDatabase($ipAddress, $username, $maxAttempts, $timeout);
         }
 
@@ -109,8 +120,8 @@ class LoginThrottleInfoService
         if (null !== $username && '' !== $username) {
             // Track by username/email
             $trackingType = 'username';
-            // Count attempts by username only (as requested by user)
-            // This shows attempts for this email regardless of IP
+            // Count attempts by username (shows attempts for this email regardless of IP)
+            // This matches what the user requested: show attempts by email when tracking by email
             $currentAttempts = $this->repository->countAttemptsByUsername($username, $timeout);
             $isBlocked = $currentAttempts >= $maxAttempts;
 
@@ -127,8 +138,8 @@ class LoginThrottleInfoService
         } else {
             // Track by IP address
             $trackingType = 'ip';
-            // Count attempts by IP only (as requested by user)
-            // This shows attempts from this IP regardless of username
+            // Count attempts by IP only (shows attempts from this IP regardless of username)
+            // This matches what the user requested: show attempts by IP when tracking by IP
             $currentAttempts = $this->repository->countAttemptsByIp($ipAddress, $timeout);
             $isBlocked = $currentAttempts >= $maxAttempts;
 

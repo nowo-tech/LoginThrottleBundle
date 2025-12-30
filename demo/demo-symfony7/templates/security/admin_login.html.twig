@@ -83,14 +83,14 @@
                         {% else %}
                             <p style="margin: 0; font-weight: bold;">
                                 📊 {% if attempt_info.tracking_type == 'username' %}
-                                    {{ 'nowo_login_throttle.info.attempts_count_by_email'|trans({'%current%': attempt_info.current_attempts, '%max%': attempt_info.max_attempts}, 'nowo_login_throttle') }}
+                                    {{ 'nowo_login_throttle.info.attempts_count_by_email'|trans({'%current%': attempt_info.current_attempts|default(0), '%max%': attempt_info.max_attempts|default(3)}, 'nowo_login_throttle') }}
                                 {% else %}
-                                    {{ 'nowo_login_throttle.info.attempts_count_by_ip'|trans({'%current%': attempt_info.current_attempts, '%max%': attempt_info.max_attempts}, 'nowo_login_throttle') }}
+                                    {{ 'nowo_login_throttle.info.attempts_count_by_ip'|trans({'%current%': attempt_info.current_attempts|default(0), '%max%': attempt_info.max_attempts|default(3)}, 'nowo_login_throttle') }}
                                 {% endif %}
                             </p>
                             {% if attempt_info.remaining_attempts > 0 %}
                                 <p style="margin: 10px 0 0 0; font-size: 14px; color: #fff;">
-                                    {{ 'nowo_login_throttle.info.remaining_attempts'|trans({'%remaining%': attempt_info.remaining_attempts}, 'nowo_login_throttle') }}
+                                    {{ 'nowo_login_throttle.info.remaining_attempts'|trans({'%remaining%': attempt_info.remaining_attempts|default(0)}, 'nowo_login_throttle') }}
                                 </p>
                             {% else %}
                                 <p style="margin: 10px 0 0 0; font-size: 14px; color: #fff;">

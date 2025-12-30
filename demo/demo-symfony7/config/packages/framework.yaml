@@ -17,6 +17,7 @@ framework:
         default_path: '%kernel.project_dir%/translations'
         fallbacks:
             - en
+        enabled: true
 
     #esi: true
     #fragments: true

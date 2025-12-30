@@ -13,6 +13,54 @@ This guide provides step-by-step instructions for upgrading the Login Throttle B
 
 ## Upgrade Instructions by Version
 
+### Upgrading to 0.0.9
+
+**Release Date**: 2025-01-15
+
+#### What's New
+
+- **Workflow Improvements**: Fixed tag fetching and JavaScript syntax errors in GitHub Actions workflows
+- **Admin Firewall Fix**: Fixed access denied error after failed login attempts in admin firewall
+- **Translation Support**: Enhanced translation display with proper parameter handling and default values
+- **Service Improvements**: Better error handling when repository is not available
+
+#### Breaking Changes
+
+None - This is a patch release with bug fixes and improvements.
+
+#### Upgrade Steps
+
+1. **Update composer**:
+   ```bash
+   composer update nowo-tech/login-throttle-bundle
+   ```
+
+2. **Clear cache**:
+   ```bash
+   php bin/console cache:clear
+   ```
+
+3. **If using admin firewall**, verify your `config/packages/security.yaml` has `failure_path` configured:
+   ```yaml
+   admin:
+       form_login:
+           login_path: admin_login
+           check_path: admin_login
+           default_target_path: admin_home
+           failure_path: admin_login  # Add this if missing
+   ```
+
+4. **If using translations**, ensure your `config/packages/framework.yaml` has translator enabled:
+   ```yaml
+   framework:
+       translator:
+           enabled: true
+           fallbacks:
+               - en
+   ```
+
+No other configuration changes required. This release focuses on bug fixes and translation improvements.
+
 ### Upgrading to 0.0.8
 
 **Release Date**: 2025-01-15

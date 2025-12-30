@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.9] - 2025-01-15
+
+### Fixed
+- **Workflow Tag Fetching**: Fixed `git fetch --tags` command in `sync-releases.yml` workflow
+  - Added `--force` flag to handle existing tags gracefully
+  - Prevents workflow failures when tags already exist locally
+  - Added `|| true` to prevent workflow failure on tag conflicts
+
+- **JavaScript Syntax in Workflows**: Fixed JavaScript syntax errors in `sync-releases.yml`
+  - Replaced template literals with string concatenation for git command execution
+  - Ensures proper YAML parsing and workflow execution
+
+- **Admin Firewall Access Denied Error**: Fixed access denied error after failed login
+  - Added `failure_path: admin_login` to admin firewall configuration
+  - Prevents redirect to protected route after authentication failure
+  - Users are now properly redirected back to login page on error
+
+- **Translation Display Issues**: Fixed missing translation files and parameter display
+  - Created translation files in demo (`messages.es.yaml` and `messages.en.yaml`)
+  - Added default values for numeric parameters in templates to prevent null values
+  - Enabled translator explicitly in framework configuration
+  - Translation keys now display correctly with proper numeric values
+
+- **LoginThrottleInfoService Repository Handling**: Improved handling when repository is not available
+  - Added proper fallback when repository is null
+  - Returns default values instead of throwing errors
+  - Better error handling for database storage scenarios
+
+### Changed
+- **Demo Translation Support**: Enhanced demo application with full translation support
+  - Added Spanish and English translation files
+  - Improved template rendering with default parameter values
+  - Better user experience with localized error messages
+
 ## [0.0.8] - 2025-01-15
 
 ### Fixed

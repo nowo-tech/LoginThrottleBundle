@@ -23,7 +23,7 @@ jobs:
           fetch-depth: 0  # Required to get all tags and history
 
       - name: Fetch all tags
-        run: git fetch --tags
+        run: git fetch --tags --force || true
 
       - name: Get all tags
         id: tags
@@ -113,9 +113,10 @@ jobs:
               // Get tag message using git
               let tagMessage = '';
               try {
-                tagMessage = execSync(`git tag -l --format='%(contents)' ${tag}`, { encoding: 'utf-8' }).trim();
+                const gitCommand = 'git tag -l --format=\'%(contents)\' ' + tag;
+                tagMessage = execSync(gitCommand, { encoding: 'utf-8' }).trim();
               } catch (e) {
-                tagMessage = `Release ${tag}`;
+                tagMessage = 'Release ' + tag;
               }
               
               if (!tagMessage) {
