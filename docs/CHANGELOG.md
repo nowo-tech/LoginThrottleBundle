@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.8] - 2025-01-15
+
+### Fixed
+- **Release Workflow Execution**: Fixed critical YAML syntax errors preventing workflows from running
+  - Removed unused "Build release body" step that caused YAML parsing errors
+  - Fixed permissions configuration in `sync-releases.yml` (removed duplicate `contents: read`)
+  - Workflows now execute correctly when tags are pushed
+  - Enables automatic release creation and synchronization
+
 ## [0.0.7] - 2025-01-15
 
 ### Fixed

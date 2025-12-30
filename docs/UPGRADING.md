@@ -13,6 +13,32 @@ This guide provides step-by-step instructions for upgrading the Login Throttle B
 
 ## Upgrade Instructions by Version
 
+### Upgrading to 0.0.8
+
+**Release Date**: 2025-01-15
+
+#### What's New
+
+- **Workflow Fixes**: Fixed critical YAML syntax errors that prevented GitHub Actions workflows from executing. Release workflows now work correctly.
+
+#### Breaking Changes
+
+None - This is a patch release with critical bug fixes.
+
+#### Upgrade Steps
+
+1. **Update composer**:
+   ```bash
+   composer update nowo-tech/login-throttle-bundle
+   ```
+
+2. **Clear cache**:
+   ```bash
+   php bin/console cache:clear
+   ```
+
+No configuration changes required. This release only includes workflow fixes.
+
 ### Upgrading to 0.0.7
 
 **Release Date**: 2025-01-15
@@ -550,6 +576,7 @@ If you encounter issues during upgrade:
 
 | Bundle Version | Symfony Version | PHP Version | Features |
 |---------------|-----------------|-------------|----------|
+| 0.0.8         | 6.0, 7.0, 8.0   | 8.1, 8.2, 8.3, 8.4, 8.5 | Single & Multiple firewalls, Cache & Database storage, i18n support, Attempt info display, 100% test coverage, Enhanced release workflows, Fixed workflow execution |
 | 0.0.7         | 6.0, 7.0, 8.0   | 8.1, 8.2, 8.3, 8.4, 8.5 | Single & Multiple firewalls, Cache & Database storage, i18n support, Attempt info display, 100% test coverage, Enhanced release workflows, Fixed workflow syntax |
 | 0.0.6         | 6.0, 7.0, 8.0   | 8.1, 8.2, 8.3, 8.4, 8.5 | Single & Multiple firewalls, Cache & Database storage, i18n support, Attempt info display, 100% test coverage, Enhanced release workflows |
 | 0.0.5         | 6.0, 7.0, 8.0   | 8.1, 8.2, 8.3, 8.4, 8.5 | Single & Multiple firewalls, Cache & Database storage, i18n support, Attempt info display, 100% test coverage |
