@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.6] - 2025-01-15
+
+### Added
+- **Automatic Release Management with CHANGELOG**:
+  - Enhanced `sync-releases.yml` workflow to automatically update existing releases missing changelog notes
+  - Workflow now detects both missing releases and releases without CHANGELOG content
+  - Improved summary reporting showing which releases were created vs updated
+
+### Changed
+- **Release Workflow Improvements**:
+  - Modified `release.yml` to check if release exists before creating
+  - Automatically updates existing releases with CHANGELOG if missing
+  - Both workflows now ensure all releases always have CHANGELOG notes
+  - Better error handling and reporting in release workflows
+
+### Fixed
+- **Release Synchronization**:
+  - Fixed issue where releases could be created without CHANGELOG content
+  - Ensures all releases are properly documented with changelog entries
+  - Automatic retroactive update of existing releases
+
 ## [0.0.5] - 2025-01-15
 
 ### Added

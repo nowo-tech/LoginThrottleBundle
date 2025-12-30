@@ -13,6 +13,39 @@ This guide provides step-by-step instructions for upgrading the Login Throttle B
 
 ## Upgrade Instructions by Version
 
+### Upgrading to 0.0.6
+
+**Release Date**: 2025-01-15
+
+#### What's New
+
+- **Enhanced Release Management**: GitHub Actions workflows now automatically ensure all releases include CHANGELOG notes. The `sync-releases.yml` workflow will automatically update existing releases that are missing changelog content.
+
+- **Improved Release Workflows**: Both `release.yml` and `sync-releases.yml` workflows have been enhanced to:
+  - Check if releases already exist before creating
+  - Update existing releases with CHANGELOG if missing
+  - Provide better reporting on what actions were taken
+
+#### Breaking Changes
+
+None - This is a patch release with workflow improvements only.
+
+#### Upgrade Steps
+
+1. **Update composer**:
+   ```bash
+   composer update nowo-tech/login-throttle-bundle
+   ```
+
+2. **Clear cache**:
+   ```bash
+   php bin/console cache:clear
+   ```
+
+No configuration changes required. This release only improves GitHub Actions workflows for release management.
+
+**Note**: If you run the `sync-releases.yml` workflow manually or it runs automatically, it will update any existing releases that are missing CHANGELOG notes.
+
 ### Upgrading to 0.0.5
 
 **Release Date**: 2025-01-15
@@ -483,6 +516,7 @@ If you encounter issues during upgrade:
 
 | Bundle Version | Symfony Version | PHP Version | Features |
 |---------------|-----------------|-------------|----------|
+| 0.0.6         | 6.0, 7.0, 8.0   | 8.1, 8.2, 8.3, 8.4, 8.5 | Single & Multiple firewalls, Cache & Database storage, i18n support, Attempt info display, 100% test coverage, Enhanced release workflows |
 | 0.0.5         | 6.0, 7.0, 8.0   | 8.1, 8.2, 8.3, 8.4, 8.5 | Single & Multiple firewalls, Cache & Database storage, i18n support, Attempt info display, 100% test coverage |
 | 0.0.4         | 6.0, 7.0, 8.0   | 8.1, 8.2, 8.3, 8.4, 8.5 | Single & Multiple firewalls, Cache & Database storage, i18n support, Attempt info display |
 | 0.0.3         | 6.0, 7.0, 8.0   | 8.1, 8.2, 8.3, 8.4, 8.5 | Single & Multiple firewalls, Cache & Database storage, Improved demo |
