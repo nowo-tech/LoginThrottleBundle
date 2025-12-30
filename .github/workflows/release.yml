@@ -76,22 +76,102 @@ jobs:
             echo "Warning: CHANGELOG file not found at $CHANGELOG_FILE" >&2
           fi
 
+      - name: Check if release exists and update if needed
+        id: check-existing
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tagName = '${{ steps.tag.outputs.TAG_NAME }}';
+            
+            try {
+              const { data: releases } = await github.rest.repos.listReleases({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                per_page: 100
+              });
+              
+              const existingRelease = releases.find(r => r.tag_name === tagName);
+              
+              if (existingRelease) {
+                const hasChangelog = (existingRelease.body || '').includes('## Changelog');
+                core.setOutput('exists', 'true');
+                core.setOutput('release_id', existingRelease.id.toString());
+                core.setOutput('has_changelog', hasChangelog ? 'true' : 'false');
+                console.log(`Release ${tagName} already exists (ID: ${existingRelease.id}), has changelog: ${hasChangelog}`);
+              } else {
+                core.setOutput('exists', 'false');
+                console.log(`Release ${tagName} does not exist, will create new one`);
+              }
+            } catch (error) {
+              console.log('Error checking existing releases:', error.message);
+              core.setOutput('exists', 'false');
+            }
+
+      - name: Update existing release
+        if: steps.check-existing.outputs.exists == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const releaseId = parseInt('${{ steps.check-existing.outputs.release_id }}');
+            const tagName = '${{ steps.tag.outputs.TAG_NAME }}';
+            const tagMessage = `${{ steps.tag_message.outputs.MESSAGE }}`;
+            const changelogEntry = `${{ steps.changelog.outputs.ENTRY }}`;
+            const hasChangelog = '${{ steps.changelog.outputs.HAS_CHANGELOG }}' === 'true';
+            const isPrerelease = tagName.includes('-alpha') || tagName.includes('-beta') || tagName.includes('-rc');
+            
+            // Build release body
+            let releaseBody = tagMessage;
+            if (hasChangelog && changelogEntry) {
+              releaseBody = `${tagMessage}
+
+## Changelog
+
+${changelogEntry}`;
+            }
+            
+            await github.rest.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: releaseId,
+              body: releaseBody,
+              prerelease: isPrerelease
+            });
+            
+            console.log(`✅ Updated release ${tagName} with changelog`);
+
+      - name: Build release body
+        id: build-body
+        run: |
+          TAG_MESSAGE="${{ steps.tag_message.outputs.MESSAGE }}"
+          CHANGELOG_ENTRY="${{ steps.changelog.outputs.ENTRY }}"
+          HAS_CHANGELOG="${{ steps.changelog.outputs.HAS_CHANGELOG }}"
+          
+          if [ "$HAS_CHANGELOG" = "true" ] && [ -n "$CHANGELOG_ENTRY" ]; then
+            BODY="${TAG_MESSAGE}
+
+## Changelog
+
+${CHANGELOG_ENTRY}"
+          else
+            BODY="${TAG_MESSAGE}"
+          fi
+          
+          {
+            echo "BODY<<EOF"
+            echo "$BODY"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+
       - name: Create Release
+        if: steps.check-existing.outputs.exists != 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.TAG_NAME }}
           name: Release ${{ steps.tag.outputs.TAG_NAME }}
-          body: |
-            ${{ steps.tag_message.outputs.MESSAGE }}
-            ${{ steps.changelog.outputs.HAS_CHANGELOG == 'true' && format('
-
-## Changelog
-
-{0}', steps.changelog.outputs.ENTRY) || '' }}
+          body: ${{ steps.build-body.outputs.BODY }}
           draft: false
-          # GitHub automatically marks the latest release as "latest" if it's stable (not draft, not prerelease)
           prerelease: ${{ contains(steps.tag.outputs.TAG_NAME, '-alpha') || contains(steps.tag.outputs.TAG_NAME, '-beta') || contains(steps.tag.outputs.TAG_NAME, '-rc') }}
-          generate_release_notes: true  # GitHub will generate automatic notes based on commits
+          generate_release_notes: true
 
 # Maintainer: Héctor Franco Aceituno (@HecFranco)
 # Organization: nowo-tech (https://github.com/nowo-tech)
