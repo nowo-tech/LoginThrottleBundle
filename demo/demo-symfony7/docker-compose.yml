@@ -8,9 +8,11 @@ services:
     volumes:
       - .:/app
       - composer-cache:/root/.composer/cache
+    env_file:
+      - .env
     environment:
       - COMPOSER_ALLOW_SUPERUSER=1
-      - DATABASE_URL=mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE}?serverVersion=8.0
+      - DATABASE_URL=mysql://${MYSQL_USER:-demo}:${MYSQL_PASSWORD:-demo}@mysql:3306/${MYSQL_DATABASE:-login_throttle_demo}?serverVersion=8.0
     command: php-fpm
     depends_on:
       mysql:
@@ -34,6 +36,8 @@ services:
   mysql:
     image: mysql:8.0
     container_name: login-throttle-demo-symfony7-mysql
+    env_file:
+      - .env
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-login_throttle_demo}

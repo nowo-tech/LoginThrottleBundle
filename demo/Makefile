@@ -41,9 +41,11 @@ up-symfony7:
 	echo "⏳ Waiting for containers to be ready..." && \
 	sleep 3 && \
 	echo "📦 Installing dependencies..." && \
-	docker-compose exec -T php composer install --no-interaction && \
+	docker-compose exec -T php composer install --no-interaction --no-scripts && \
+	echo "🔧 Running post-install scripts (if bin/console exists)..." && \
+	(docker-compose exec -T php test -f bin/console && docker-compose exec -T php composer run-script post-install-cmd || echo "⚠️  Skipping post-install scripts (bin/console not found)") && \
 	echo "🗄️  Setting up database..." && \
-	docker-compose exec -T php composer database && \
+	(docker-compose exec -T php test -f bin/console && docker-compose exec -T php composer database || echo "❌ Error: bin/console not found. Cannot setup database.") && \
 	echo "✅ Symfony 7.0 demo is ready at http://localhost:8001"
 
 down-symfony7:
