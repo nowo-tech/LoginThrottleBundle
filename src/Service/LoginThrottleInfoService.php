@@ -46,9 +46,9 @@ class LoginThrottleInfoService
     /**
      * Get login attempt information for a given firewall and request.
      *
-     * @param string       $firewallName The firewall name
-     * @param Request      $request      The request
-     * @param string|null  $username     Optional username (if not available in request)
+     * @param string      $firewallName The firewall name
+     * @param Request     $request      The request
+     * @param string|null $username     Optional username (if not available in request)
      *
      * @return array{current_attempts: int, max_attempts: int, remaining_attempts: int, is_blocked: bool, retry_after: \DateTimeImmutable|null, tracking_type: string}
      */
