@@ -13,7 +13,7 @@ nowo_login_throttle:
     enabled: true
     max_count_attempts: 3
     timeout: 600          # Ban period in seconds (600 = 10 minutes)
-    watch_period: 3600    # Period for tracking attempts (for informational purposes)
+    watch_period: 3600    # Database: part of shared limiter ID; use with repository cleanup — counting uses `timeout`
     firewall: 'main'      # Firewall name where login_throttling should be applied
     storage: 'cache'      # Storage backend: 'cache' (default) or 'database'
     rate_limiter: null    # Optional: Custom rate limiter service ID
@@ -28,7 +28,7 @@ nowo_login_throttle:
 | `enabled` | `bool` | `true` | Enable or disable login throttling |
 | `max_count_attempts` | `int` | `3` | Maximum number of login attempts before throttling (maps to `max_attempts` in Symfony `login_throttling`) |
 | `timeout` | `int` | `600` | Ban period in seconds (maps to `interval` in Symfony `login_throttling`, e.g., 600 = 10 minutes) |
-| `watch_period` | `int` | `3600` | Period in seconds for tracking attempts (for informational purposes, Symfony handles this automatically) |
+| `watch_period` | `int` | `3600` | With **`storage: database`**, part of the **generated rate limiter service ID** and **shared-limiter grouping** for multiple firewalls; use as the age threshold (seconds) when calling **`LoginAttemptRepository::cleanup()`** from your own task. Attempt counting uses **`timeout`**, not `watch_period`. |
 | `firewall` | `string` | `'main'` | Firewall name where `login_throttling` should be applied |
 | `storage` | `string` | `'cache'` | Storage backend: `'cache'` (uses Symfony cache) or `'database'` (stores in database via Doctrine ORM). See [DATABASE_STORAGE.md](DATABASE_STORAGE.md) for details. |
 | `rate_limiter` | `string\|null` | `null` | Custom rate limiter service ID (optional). If not provided, Symfony will use default login throttling rate limiter, or database rate limiter if `storage=database` |

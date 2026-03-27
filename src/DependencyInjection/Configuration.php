@@ -18,7 +18,7 @@ use Symfony\Component\Yaml\Yaml;
  * The configuration is compatible with the deprecated anyx/login-gate-bundle options:
  * - max_count_attempts: Maps to max_attempts in Symfony login_throttling
  * - timeout: Maps to interval in Symfony login_throttling (converted from seconds)
- * - watch_period: Period for tracking attempts (for informational purposes)
+ * - watch_period: With database storage, part of generated limiter IDs and cleanup(); counting uses timeout
  *
  * @author Héctor Franco Aceituno <hectorfranco@nowo.tech>
  * @copyright 2025 Nowo.tech
@@ -65,7 +65,7 @@ class Configuration implements ConfigurationInterface
                 ->integerNode('watch_period')
                     ->defaultValue(3600)
                     ->min(1)
-                    ->info('Period in seconds for tracking attempts (for simple single-firewall configuration)')
+                    ->info('With storage=database: part of generated limiter service ID and optional cleanup(); attempt window uses timeout (single-firewall mode).')
                 ->end()
                 ->scalarNode('firewall')
                     ->defaultValue('main')
@@ -113,7 +113,7 @@ class Configuration implements ConfigurationInterface
                             ->integerNode('watch_period')
                                 ->defaultValue(3600)
                                 ->min(1)
-                                ->info('Period in seconds for tracking attempts')
+                                ->info('With storage=database: part of generated limiter service ID and shared-limiter grouping; attempt window uses timeout.')
                             ->end()
                             ->enumNode('storage')
                                 ->values(['cache', 'database'])

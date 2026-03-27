@@ -103,7 +103,7 @@ nowo_login_throttle:
     enabled: true
     max_count_attempts: 3
     timeout: 600          # Ban period in seconds (600 = 10 minutes)
-    watch_period: 3600    # Period for tracking attempts (informational)
+    watch_period: 3600    # With DB storage: limiter ID / cleanup; counting window is `timeout`
     firewall: 'main'      # Firewall name
     rate_limiter: null    # Optional: Custom rate limiter service ID
     cache_pool: 'cache.rate_limiter'  # Cache pool for rate limiter state
@@ -188,7 +188,7 @@ php bin/console cache:clear
 | `storages: ['redis']` | `storage: 'cache'` + `cache_pool: 'cache.redis'` | Configure Redis cache pool |
 | `options.max_count_attempts` | `max_count_attempts` | Same value |
 | `options.timeout` | `timeout` | Same value (in seconds) |
-| `options.watch_period` | `watch_period` | Same value (informational) |
+| `options.watch_period` | `watch_period` | Same value; with **`storage: database`** affects generated limiter service ID and `cleanup()` age — see [CONFIGURATION.md](CONFIGURATION.md) |
 | N/A | `firewall` | Specify firewall name |
 | N/A | `rate_limiter` | Optional custom rate limiter |
 | N/A | `lock_factory` | Optional lock factory for distributed systems |

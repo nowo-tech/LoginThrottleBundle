@@ -1,3 +1,5 @@
+name: login-throttle-bundle-demo-symfony-7
+
 services:
   php:
     build:
@@ -7,6 +9,7 @@ services:
     working_dir: /app
     volumes:
       - .:/app
+      - ../..:/var/login-throttle-bundle
       - composer-cache:/root/.composer/cache
     env_file:
       - .env
@@ -45,8 +48,6 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-demo}
     volumes:
       - mysql-data:/var/lib/mysql
-    ports:
-      - "${MYSQL_PORT:-33071}:3306"
     networks:
       - login-throttle-demo-network
     healthcheck:

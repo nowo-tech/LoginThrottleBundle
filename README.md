@@ -1,8 +1,8 @@
 # Login Throttle Bundle
 
-[![License](https://poser.pugx.org/nowo-tech/login-throttle-bundle/license)](https://packagist.org/packages/nowo-tech/login-throttle-bundle) [![PHP Version Require](https://poser.pugx.org/nowo-tech/login-throttle-bundle/require/php)](https://packagist.org/packages/nowo-tech/login-throttle-bundle)
+[![CI](https://github.com/nowo-tech/LoginThrottleBundle/actions/workflows/ci.yml/badge.svg)](https://github.com/nowo-tech/LoginThrottleBundle/actions/workflows/ci.yml) [![Packagist Version](https://img.shields.io/packagist/v/nowo-tech/login-throttle-bundle.svg?style=flat)](https://packagist.org/packages/nowo-tech/login-throttle-bundle) [![Packagist Downloads](https://img.shields.io/packagist/dt/nowo-tech/login-throttle-bundle.svg)](https://packagist.org/packages/nowo-tech/login-throttle-bundle) [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![PHP](https://img.shields.io/badge/PHP-8.1%2B-777BB4?logo=php)](https://php.net) [![Symfony](https://img.shields.io/badge/Symfony-6%20%7C%207%20%7C%208-000000?logo=symfony)](https://symfony.com) [![GitHub stars](https://img.shields.io/github/stars/nowo-tech/login-throttle-bundle.svg?style=social&label=Star)](https://github.com/nowo-tech/LoginThrottleBundle) [![Coverage](https://img.shields.io/badge/Coverage-100%25-brightgreen)](#tests-and-coverage)
 
-> ⭐ **Found this project useful?** Give it a star on GitHub! It helps us maintain and improve the project.
+> ⭐ **Found this useful?** Give it a star on GitHub! It helps us maintain and improve the project.
 
 Symfony bundle for login throttling using native Symfony `login_throttling` feature with pre-configured settings.
 
@@ -37,8 +37,8 @@ Then, register the bundle in your `config/bundles.php`:
 <?php
 
 return [
-    // ...
-    Nowo\LoginThrottleBundle\NowoLoginThrottleBundle::class => ['all' => true],
+  // ...
+  Nowo\LoginThrottleBundle\NowoLoginThrottleBundle::class => ['all' => true],
 ];
 ```
 
@@ -53,31 +53,31 @@ You can configure the login throttling settings:
 **Single Firewall Configuration (Simple)**:
 ```yaml
 nowo_login_throttle:
-    enabled: true
-    max_count_attempts: 3
-    timeout: 600          # Ban period in seconds (600 = 10 minutes)
-    watch_period: 3600    # Period for tracking attempts (for informational purposes)
-    firewall: 'main'      # Firewall name where login_throttling should be applied
-    storage: 'cache'      # Storage backend: 'cache' (default) or 'database'
-    rate_limiter: null    # Optional: Custom rate limiter service ID
-    cache_pool: 'cache.rate_limiter'  # Cache pool for rate limiter state (only when storage=cache)
-    lock_factory: null    # Optional: Lock factory service ID (only when storage=cache)
+  enabled: true
+  max_count_attempts: 3
+  timeout: 600     # Ban period in seconds (600 = 10 minutes)
+  watch_period: 3600  # See docs: affects DB limiter service name / sharing; counting window is `timeout`
+  firewall: 'main'   # Firewall name where login_throttling should be applied
+  storage: 'cache'   # Storage backend: 'cache' (default) or 'database'
+  rate_limiter: null  # Optional: Custom rate limiter service ID
+  cache_pool: 'cache.rate_limiter' # Cache pool for rate limiter state (only when storage=cache)
+  lock_factory: null  # Optional: Lock factory service ID (only when storage=cache)
 ```
 
 **Multiple Firewalls Configuration (Advanced)**:
 ```yaml
 nowo_login_throttle:
-    firewalls:
-        main:
-            enabled: true
-            max_count_attempts: 3
-            timeout: 600
-            storage: 'cache'
-        api:
-            enabled: true
-            max_count_attempts: 5
-            timeout: 300
-            storage: 'database'
+  firewalls:
+    main:
+      enabled: true
+      max_count_attempts: 3
+      timeout: 600
+      storage: 'cache'
+    api:
+      enabled: true
+      max_count_attempts: 5
+      timeout: 300
+      storage: 'database'
 ```
 
 See [Configuration Documentation](docs/CONFIGURATION.md#multiple-firewalls) for more details on multiple firewalls configuration.
@@ -89,7 +89,7 @@ See [Configuration Documentation](docs/CONFIGURATION.md#multiple-firewalls) for 
 | `enabled` | `bool` | `true` | Enable or disable login throttling |
 | `max_count_attempts` | `int` | `3` | Maximum number of login attempts before throttling (maps to `max_attempts` in Symfony `login_throttling`) |
 | `timeout` | `int` | `600` | Ban period in seconds (maps to `interval` in Symfony `login_throttling`, e.g., 600 = 10 minutes) |
-| `watch_period` | `int` | `3600` | Period in seconds for tracking attempts (for informational purposes, Symfony handles this automatically) |
+| `watch_period` | `int` | `3600` | With **`storage: database`**, part of the **generated limiter service ID** and **shared-limiter** grouping. **Counting/ban window** uses **`timeout`**. For pruning old DB rows, call **`LoginAttemptRepository::cleanup($watchPeriod)`** from your own scheduled task (see [DATABASE_STORAGE.md](docs/DATABASE_STORAGE.md)). |
 | `firewall` | `string` | `'main'` | Firewall name where `login_throttling` should be applied |
 | `storage` | `string` | `'cache'` | Storage backend: `'cache'` (uses Symfony cache) or `'database'` (stores in database via Doctrine ORM). See [DATABASE_STORAGE.md](docs/DATABASE_STORAGE.md) for details. |
 | `rate_limiter` | `string\|null` | `null` | Custom rate limiter service ID (optional). If not provided, Symfony will use default login throttling rate limiter, or database rate limiter if `storage=database` |
@@ -135,11 +135,11 @@ Alternatively, you can manually add the `login_throttling` configuration to your
 
 ```yaml
 security:
-    firewalls:
-        main:
-            login_throttling:
-                max_attempts: 3
-                interval: '10 minutes'
+  firewalls:
+    main:
+      login_throttling:
+        max_attempts: 3
+        interval: '10 minutes'
 ```
 
 The `interval` value is automatically converted from seconds (in your bundle config) to a human-readable format (e.g., `600` seconds = `'10 minutes'`).
@@ -153,48 +153,48 @@ This bundle is designed as a drop-in replacement for `anyx/login-gate-bundle`. T
 ### Quick Migration
 
 1. **Remove old bundle:**
-   ```bash
-   composer remove anyx/login-gate-bundle
-   ```
+  ```bash
+  composer remove anyx/login-gate-bundle
+  ```
 
 2. **Install new bundle:**
-   ```bash
-   composer require nowo-tech/login-throttle-bundle
-   ```
+  ```bash
+  composer require nowo-tech/login-throttle-bundle
+  ```
 
 3. **Update configuration:**
 
-   **Before (anyx/login-gate-bundle):**
-   ```yaml
-   # config/packages/login_gate.yaml
-   login_gate:
-       storages: ['orm']
-       options:
-           max_count_attempts: 3
-           timeout: 600
-           watch_period: 3600
-   ```
+  **Before (anyx/login-gate-bundle):**
+  ```yaml
+  # config/packages/login_gate.yaml
+  login_gate:
+    storages: ['orm']
+    options:
+      max_count_attempts: 3
+      timeout: 600
+      watch_period: 3600
+  ```
 
-   **After (nowo-tech/login-throttle-bundle):**
-   ```yaml
-   # config/packages/nowo_login_throttle.yaml
-   nowo_login_throttle:
-       enabled: true
-       max_count_attempts: 3
-       timeout: 600
-       watch_period: 3600
-       firewall: 'main'
-   ```
+  **After (nowo-tech/login-throttle-bundle):**
+  ```yaml
+  # config/packages/nowo_login_throttle.yaml
+  nowo_login_throttle:
+    enabled: true
+    max_count_attempts: 3
+    timeout: 600
+    watch_period: 3600
+    firewall: 'main'
+  ```
 
 4. **Configure security:**
-   ```bash
-   php bin/console nowo:login-throttle:configure-security
-   ```
+  ```bash
+  php bin/console nowo:login-throttle:configure-security
+  ```
 
 5. **Clear cache:**
-   ```bash
-   php bin/console cache:clear
-   ```
+  ```bash
+  php bin/console cache:clear
+  ```
 
 ### Complete Migration Guide
 
@@ -304,6 +304,13 @@ The GitHub Actions CI/CD pipeline automatically:
 - Validates 100% test coverage
 - Runs tests on multiple PHP and Symfony versions
 
+## Tests and coverage
+
+- Tests: PHPUnit (PHP)
+- PHP: 51.74%
+- TS/JS: N/A
+- Python: N/A
+
 ## License
 
 The MIT License (MIT). Please see [LICENSE](LICENSE) for more information.
@@ -347,17 +354,28 @@ Access the demo at: http://localhost:8001
 
 See [demo/README.md](demo/README.md) for detailed instructions.
 
+FrankenPHP worker mode: Supported and documented for demos in `docs/DEMO-FRANKENPHP.md`.
+
 ## Documentation
 
-Complete documentation is available in the `docs/` directory:
+- [Installation](docs/INSTALLATION.md)
+- [Configuration](docs/CONFIGURATION.md)
+- [Usage](docs/USAGE.md)
+- [Contributing](docs/CONTRIBUTING.md)
+- [Changelog](docs/CHANGELOG.md)
+- [Upgrading](docs/UPGRADING.md)
+- [Release](docs/RELEASE.md)
+- [Security](docs/SECURITY.md)
+- [Engram](docs/ENGRAM.md)
 
-- [CHANGELOG.md](docs/CHANGELOG.md) - Version history and changes
-- [CONFIGURATION.md](docs/CONFIGURATION.md) - Detailed configuration guide
-- [TRANSLATIONS.md](docs/TRANSLATIONS.md) - Complete guide on handling translations, overriding messages, and adding new languages
-- [UPGRADING.md](docs/UPGRADING.md) - Upgrade instructions and migration guide
-- [SERVICES.md](docs/SERVICES.md) - Service configuration examples (Docker, Kubernetes)
-- [CONTRIBUTING.md](docs/CONTRIBUTING.md) - Contribution guidelines
-- [BRANCHING.md](docs/BRANCHING.md) - Git branching strategy
+### Additional documentation
+
+- [Demo with FrankenPHP](docs/DEMO-FRANKENPHP.md)
+- [Database storage](docs/DATABASE_STORAGE.md)
+- [Migration from Anyx](docs/MIGRATION_FROM_ANYX.md)
+- [Translations](docs/TRANSLATIONS.md)
+- [Services](docs/SERVICES.md)
+- [Branching](docs/BRANCHING.md)
 
 ## Related
 

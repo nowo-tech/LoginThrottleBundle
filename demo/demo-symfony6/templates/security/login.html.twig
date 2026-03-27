@@ -1,0 +1,197 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Login - Login Throttle Demo{% endblock %}
+
+{% block styles %}
+    {{ parent() }}
+    <style>
+        .login-container {
+            max-width: 500px;
+            margin: 50px auto;
+        }
+        .login-form {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #495057;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }
+        .login-button {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .demo-credentials {
+            background: #e7f3ff;
+            border: 1px solid #b8daff;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+        .demo-credentials h3 {
+            margin-top: 0;
+            font-size: 16px;
+        }
+        .demo-credentials ul {
+            margin: 10px 0 0 20px;
+            padding: 0;
+        }
+        .demo-credentials li {
+            margin: 8px 0;
+        }
+        .demo-credentials code {
+            background: #fff;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 14px;
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+    <div class="login-container">
+        <h1 style="text-align: center; margin-bottom: 30px;">Login</h1>
+
+        {% if error %}
+            <div class="alert alert-danger">
+                <div class="alert-title">Authentication Error</div>
+                <div class="alert-message">{{ error.messageKey|trans(error.messageData, 'security') }}</div>
+                {% if attempt_info %}
+                    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.3);">
+                        {% if attempt_info.is_blocked %}
+                            <p style="margin: 0; font-weight: bold; color: #fff;">
+                                ⚠️ {{ 'nowo_login_throttle.error.account_blocked'|trans({'%max_attempts%': attempt_info.max_attempts}, 'nowo_login_throttle') }}
+                            </p>
+                            {% if attempt_info.retry_after %}
+                                <p style="margin: 10px 0 0 0; font-size: 14px;">
+                                    {% set retryAfterDate = attempt_info.retry_after|date('c') %}
+                                    {% set retryAfterTime = attempt_info.retry_after|date('H:i:s') %}
+                                    {{ 'nowo_login_throttle.error.retry_after'|trans({'%retry_after%': '<span id="countdown-timer">' ~ retryAfterTime ~ '</span>'}, 'nowo_login_throttle')|raw }}
+                                </p>
+                                <script>
+                                    (function() {
+                                        const retryAfter = new Date('{{ retryAfterDate }}');
+                                        const timerElement = document.getElementById('countdown-timer');
+                                        
+                                        if (!timerElement) return;
+                                        
+                                        function updateCountdown() {
+                                            const now = new Date();
+                                            const diff = Math.max(0, Math.floor((retryAfter - now) / 1000));
+                                            
+                                            if (diff <= 0) {
+                                                timerElement.textContent = '00:00:00';
+                                                setTimeout(function() { location.reload(); }, 1000);
+                                                return;
+                                            }
+                                            
+                                            const hours = Math.floor(diff / 3600);
+                                            const minutes = Math.floor((diff % 3600) / 60);
+                                            const seconds = diff % 60;
+                                            
+                                            timerElement.textContent = 
+                                                String(hours).padStart(2, '0') + ':' +
+                                                String(minutes).padStart(2, '0') + ':' +
+                                                String(seconds).padStart(2, '0');
+                                        }
+                                        
+                                        // Update immediately and then every second
+                                        updateCountdown();
+                                        setInterval(updateCountdown, 1000);
+                                    })();
+                                </script>
+                            {% endif %}
+                        {% else %}
+                            <p style="margin: 0; font-weight: bold;">
+                                📊 {% if attempt_info.tracking_type == 'username' %}
+                                    {{ 'nowo_login_throttle.info.attempts_count_by_email'|trans({'%current%': attempt_info.current_attempts|default(0), '%max%': attempt_info.max_attempts|default(3)}, 'nowo_login_throttle') }}
+                                {% else %}
+                                    {{ 'nowo_login_throttle.info.attempts_count_by_ip'|trans({'%current%': attempt_info.current_attempts|default(0), '%max%': attempt_info.max_attempts|default(3)}, 'nowo_login_throttle') }}
+                                {% endif %}
+                            </p>
+                            {% if attempt_info.remaining_attempts > 0 %}
+                                <p style="margin: 10px 0 0 0; font-size: 14px; color: #fff;">
+                                    {{ 'nowo_login_throttle.info.remaining_attempts'|trans({'%remaining%': attempt_info.remaining_attempts|default(0)}, 'nowo_login_throttle') }}
+                                </p>
+                            {% else %}
+                                <p style="margin: 10px 0 0 0; font-size: 14px; color: #fff;">
+                                    ⚠️ {{ 'nowo_login_throttle.info.last_attempt_warning'|trans({}, 'nowo_login_throttle') }}
+                                </p>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+        {% endif %}
+
+        <div class="login-form">
+            <form method="post">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+
+                <div class="form-group">
+                    <label for="inputEmail">Email</label>
+                    <input type="email" value="{{ last_username }}" name="_username" id="inputEmail" class="form-control" autocomplete="email" required autofocus>
+                </div>
+
+                <div class="form-group">
+                    <label for="inputPassword">Password</label>
+                    <input type="password" name="_password" id="inputPassword" class="form-control" autocomplete="current-password" required>
+                </div>
+
+                <button type="submit" class="btn login-button">Sign in</button>
+            </form>
+        </div>
+
+        <div class="demo-credentials">
+            <h3>🧪 Demo Credentials for Testing:</h3>
+            <ul>
+                <li><strong>demo@example.com</strong> / <code>demo123</code> - <span class="badge badge-success">Regular User</span></li>
+                <li><strong>admin@example.com</strong> / <code>admin123</code> - <span class="badge badge-success">Admin User</span></li>
+            </ul>
+            <p style="margin: 10px 0 0 0; font-size: 14px;"><strong>💡 Tip:</strong> Try logging in with wrong credentials multiple times (3 attempts) to see login throttling in action! After 3 failed attempts, you'll be blocked for 10 minutes.</p>
+        </div>
+
+        <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6;">
+            <h3 style="margin-top: 0; font-size: 16px;">🔗 Test Other Firewalls:</h3>
+            <p style="margin-bottom: 15px; font-size: 14px;">This demo includes <strong>3 different firewalls</strong> with independent throttling. Each firewall has its own throttling state:</p>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <a href="{{ path('api_login_page') }}" class="btn" style="flex: 1; min-width: 150px; text-align: center;">
+                    🔌 API Login<br>
+                    <small style="font-size: 11px;">5 attempts, 5 min</small>
+                </a>
+                <a href="{{ path('admin_login') }}" class="btn btn-warning" style="flex: 1; min-width: 150px; text-align: center;">
+                    🔒 Admin Login<br>
+                    <small style="font-size: 11px;">3 attempts, 30 min</small>
+                </a>
+                <a href="{{ path('demo_home') }}" class="btn btn-secondary" style="flex: 1; min-width: 150px; text-align: center;">
+                    🏠 Home<br>
+                    <small style="font-size: 11px;">Overview</small>
+                </a>
+            </div>
+        </div>
+
+    </div>
+{% endblock %}
+

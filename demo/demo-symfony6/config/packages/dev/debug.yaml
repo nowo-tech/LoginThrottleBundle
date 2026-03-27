@@ -1,0 +1,8 @@
+when@dev:
+    debug:
+        # Forwards VarDumper Data clones to a centralized server allowing to inspect dumps while
+        # developing an application. See the https://symfony.com/doc/current/components/var_dumper.html#dump-server documentation.
+        dump_destination: "tcp://%env(VAR_DUMPER_SERVER)%"
+        # If the dump_destination uses the "tcp://" scheme, replace it with "tcp://127.0.0.1:9912"
+        # to use the default "0.0.0.0" host address.
+

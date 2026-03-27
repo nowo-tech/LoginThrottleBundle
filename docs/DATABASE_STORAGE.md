@@ -116,7 +116,7 @@ nowo_login_throttle:
     storage: 'database'           # Required: set to 'database'
     max_count_attempts: 3         # Maximum attempts before blocking
     timeout: 600                  # Block period in seconds
-    watch_period: 3600            # Period for cleanup (in seconds)
+    watch_period: 3600            # Used in generated limiter ID; pass same value to cleanup() when pruning old rows
     firewall: 'main'              # Firewall name
     rate_limiter: null            # Will use database rate limiter automatically
 ```
@@ -155,20 +155,22 @@ Database storage accumulates login attempt records over time. You should set up 
 
 ### Using Symfony Scheduler
 
-```php
-// config/packages/scheduler.yaml
+The bundle **does not** register a cleanup console command. Create a command as in **Manual cleanup command** below (e.g. name it `app:cleanup-login-attempts`), then schedule it:
+
+```yaml
+# config/packages/scheduler.yaml (example — command name must match your app)
 framework:
     scheduler:
         tasks:
             cleanup_login_attempts:
                 type: command
-                command: 'nowo:login-throttle:cleanup'
+                command: 'app:cleanup-login-attempts'
                 frequency: '0 2 * * *'  # Run daily at 2 AM
 ```
 
-### Manual Cleanup Command
+### Manual cleanup command
 
-The bundle provides a cleanup command (you can create it):
+Add a command in your application that calls `LoginAttemptRepository::cleanup()`:
 
 ```php
 // src/Command/CleanupLoginAttemptsCommand.php
@@ -183,7 +185,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
 #[AsCommand(
-    name: 'nowo:login-throttle:cleanup',
+    name: 'app:cleanup-login-attempts',
     description: 'Clean up old login attempts'
 )]
 class CleanupLoginAttemptsCommand extends Command
@@ -209,10 +211,10 @@ Then run it periodically:
 
 ```bash
 # Manual cleanup
-php bin/console nowo:login-throttle:cleanup
+php bin/console app:cleanup-login-attempts
 
 # Or via cron
-0 2 * * * cd /path/to/project && php bin/console nowo:login-throttle:cleanup
+0 2 * * * cd /path/to/project && php bin/console app:cleanup-login-attempts
 ```
 
 ## Querying Login Attempts

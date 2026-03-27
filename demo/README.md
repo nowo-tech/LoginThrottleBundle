@@ -1,6 +1,6 @@
 # Login Throttle Bundle - Demo
 
-This directory contains a demo project for Symfony 7.0 demonstrating the usage of the Login Throttle Bundle.
+This directory contains demo projects for Symfony 6.0, 7.0, and 8.0 demonstrating the usage of the Login Throttle Bundle.
 
 ## Features
 
@@ -24,27 +24,37 @@ This directory contains a demo project for Symfony 7.0 demonstrating the usage o
 ## Requirements
 
 - Docker and Docker Compose
-- Or PHP 8.2+ and Composer (for local development)
+- Or PHP 8.1+ (for Symfony 6), PHP 8.2+ (for Symfony 7/8) and Composer (for local development)
 - MySQL 8.0 (included in Docker Compose)
+
+## Available Demo Versions
+
+Three demo projects are available, each demonstrating the bundle with different Symfony versions:
+
+- **Symfony 6.0 Demo**: PHP 8.1+, Port 8000 (http://localhost:8000)
+- **Symfony 7.0 Demo**: PHP 8.2+, Port 8001 (http://localhost:8001)
+- **Symfony 8.0 Demo**: PHP 8.2+, Port 8002 (http://localhost:8002)
 
 ## Quick Start with Docker
 
-The easiest way to start the demo is using the Makefile:
+The easiest way to start a demo is using the Makefile:
 
 ```bash
 cd demo
-make up-symfony7  # Automatically creates .env, installs dependencies, sets up database, and runs migrations
+make up-symfony6   # Start Symfony 6.0 demo (port 8000)
+make up-symfony7   # Start Symfony 7.0 demo (port 8001)
+make up-symfony8   # Start Symfony 8.0 demo (port 8002)
 ```
 
-**Note**: The `make up-symfony7` command automatically:
-- Creates `.env` file from `.env.example` if it doesn't exist
-- Installs Composer dependencies (requires the bundle to be published on Packagist)
-- Creates database and runs migrations
-- Sets up initial data with demo users
+**Note**: The `make up-symfony*` commands automatically:
+- Create `.env` file from `.env.example` if it doesn't exist
+- Install Composer dependencies (requires the bundle to be published on Packagist)
+- Create database and run migrations
+- Set up initial data with demo users
 
 ### Manual Setup
 
-If you prefer to set up manually:
+If you prefer to set up manually (example for Symfony 7.0):
 
 ```bash
 # Navigate to the demo directory
@@ -65,6 +75,8 @@ docker-compose exec php composer database
 # Access at: http://localhost:8001 (port configured in .env file)
 ```
 
+Same process works for `demo-symfony6` (port 8000) and `demo-symfony8` (port 8002).
+
 ## Demo Users
 
 The demo includes the following test users:
@@ -74,10 +86,10 @@ The demo includes the following test users:
 
 ## Testing Multiple Firewalls
 
-This demo includes **3 different firewalls** with different throttling configurations:
+Each demo includes **3 different firewalls** with different throttling configurations:
 
 ### 1. Main Firewall (Standard Web Login)
-- **URL**: http://localhost:8001/login
+- **URL**: http://localhost:8000/login (S6), http://localhost:8001/login (S7), http://localhost:8002/login (S8)
 - **Configuration**: 3 attempts, 10 minutes timeout
 - **Storage**: Database
 - **Use Case**: Standard web application login
@@ -85,7 +97,7 @@ This demo includes **3 different firewalls** with different throttling configura
 **Test**: Try 3 wrong passwords → blocked for 10 minutes
 
 ### 2. API Firewall (API Authentication)
-- **URL**: http://localhost:8001/api/login-page
+- **URL**: http://localhost:8000/api/login-page (S6), http://localhost:8001/api/login-page (S7), http://localhost:8002/api/login-page (S8)
 - **Configuration**: 5 attempts, 5 minutes timeout
 - **Storage**: Database
 - **Use Case**: API endpoints (more lenient for API usage)
@@ -93,7 +105,7 @@ This demo includes **3 different firewalls** with different throttling configura
 **Test**: Try 5 wrong passwords → blocked for 5 minutes
 
 ### 3. Admin Firewall (Admin Panel)
-- **URL**: http://localhost:8001/admin/login
+- **URL**: http://localhost:8000/admin/login (S6), http://localhost:8001/admin/login (S7), http://localhost:8002/admin/login (S8)
 - **Configuration**: 3 attempts, 30 minutes timeout
 - **Storage**: Database
 - **Use Case**: Admin panel (very strict security)
@@ -134,13 +146,13 @@ nowo_login_throttle:
             storage: 'database'
 ```
 
-**Important**: The `security.yaml` file does not include `login_throttling` configuration by default. After installing the bundle, you must run the command to configure it:
+**Important**: The demos in this repository **ship with `login_throttling` already applied** in `config/packages/security.yaml` (with the correct database rate limiter service IDs), so you can run them without extra steps. If you **change** `nowo_login_throttle.yaml` or start from an empty project, run the command so `security.yaml` stays in sync:
 
 ```bash
 php bin/console nowo:login-throttle:configure-security
 ```
 
-This command will automatically add `login_throttling` to each firewall in `security.yaml` based on the bundle configuration:
+That command adds or updates `login_throttling` on each firewall from the bundle configuration. A typical result looks like:
 
 ```yaml
 security:
@@ -185,20 +197,51 @@ symfony server:start
 
 From the `demo/` directory:
 
+### Symfony 6.0 Commands
 ```bash
-make up-symfony7        # Start demo containers
-make down-symfony7      # Stop demo containers
-make install-symfony7   # Install dependencies
-make database-symfony7  # Setup database
-make shell-symfony7      # Open shell in PHP container
-make logs-symfony7      # Show container logs
-make test-symfony7      # Run tests
+make up-symfony6        # Start Symfony 6.0 demo containers (port 8000)
+make down-symfony6      # Stop Symfony 6.0 demo containers
+make install-symfony6   # Install dependencies for Symfony 6.0
+make database-symfony6  # Setup database for Symfony 6.0
+make shell-symfony6     # Open shell in Symfony 6.0 PHP container
+make logs-symfony6      # Show Symfony 6.0 container logs
+make test-symfony6      # Run tests for Symfony 6.0 demo
+```
+
+### Symfony 7.0 Commands
+```bash
+make up-symfony7        # Start Symfony 7.0 demo containers (port 8001)
+make down-symfony7      # Stop Symfony 7.0 demo containers
+make install-symfony7   # Install dependencies for Symfony 7.0
+make database-symfony7  # Setup database for Symfony 7.0
+make shell-symfony7     # Open shell in Symfony 7.0 PHP container
+make logs-symfony7      # Show Symfony 7.0 container logs
+make test-symfony7      # Run tests for Symfony 7.0 demo
+```
+
+### Symfony 8.0 Commands
+```bash
+make up-symfony8        # Start Symfony 8.0 demo containers (port 8002)
+make down-symfony8      # Stop Symfony 8.0 demo containers
+make install-symfony8   # Install dependencies for Symfony 8.0
+make database-symfony8  # Setup database for Symfony 8.0
+make shell-symfony8     # Open shell in Symfony 8.0 PHP container
+make logs-symfony8      # Show Symfony 8.0 container logs
+make test-symfony8      # Run tests for Symfony 8.0 demo
+```
+
+### General Commands
+```bash
+make clean              # Remove vendor and cache from all demos
+make help               # Show all available commands
 ```
 
 ## Project Structure
 
+Each demo follows the same structure:
+
 ```
-demo-symfony7/
+demo-symfony6/  (or demo-symfony7/ or demo-symfony8/)
 ├── config/              # Symfony configuration
 │   ├── packages/
 │   │   ├── nowo_login_throttle.yaml  # Bundle configuration
@@ -218,10 +261,20 @@ demo-symfony7/
 
 ### Port already in use
 
-If port 8001 is already in use, change it in `.env`:
+If the default ports are already in use, change them in `.env`:
 
 ```bash
-PORT=8002
+# For Symfony 6.0 demo
+cd demo-symfony6
+PORT=8000  # Default: 8000
+
+# For Symfony 7.0 demo
+cd demo-symfony7
+PORT=8001  # Default: 8001
+
+# For Symfony 8.0 demo
+cd demo-symfony8
+PORT=8002  # Default: 8002
 ```
 
 ### Database connection errors

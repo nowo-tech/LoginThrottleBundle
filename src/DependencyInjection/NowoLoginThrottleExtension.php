@@ -197,7 +197,21 @@ class NowoLoginThrottleExtension extends Extension
                 $timeout = $firewallConfig['timeout'];
                 $watchPeriod = $firewallConfig['watch_period'] ?? 3600;
                 $limiterKey = sprintf('db-%d-%d-%d', $maxAttempts, $timeout, $watchPeriod);
-                $sharedServiceId = $sharedLimiters[$limiterKey];
+                
+                // Safety check: ensure the shared limiter was created in the first pass
+                if (!isset($sharedLimiters[$limiterKey])) {
+                    // This should not happen if the logic is correct, but handle it gracefully
+                    // Generate the service ID directly (same format as first pass)
+                    $sharedServiceId = sprintf(
+                        'nowo_login_throttle.database_rate_limiter.shared_%d_%ds_%ds',
+                        $maxAttempts,
+                        $timeout,
+                        $watchPeriod
+                    );
+                    $sharedLimiters[$limiterKey] = $sharedServiceId;
+                } else {
+                    $sharedServiceId = $sharedLimiters[$limiterKey];
+                }
 
                 // Register the limiter only once (multiple firewalls with same config share the same service)
                 // This optimizes resource usage and ensures consistent behavior across firewalls

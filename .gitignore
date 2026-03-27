@@ -17,6 +17,7 @@ Thumbs.db
 .phpunit.cache/
 coverage/
 coverage.xml
+/coverage-php.txt
 
 # PHP-CS-Fixer
 .php-cs-fixer.cache
@@ -25,4 +26,12 @@ coverage.xml
 var/
 
 .env
+
+# Archives / compressed
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
 

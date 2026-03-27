@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation
+
+- **README** & **CONFIGURATION.md** — Clarified **`watch_period`**: it is not the Symfony login ban window (**`timeout`** is); with database storage it affects **generated limiter service IDs** and shared-firewall grouping, and matches the age passed to **`LoginAttemptRepository::cleanup()`** when you implement pruning.
+- **demo/README.md** — Demos **ship with `login_throttling` already in `security.yaml`**; document when to re-run `nowo:login-throttle:configure-security` (config changes / new projects).
+- **DATABASE_STORAGE.md** — Scheduler example no longer implies a built-in **`nowo:login-throttle:cleanup`** command; cleanup is **app-defined** with example name `app:cleanup-login-attempts`.
+- **NowoLoginThrottleBundle** — Class docblock no longer claims automatic **`security.yaml`** updates; points to **`nowo:login-throttle:configure-security`**.
+
 ## [0.0.15] - 2025-01-15
 
 ### Added
