@@ -197,7 +197,7 @@ class NowoLoginThrottleExtension extends Extension
                 $timeout = $firewallConfig['timeout'];
                 $watchPeriod = $firewallConfig['watch_period'] ?? 3600;
                 $limiterKey = sprintf('db-%d-%d-%d', $maxAttempts, $timeout, $watchPeriod);
-                
+
                 // Safety check: ensure the shared limiter was created in the first pass
                 if (!isset($sharedLimiters[$limiterKey])) {
                     // This should not happen if the logic is correct, but handle it gracefully
