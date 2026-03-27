@@ -319,4 +319,106 @@ final class ConfigureSecurityCommandTest extends TestCase
         $command = new ConfigureSecurityCommand(null);
         $this->assertNotNull($command);
     }
+
+    public function testCommandUsesDatabaseLimiterWhenStorageIsDatabase(): void
+    {
+        $command = new ConfigureSecurityCommand($this->testDir);
+        $application = new Application();
+        $application->add($command);
+        $commandTester = new CommandTester($command);
+
+        $this->filesystem->dumpFile(
+            $this->testDir . '/config/packages/nowo_login_throttle.yaml',
+            "nowo_login_throttle:\n    enabled: true\n    storage: 'database'\n    max_count_attempts: 3\n    timeout: 600\n"
+        );
+        $this->filesystem->dumpFile(
+            $this->testDir . '/config/packages/security.yaml',
+            "security:\n    firewalls:\n        main: {}\n"
+        );
+
+        $exitCode = $commandTester->execute([]);
+
+        $this->assertSame(0, $exitCode);
+        $securityConfig = Yaml::parseFile($this->testDir . '/config/packages/security.yaml');
+        $this->assertSame(
+            'nowo_login_throttle.database_rate_limiter',
+            $securityConfig['security']['firewalls']['main']['login_throttling']['limiter']
+        );
+    }
+
+    public function testCommandConfiguresMultipleFirewalls(): void
+    {
+        $command = new ConfigureSecurityCommand($this->testDir);
+        $application = new Application();
+        $application->add($command);
+        $commandTester = new CommandTester($command);
+
+        $this->filesystem->dumpFile(
+            $this->testDir . '/config/packages/nowo_login_throttle.yaml',
+            "nowo_login_throttle:\n" .
+            "    firewalls:\n" .
+            "        main:\n" .
+            "            enabled: true\n" .
+            "            max_count_attempts: 3\n" .
+            "            timeout: 600\n" .
+            "            watch_period: 3600\n" .
+            "            storage: 'database'\n" .
+            "        api:\n" .
+            "            enabled: true\n" .
+            "            max_count_attempts: 5\n" .
+            "            timeout: 300\n" .
+            "            watch_period: 1200\n" .
+            "            storage: 'cache'\n"
+        );
+        $this->filesystem->dumpFile(
+            $this->testDir . '/config/packages/security.yaml',
+            "security:\n    firewalls:\n        main: {}\n        api: {}\n"
+        );
+
+        $exitCode = $commandTester->execute([]);
+
+        $this->assertSame(0, $exitCode);
+        $this->assertStringContainsString('Successfully configured login_throttling for 2 firewall(s)', $commandTester->getDisplay());
+
+        $securityConfig = Yaml::parseFile($this->testDir . '/config/packages/security.yaml');
+        $main = $securityConfig['security']['firewalls']['main']['login_throttling'];
+        $api = $securityConfig['security']['firewalls']['api']['login_throttling'];
+
+        $this->assertSame(3, $main['max_attempts']);
+        $this->assertSame('10 minutes', $main['interval']);
+        $this->assertSame('nowo_login_throttle.database_rate_limiter.shared_3_600s_3600s', $main['limiter']);
+        $this->assertSame(5, $api['max_attempts']);
+        $this->assertSame('5 minutes', $api['interval']);
+        $this->assertArrayNotHasKey('limiter', $api);
+    }
+
+    public function testCommandSkipsAlreadyConfiguredFirewallInMultipleModeWithoutForce(): void
+    {
+        $command = new ConfigureSecurityCommand($this->testDir);
+        $application = new Application();
+        $application->add($command);
+        $commandTester = new CommandTester($command);
+
+        $this->filesystem->dumpFile(
+            $this->testDir . '/config/packages/nowo_login_throttle.yaml',
+            "nowo_login_throttle:\n" .
+            "    firewalls:\n" .
+            "        main:\n" .
+            "            enabled: true\n" .
+            "            max_count_attempts: 3\n" .
+            "            timeout: 600\n" .
+            "            storage: 'cache'\n"
+        );
+        $this->filesystem->dumpFile(
+            $this->testDir . '/config/packages/security.yaml',
+            "security:\n    firewalls:\n        main:\n            login_throttling:\n                max_attempts: 9\n                interval: '99 minutes'\n"
+        );
+
+        $exitCode = $commandTester->execute([]);
+
+        $this->assertSame(0, $exitCode);
+        $this->assertStringContainsString('Skipped 1 firewall(s)', $commandTester->getDisplay());
+        $securityConfig = Yaml::parseFile($this->testDir . '/config/packages/security.yaml');
+        $this->assertSame(9, $securityConfig['security']['firewalls']['main']['login_throttling']['max_attempts']);
+    }
 }

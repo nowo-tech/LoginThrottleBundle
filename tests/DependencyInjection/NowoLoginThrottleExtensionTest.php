@@ -146,4 +146,98 @@ final class NowoLoginThrottleExtensionTest extends TestCase
         $this->assertSame('cache.custom', $securityConfig['cache_pool']);
         $this->assertSame('lock.factory', $securityConfig['lock_factory']);
     }
+
+    public function testLoadWithSingleFirewallDatabaseRegistersRateLimiter(): void
+    {
+        $configs = [
+            [
+                'enabled' => true,
+                'storage' => 'database',
+                'max_count_attempts' => 4,
+                'timeout' => 300,
+                'watch_period' => 1800,
+                'firewall' => 'main',
+            ],
+        ];
+
+        $this->extension->load($configs, $this->container);
+
+        $this->assertTrue($this->container->hasDefinition('nowo_login_throttle.database_rate_limiter'));
+        $this->assertTrue($this->container->hasParameter('nowo_login_throttle.security_config'));
+
+        $securityConfig = $this->container->getParameter('nowo_login_throttle.security_config');
+        $this->assertSame('nowo_login_throttle.database_rate_limiter', $securityConfig['limiter']);
+        $this->assertSame('database', $securityConfig['storage']);
+    }
+
+    public function testLoadWithMultipleFirewallsSharesDatabaseLimiterByConfig(): void
+    {
+        $configs = [
+            [
+                'firewalls' => [
+                    'main' => [
+                        'enabled' => true,
+                        'max_count_attempts' => 5,
+                        'timeout' => 600,
+                        'watch_period' => 3600,
+                        'storage' => 'database',
+                        'rate_limiter' => null,
+                        'cache_pool' => 'cache.rate_limiter',
+                        'lock_factory' => null,
+                    ],
+                    'api' => [
+                        'enabled' => true,
+                        'max_count_attempts' => 5,
+                        'timeout' => 600,
+                        'watch_period' => 3600,
+                        'storage' => 'database',
+                        'rate_limiter' => null,
+                        'cache_pool' => 'cache.rate_limiter',
+                        'lock_factory' => null,
+                    ],
+                ],
+            ],
+        ];
+
+        $this->extension->load($configs, $this->container);
+
+        $this->assertTrue($this->container->hasParameter('nowo_login_throttle.firewalls'));
+        $this->assertTrue($this->container->getParameter('nowo_login_throttle.enabled'));
+
+        $firewalls = $this->container->getParameter('nowo_login_throttle.firewalls');
+        $this->assertIsArray($firewalls);
+
+        $mainLimiter = $firewalls['main']['limiter'] ?? null;
+        $apiLimiter = $firewalls['api']['limiter'] ?? null;
+
+        $this->assertNotNull($mainLimiter);
+        $this->assertSame($mainLimiter, $apiLimiter);
+        $this->assertTrue($this->container->hasDefinition((string) $mainLimiter));
+    }
+
+    public function testLoadWithMultipleFirewallsAllDisabledSetsBundleDisabled(): void
+    {
+        $configs = [
+            [
+                'firewalls' => [
+                    'main' => [
+                        'enabled' => false,
+                        'max_count_attempts' => 3,
+                        'timeout' => 600,
+                        'watch_period' => 3600,
+                        'storage' => 'cache',
+                        'rate_limiter' => null,
+                        'cache_pool' => 'cache.rate_limiter',
+                        'lock_factory' => null,
+                    ],
+                ],
+            ],
+        ];
+
+        $this->extension->load($configs, $this->container);
+
+        $this->assertTrue($this->container->hasParameter('nowo_login_throttle.enabled'));
+        $this->assertFalse($this->container->getParameter('nowo_login_throttle.enabled'));
+        $this->assertSame([], $this->container->getParameter('nowo_login_throttle.firewalls'));
+    }
 }
