@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Nowo\LoginThrottleBundle\Tests\Repository;
 
-use Doctrine\ORM\AbstractQuery;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query;
 use Doctrine\ORM\QueryBuilder;

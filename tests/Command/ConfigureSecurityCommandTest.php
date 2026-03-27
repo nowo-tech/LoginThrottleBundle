@@ -281,7 +281,7 @@ final class ConfigureSecurityCommandTest extends TestCase
         // Create security.yaml in test directory
         $securityPath = $this->testDir . '/config/packages/security.yaml';
         $this->filesystem->dumpFile($securityPath, "security:\n    firewalls:\n        main: {}\n");
-        
+
         // Make the directory read-only to prevent writing (more reliable than file-only)
         $packagesDir = $this->testDir . '/config/packages';
         chmod($packagesDir, 0o555);

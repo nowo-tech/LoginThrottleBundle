@@ -202,6 +202,7 @@ final class DatabaseRateLimiterTest extends TestCase
                 if ($ip === '192.168.1.1' && $username === 'email@example.com' && $maxAttempts === 3 && $timeout === 600) {
                     return false;
                 }
+
                 return false;
             });
 
@@ -209,7 +210,7 @@ final class DatabaseRateLimiterTest extends TestCase
             ->expects($this->exactly(2))
             ->method('recordAttempt')
             ->willReturnCallback(function ($ip, $username) {
-                return new \Nowo\LoginThrottleBundle\Entity\LoginAttempt($ip, $username);
+                return new LoginAttempt($ip, $username);
             });
 
         $this->repository
@@ -222,6 +223,7 @@ final class DatabaseRateLimiterTest extends TestCase
                 if ($ip === '192.168.1.1' && $username === 'email@example.com' && $timeout === 600) {
                     return 1;
                 }
+
                 return 0;
             });
 
