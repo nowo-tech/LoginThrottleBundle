@@ -13,12 +13,12 @@
         }
     ],
     "require": {
-        "php": ">=8.2,<8.6",
-        "doctrine/doctrine-bundle": "^2.10",
-        "doctrine/doctrine-fixtures-bundle": "^3.4",
-        "doctrine/doctrine-migrations-bundle": "^3.2",
+        "php": ">=8.4,<8.6",
+        "doctrine/doctrine-bundle": "^3.0",
+        "doctrine/doctrine-fixtures-bundle": "^4.0",
+        "doctrine/doctrine-migrations-bundle": "^3.4",
         "doctrine/migrations": "^3.6",
-        "doctrine/orm": "^2.15",
+        "doctrine/orm": "^3.0",
         "nowo-tech/login-throttle-bundle": "@dev",
         "symfony/console": "^8.0",
         "symfony/dotenv": "^8.0",
