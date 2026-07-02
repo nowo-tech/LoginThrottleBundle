@@ -13,6 +13,49 @@ This guide provides step-by-step instructions for upgrading the Login Throttle B
 
 ## Upgrade Instructions by Version
 
+### Upgrading to 1.0.0
+
+**Release Date**: 2025-07-02
+
+#### What's New
+
+- **First stable release** — The bundle API is declared stable. All `0.0.x` configuration remains valid; no migration is required for existing projects.
+- **Symfony Flex recipe 1.0** — New installs via Flex get bundle registration and default configuration automatically.
+- **Quality tooling** — PHPStan, Rector, and `make release-check` for maintainers and contributors.
+- **Expanded demos** — Symfony 6, 7.4, and 8.1 demo applications with Docker setup.
+- **Documentation** — Clarified `watch_period` semantics, database cleanup workflow, and demo `security.yaml` setup.
+
+#### Breaking Changes
+
+None — This release marks API stability without removing or renaming configuration options from `0.0.15`.
+
+#### Upgrade Steps
+
+1. **Update the bundle**:
+   ```bash
+   composer update nowo-tech/login-throttle-bundle
+   ```
+
+2. **Clear cache**:
+   ```bash
+   php bin/console cache:clear
+   ```
+
+3. **(Optional) Refresh `security.yaml` service IDs** — If you use database storage and want human-readable limiter service names:
+   ```bash
+   php bin/console nowo:login-throttle:configure-security --force
+   ```
+
+4. **Test your application** — Verify login throttling on all configured firewalls.
+
+#### Notes for `0.0.x` Users
+
+- Composer constraint `^0.0` continues to resolve `1.0.0` (semver-compatible).
+- To opt into the stable line explicitly, update your `composer.json`:
+  ```json
+  "nowo-tech/login-throttle-bundle": "^1.0"
+  ```
+
 ### Upgrading to 0.0.15
 
 **Release Date**: 2025-01-15
@@ -578,72 +621,6 @@ No configuration changes required. This release only improves the demo project.
 
 None - This is a patch release with demo improvements only.
 
-### Upgrading to Next Version (Unreleased)
-
-**Release Date**: TBD
-
-#### What's New
-
-- **Multiple Firewalls Support**: Added support for configuring multiple firewalls with independent throttling settings. Each firewall can have its own `max_count_attempts`, `timeout`, `storage`, and `rate_limiter` configuration.
-- Database Storage Support: Added option to store login attempts in database instead of cache
-
-#### Breaking Changes
-
-None - The bundle maintains backward compatibility. Existing single firewall configurations continue to work.
-
-#### New Configuration Option: Multiple Firewalls
-
-If you have multiple firewalls and want to configure throttling independently for each, you can now use the `firewalls` configuration:
-
-**Before (Single Firewall)**:
-```yaml
-nowo_login_throttle:
-    enabled: true
-    max_count_attempts: 3
-    timeout: 600
-    firewall: 'main'
-```
-
-**After (Multiple Firewalls)**:
-```yaml
-nowo_login_throttle:
-    firewalls:
-        main:
-            enabled: true
-            max_count_attempts: 3
-            timeout: 600
-            storage: 'cache'
-        api:
-            enabled: true
-            max_count_attempts: 5
-            timeout: 300
-            storage: 'database'
-```
-
-**Note**: The old single firewall configuration still works. You don't need to change anything unless you want to configure multiple firewalls.
-
-#### Upgrade Steps
-
-1. **Update composer**:
-   ```bash
-   composer update nowo-tech/login-throttle-bundle
-   ```
-
-2. **Clear cache**:
-   ```bash
-   php bin/console cache:clear
-   ```
-
-3. **(Optional) Migrate to multiple firewalls configuration**:
-   If you want to configure multiple firewalls, update your configuration as shown above. Otherwise, no changes are needed.
-
-4. **Run configure command** (if using multiple firewalls):
-   ```bash
-   php bin/console nowo:login-throttle:configure-security
-   ```
-
-5. **Test your application**: Verify that login throttling works correctly for all firewalls
-
 ### Upgrading to 0.0.1 (Initial Release)
 
 **Release Date**: 2025-12-30
@@ -836,12 +813,14 @@ If you encounter issues during upgrade:
 
 1. Check the [CHANGELOG.md](CHANGELOG.md) for known issues
 2. Review the [CONFIGURATION.md](CONFIGURATION.md) for configuration examples
-3. Open an issue on [GitHub](https://github.com/nowo-tech/login-throttle-bundle/issues)
+3. Open an issue on [GitHub](https://github.com/nowo-tech/LoginThrottleBundle/issues)
 
 ## Version Compatibility
 
 | Bundle Version | Symfony Version | PHP Version | Features |
 |---------------|-----------------|-------------|----------|
+| 1.0.0         | 6.0, 7.0, 8.0, 8.1 | 8.1, 8.2, 8.3, 8.4, 8.5 | Stable API; Flex recipe 1.0; PHPStan/Rector; expanded demos; documentation clarifications |
+| 0.0.15        | 6.0, 7.0, 8.0   | 8.1, 8.2, 8.3, 8.4, 8.5 | Human-readable DB limiter service names, countdown timer docs, demo countdown UI |
 | 0.0.8         | 6.0, 7.0, 8.0   | 8.1, 8.2, 8.3, 8.4, 8.5 | Single & Multiple firewalls, Cache & Database storage, i18n support, Attempt info display, 100% test coverage, Enhanced release workflows, Fixed workflow execution |
 | 0.0.7         | 6.0, 7.0, 8.0   | 8.1, 8.2, 8.3, 8.4, 8.5 | Single & Multiple firewalls, Cache & Database storage, i18n support, Attempt info display, 100% test coverage, Enhanced release workflows, Fixed workflow syntax |
 | 0.0.6         | 6.0, 7.0, 8.0   | 8.1, 8.2, 8.3, 8.4, 8.5 | Single & Multiple firewalls, Cache & Database storage, i18n support, Attempt info display, 100% test coverage, Enhanced release workflows |
@@ -863,6 +842,6 @@ If you encounter issues during upgrade:
 - Always test upgrades in a development environment first
 - Keep backups of your configuration files
 - Review breaking changes in the changelog before upgrading
-- The bundle maintains backward compatibility within major versions (0.x.x)
+- The bundle maintains backward compatibility within major versions (1.x.x)
 - Symfony's native `login_throttling` requires Symfony 5.2 or higher
 

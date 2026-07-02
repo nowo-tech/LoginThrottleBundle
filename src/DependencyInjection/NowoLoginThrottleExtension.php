@@ -31,8 +31,6 @@ class NowoLoginThrottleExtension extends Extension
      *
      * @param array<string, mixed> $configs   Array of configuration values
      * @param ContainerBuilder     $container The container builder object
-     *
-     * @return void
      */
     public function load(array $configs, ContainerBuilder $container): void
     {
@@ -45,7 +43,7 @@ class NowoLoginThrottleExtension extends Extension
 
         // Check if using multiple firewalls configuration
         // Only use multiple firewalls if firewalls array is not empty
-        if (isset($config['firewalls']) && is_array($config['firewalls']) && !empty($config['firewalls'])) {
+        if (isset($config['firewalls']) && is_array($config['firewalls']) && $config['firewalls'] !== []) {
             // Multiple firewalls configuration
             $this->processMultipleFirewalls($container, $config['firewalls']);
         } else {
@@ -96,8 +94,6 @@ class NowoLoginThrottleExtension extends Extension
      *
      * @param ContainerBuilder     $container The container builder
      * @param array<string, mixed> $config    The processed configuration
-     *
-     * @return void
      */
     private function configureSecurityThrottling(ContainerBuilder $container, array $config): void
     {
@@ -132,8 +128,6 @@ class NowoLoginThrottleExtension extends Extension
      *
      * @param ContainerBuilder                    $container       The container builder
      * @param array<string, array<string, mixed>> $firewallsConfig Firewalls configuration
-     *
-     * @return void
      */
     private function processMultipleFirewalls(ContainerBuilder $container, array $firewallsConfig): void
     {
@@ -275,8 +269,6 @@ class NowoLoginThrottleExtension extends Extension
      * @param ContainerBuilder     $container The container builder
      * @param string               $serviceId The service ID to use
      * @param array<string, mixed> $config    The processed configuration (must contain max_count_attempts, timeout, watch_period)
-     *
-     * @return void
      */
     private function registerDatabaseRateLimiterByServiceId(ContainerBuilder $container, string $serviceId, array $config): void
     {
@@ -291,7 +283,6 @@ class NowoLoginThrottleExtension extends Extension
                 new Reference(LoginAttemptRepository::class),
                 $config['max_count_attempts'],
                 $config['timeout'],
-                $config['watch_period'] ?? 3600,
             ])
             ->setPublic(true); // Must be public to be used as a rate limiter service
     }

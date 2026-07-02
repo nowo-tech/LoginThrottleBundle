@@ -121,7 +121,7 @@ final class LoginThrottleInfoServiceTest extends TestCase
             ->willReturn(3);
 
         $oldestAttempt = new LoginAttempt('192.168.1.1', 'test@example.com');
-        $retryAfter = new \DateTimeImmutable('+10 minutes');
+        new \DateTimeImmutable('+10 minutes');
 
         $this->repository
             ->expects($this->once())
@@ -257,14 +257,7 @@ final class LoginThrottleInfoServiceTest extends TestCase
         $this->repository
             ->expects($this->exactly(2))
             ->method('countAttemptsByUsername')
-            ->willReturnCallback(function ($username, $seconds) {
-                if ($username === 'user1@example.com' && $seconds === 600) {
-                    return 0;
-                }
-                if ($username === 'user2@example.com' && $seconds === 600) {
-                    return 0;
-                }
-
+            ->willReturnCallback(function ($username, $seconds): int {
                 return 0;
             });
 
@@ -435,7 +428,7 @@ final class LoginThrottleInfoServiceTest extends TestCase
         $this->repository
             ->expects($this->exactly(2))
             ->method('countAttemptsByIp')
-            ->willReturnCallback(function ($ip, $seconds) use (&$callCount) {
+            ->willReturnCallback(function ($ip, $seconds) use (&$callCount): int {
                 $callCount++;
                 if ($callCount === 1) {
                     $this->assertEquals('192.168.1.1', $ip);

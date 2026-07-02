@@ -14,7 +14,8 @@ RUN docker-php-ext-install -j$(nproc) zip pdo pdo_mysql
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 # Configure git safe directory
-RUN git config --global --add safe.directory /app
+RUN git config --global --add safe.directory /app && \
+    git config --global --add safe.directory /var/login-throttle-bundle
 
 # Set working directory
 WORKDIR /app
@@ -26,6 +27,8 @@ ENV PATH="/app/vendor/bin:${PATH}"
 # Create entrypoint script to fix permissions
 RUN echo '#!/bin/sh' > /usr/local/bin/docker-entrypoint.sh && \
     echo 'set -e' >> /usr/local/bin/docker-entrypoint.sh && \
+    echo 'git config --global --add safe.directory /app 2>/dev/null || true' >> /usr/local/bin/docker-entrypoint.sh && \
+    echo 'git config --global --add safe.directory /var/login-throttle-bundle 2>/dev/null || true' >> /usr/local/bin/docker-entrypoint.sh && \
     echo 'mkdir -p /app/var/cache /app/var/log' >> /usr/local/bin/docker-entrypoint.sh && \
     echo 'chmod -R 777 /app/var' >> /usr/local/bin/docker-entrypoint.sh && \
     echo 'exec "$@"' >> /usr/local/bin/docker-entrypoint.sh && \

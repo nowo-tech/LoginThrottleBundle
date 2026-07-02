@@ -20,10 +20,11 @@ Expected steps:
 
 ## Tag and publish
 
-1. Update `docs/CHANGELOG.md`.
-2. Create an annotated tag (`vX.Y.Z`).
-3. Push the tag.
-4. Confirm GitHub workflows `release.yml` and `sync-releases.yml` completed successfully.
+1. Update `docs/CHANGELOG.md` and `docs/UPGRADING.md`.
+2. Run `make release-check`.
+3. Create an annotated tag (`vX.Y.Z`).
+4. Push the commit and tag.
+5. Confirm GitHub workflows `release.yml` and `sync-releases.yml` completed successfully.
 
 ## Post-release checks
 

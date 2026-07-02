@@ -12,10 +12,10 @@
         "brute-force",
         "rate-limiting"
     ],
-    "homepage": "https://github.com/nowo-tech/login-throttle-bundle",
+    "homepage": "https://github.com/nowo-tech/LoginThrottleBundle",
     "support": {
-        "issues": "https://github.com/nowo-tech/login-throttle-bundle/issues",
-        "source": "https://github.com/nowo-tech/login-throttle-bundle"
+        "issues": "https://github.com/nowo-tech/LoginThrottleBundle/issues",
+        "source": "https://github.com/nowo-tech/LoginThrottleBundle"
     },
     "authors": [
         {
@@ -67,6 +67,11 @@
     },
     "minimum-stability": "stable",
     "prefer-stable": true,
+    "extra": {
+        "branch-alias": {
+            "dev-main": "1.0.x-dev"
+        }
+    },
     "archive": {
         "exclude": [
             "/demo",

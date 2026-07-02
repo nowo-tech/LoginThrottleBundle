@@ -20,16 +20,14 @@ class DatabaseRateLimiterFactory
     /**
      * Constructor.
      *
-     * @param LoginAttemptRepository $repository         The login attempt repository
-     * @param int                    $maxAttempts        Maximum number of attempts
-     * @param int                    $timeoutSeconds     Timeout period in seconds
-     * @param int                    $watchPeriodSeconds Watch period in seconds
+     * @param LoginAttemptRepository $repository     The login attempt repository
+     * @param int                    $maxAttempts    Maximum number of attempts
+     * @param int                    $timeoutSeconds Timeout period in seconds
      */
     public function __construct(
         private readonly LoginAttemptRepository $repository,
         private readonly int $maxAttempts,
-        private readonly int $timeoutSeconds,
-        private readonly int $watchPeriodSeconds
+        private readonly int $timeoutSeconds
     ) {
     }
 
@@ -43,8 +41,7 @@ class DatabaseRateLimiterFactory
         return new DatabaseRateLimiter(
             $this->repository,
             $this->maxAttempts,
-            $this->timeoutSeconds,
-            $this->watchPeriodSeconds
+            $this->timeoutSeconds
         );
     }
 }

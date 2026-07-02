@@ -7,12 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Documentation
+## [1.0.0] - 2025-07-02
 
-- **README** & **CONFIGURATION.md** — Clarified **`watch_period`**: it is not the Symfony login ban window (**`timeout`** is); with database storage it affects **generated limiter service IDs** and shared-firewall grouping, and matches the age passed to **`LoginAttemptRepository::cleanup()`** when you implement pruning.
-- **demo/README.md** — Demos **ship with `login_throttling` already in `security.yaml`**; document when to re-run `nowo:login-throttle:configure-security` (config changes / new projects).
-- **DATABASE_STORAGE.md** — Scheduler example no longer implies a built-in **`nowo:login-throttle:cleanup`** command; cleanup is **app-defined** with example name `app:cleanup-login-attempts`.
-- **NowoLoginThrottleBundle** — Class docblock no longer claims automatic **`security.yaml`** updates; points to **`nowo:login-throttle:configure-security`**.
+### Added
+
+- **Symfony Flex recipe 1.0** — Registers the bundle and copies default `nowo_login_throttle.yaml` when installed via Flex.
+- **Static analysis toolchain** — PHPStan and Rector integrated in `composer.json` scripts and `make phpstan` / `make rector-dry`.
+- **Release pipeline** — `make release-check` runs composer validation, code style, Rector, PHPStan, coverage, translation lint, and demo verification.
+- **GitHub community files** — Issue templates, pull request template, `CODEOWNERS`, `FUNDING.yml`, and repository security policy.
+- **Demo projects for Symfony 6 and 8** — Full standalone demos (`demo-symfony6`, `demo-symfony8`) alongside the existing Symfony 7.4 demo.
+- **Documentation guides** — `INSTALLATION.md`, `USAGE.md`, `SECURITY.md`, and expanded `RELEASE.md`.
+
+### Changed
+
+- **Stable API (1.0)** — Marks the bundle as production-ready; configuration and public services remain backward compatible with `0.0.x`.
+- **Makefile** — Standardized Docker Compose workflow (`ensure-up`, `release-check`, `update-deps`, translation validation).
+- **Documentation clarifications**:
+  - **`watch_period`** — Not the Symfony ban window (`timeout` is); with database storage it affects generated limiter service IDs, shared-firewall grouping, and optional `LoginAttemptRepository::cleanup()` pruning.
+  - **Demos** — Ship with `login_throttling` already in `security.yaml`; document when to re-run `nowo:login-throttle:configure-security`.
+  - **Database cleanup** — No built-in `nowo:login-throttle:cleanup` command; cleanup is app-defined (see `DATABASE_STORAGE.md`).
+- **`NowoLoginThrottleBundle` docblock** — No longer claims automatic `security.yaml` updates; points to `nowo:login-throttle:configure-security`.
+- **`Configuration` info strings** — Clarified `watch_period` semantics in the configuration tree.
+- **Symfony compatibility docs** — README badges and requirements updated for Symfony 6.0+, 7.4+, 8.0+, and 8.1+.
+- **Rector code quality pass** — Applied Rector rules across source and tests; removed unused `watchPeriodSeconds` property from internal `DatabaseRateLimiter` (factory DI signature unchanged).
+
+### Fixed
+
+- **Shared database rate limiter registration** — Safety check when resolving shared limiter service IDs for multiple firewalls with identical settings.
+- **PHPStan baseline** — Added `phpstan-baseline.neon` for existing static-analysis debt; analysis scoped to `src/`.
+- **Demo Symfony 6 CSRF config** — Simplified `csrf.yaml` for Symfony 6 compatibility.
 
 ## [0.0.15] - 2025-01-15
 

@@ -1,0 +1,86 @@
+parameters:
+	ignoreErrors:
+		-
+			message: "#^Offset 'cache_pool' on array\\<string, mixed\\> on left side of \\?\\? always exists and is not nullable\\.$#"
+			count: 1
+			path: src/Command/ConfigureSecurityCommand.php
+
+		-
+			message: "#^Call to method booleanNode\\(\\) on an unknown class Symfony\\\\Component\\\\Config\\\\Definition\\\\Builder\\\\NodeBuilder\\<Symfony\\\\Component\\\\Config\\\\Definition\\\\Builder\\\\ArrayNodeDefinition\\>\\.$#"
+			count: 1
+			path: src/DependencyInjection/Configuration.php
+
+		-
+			message: "#^Argument of an invalid type array\\<int, string\\>\\|false supplied for foreach, only iterables are supported\\.$#"
+			count: 1
+			path: src/NowoLoginThrottleBundle.php
+
+		-
+			message: "#^Binary operation \"\\.\" between array\\|bool\\|float\\|int\\|string\\|null and '/config/packages' results in an error\\.$#"
+			count: 1
+			path: src/NowoLoginThrottleBundle.php
+
+		-
+			message: "#^Binary operation \"\\.\" between array\\|bool\\|float\\|int\\|string\\|null and '/config/packages…' results in an error\\.$#"
+			count: 1
+			path: src/NowoLoginThrottleBundle.php
+
+		-
+			message: "#^Cannot call method getParameter\\(\\) on Symfony\\\\Component\\\\DependencyInjection\\\\ContainerInterface\\|null\\.$#"
+			count: 1
+			path: src/NowoLoginThrottleBundle.php
+
+		-
+			message: "#^Cannot call method hasParameter\\(\\) on Symfony\\\\Component\\\\DependencyInjection\\\\ContainerInterface\\|null\\.$#"
+			count: 1
+			path: src/NowoLoginThrottleBundle.php
+
+		-
+			message: "#^Method Nowo\\\\LoginThrottleBundle\\\\NowoLoginThrottleBundle\\:\\:getContainerExtension\\(\\) should return Symfony\\\\Component\\\\DependencyInjection\\\\Extension\\\\ExtensionInterface\\|null but returns Symfony\\\\Component\\\\DependencyInjection\\\\Extension\\\\ExtensionInterface\\|false\\.$#"
+			count: 1
+			path: src/NowoLoginThrottleBundle.php
+
+		-
+			message: "#^Negated boolean expression is always false\\.$#"
+			count: 1
+			path: src/RateLimiter/DatabaseRateLimiter.php
+
+		-
+			message: "#^Cannot call method countAttemptsByIp\\(\\) on Nowo\\\\LoginThrottleBundle\\\\Repository\\\\LoginAttemptRepository\\|null\\.$#"
+			count: 1
+			path: src/Service/LoginThrottleInfoService.php
+
+		-
+			message: "#^Cannot call method countAttemptsByUsername\\(\\) on Nowo\\\\LoginThrottleBundle\\\\Repository\\\\LoginAttemptRepository\\|null\\.$#"
+			count: 1
+			path: src/Service/LoginThrottleInfoService.php
+
+		-
+			message: "#^Cannot call method getAttempts\\(\\) on Nowo\\\\LoginThrottleBundle\\\\Repository\\\\LoginAttemptRepository\\|null\\.$#"
+			count: 2
+			path: src/Service/LoginThrottleInfoService.php
+
+		-
+			message: "#^If condition is always true\\.$#"
+			count: 2
+			path: src/Service/LoginThrottleInfoService.php
+
+		-
+			message: "#^Method Nowo\\\\LoginThrottleBundle\\\\Service\\\\LoginThrottleInfoService\\:\\:getAttemptInfoFromDatabase\\(\\) should return array\\{current_attempts\\: int, max_attempts\\: int, remaining_attempts\\: int, is_blocked\\: bool, retry_after\\: DateTimeImmutable\\|null, tracking_type\\: string\\} but returns array\\{current_attempts\\: int, max_attempts\\: int, remaining_attempts\\: int\\<0, max\\>, is_blocked\\: bool, retry_after\\: DateTimeImmutable\\|false\\|null, tracking_type\\: 'ip'\\|'username'\\}\\.$#"
+			count: 1
+			path: src/Service/LoginThrottleInfoService.php
+
+		-
+			message: "#^Method Nowo\\\\LoginThrottleBundle\\\\Service\\\\LoginThrottleInfoService\\:\\:getFirewallConfig\\(\\) return type has no value type specified in iterable type array\\.$#"
+			count: 1
+			path: src/Service/LoginThrottleInfoService.php
+
+		-
+			message: "#^Method Nowo\\\\LoginThrottleBundle\\\\Service\\\\LoginThrottleInfoService\\:\\:setFirewallsConfig\\(\\) has parameter \\$firewallsConfig with no value type specified in iterable type array\\.$#"
+			count: 1
+			path: src/Service/LoginThrottleInfoService.php
+
+		-
+			message: "#^Property Nowo\\\\LoginThrottleBundle\\\\Service\\\\LoginThrottleInfoService\\:\\:\\$firewallsConfig type has no value type specified in iterable type array\\.$#"
+			count: 1
+			path: src/Service/LoginThrottleInfoService.php

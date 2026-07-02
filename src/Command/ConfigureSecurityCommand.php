@@ -41,8 +41,6 @@ class ConfigureSecurityCommand extends Command
 
     /**
      * Configures the command.
-     *
-     * @return void
      */
     protected function configure(): void
     {
@@ -332,7 +330,7 @@ class ConfigureSecurityCommand extends Command
             $yaml = Yaml::dump($securityConfig, 10, 2);
             $filesystem->dumpFile($securityYamlPath, $yaml);
 
-            if (!empty($configuredFirewalls)) {
+            if ($configuredFirewalls !== []) {
                 $io->success(sprintf('Successfully configured login_throttling for %d firewall(s): %s', count($configuredFirewalls), implode(', ', $configuredFirewalls)));
 
                 // Show summary table
@@ -353,12 +351,12 @@ class ConfigureSecurityCommand extends Command
                     ];
                 }
 
-                if (!empty($tableData)) {
+                if ($tableData !== []) {
                     $io->table(['Firewall', 'Max Attempts', 'Interval', 'Storage'], $tableData);
                 }
             }
 
-            if (!empty($skippedFirewalls)) {
+            if ($skippedFirewalls !== []) {
                 $io->warning(sprintf('Skipped %d firewall(s) (already configured): %s. Use --force to update.', count($skippedFirewalls), implode(', ', $skippedFirewalls)));
             }
         } catch (\Exception $e) {

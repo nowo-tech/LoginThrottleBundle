@@ -84,7 +84,9 @@ up-symfony6:
 	else \
 		echo "❌ Error: bin/console not found. Cannot setup database." && exit 1; \
 	fi && \
-	echo "✅ Symfony 6.0 demo is ready at http://localhost:8000" && \
+	PORT=$$(grep "^PORT=" .env 2>/dev/null | cut -d= -f2 | tr -d '\r'); \
+	[ -z "$$PORT" ] && PORT=$$(grep "^PORT=" .env.example 2>/dev/null | cut -d= -f2 | tr -d '\r'); \
+	echo "Demo started at: http://localhost:$$PORT" && \
 	echo "✅ phpMyAdmin is ready at http://localhost:8080"
 
 down-symfony6:
@@ -140,7 +142,9 @@ up-symfony7:
 	else \
 		echo "❌ Error: bin/console not found. Cannot setup database." && exit 1; \
 	fi && \
-	echo "✅ Symfony 7.0 demo is ready at http://localhost:8001" && \
+	PORT=$$(grep "^PORT=" .env 2>/dev/null | cut -d= -f2 | tr -d '\r'); \
+	[ -z "$$PORT" ] && PORT=$$(grep "^PORT=" .env.example 2>/dev/null | cut -d= -f2 | tr -d '\r'); \
+	echo "Demo started at: http://localhost:$$PORT" && \
 	echo "✅ phpMyAdmin is ready at http://localhost:8081"
 
 down-symfony7:
@@ -196,7 +200,9 @@ up-symfony8:
 	else \
 		echo "❌ Error: bin/console not found. Cannot setup database." && exit 1; \
 	fi && \
-	echo "✅ Symfony 8.0 demo is ready at http://localhost:8002" && \
+	PORT=$$(grep "^PORT=" .env 2>/dev/null | cut -d= -f2 | tr -d '\r'); \
+	[ -z "$$PORT" ] && PORT=$$(grep "^PORT=" .env.example 2>/dev/null | cut -d= -f2 | tr -d '\r'); \
+	echo "Demo started at: http://localhost:$$PORT" && \
 	echo "✅ phpMyAdmin is ready at http://localhost:8082"
 
 down-symfony8:
@@ -240,9 +246,9 @@ update-bundle-symfony8:
 	cd demo-symfony8 && docker compose exec -T php php bin/console cache:clear --env=dev --no-warmup || true
 
 verify:
-	@echo "Symfony 6 demo: $$(cd demo-symfony6 && grep -E '^DEFAULT_URI=' .env.example | cut -d= -f2)"
-	@echo "Symfony 7 demo: $$(cd demo-symfony7 && grep -E '^DEFAULT_URI=' .env.example | cut -d= -f2)"
-	@echo "Symfony 8 demo: $$(cd demo-symfony8 && grep -E '^DEFAULT_URI=' .env.example | cut -d= -f2)"
+	@echo "Symfony 6 demo: http://localhost:$$(cd demo-symfony6 && grep -E '^PORT=' .env.example | cut -d= -f2)"
+	@echo "Symfony 7 demo: http://localhost:$$(cd demo-symfony7 && grep -E '^PORT=' .env.example | cut -d= -f2)"
+	@echo "Symfony 8 demo: http://localhost:$$(cd demo-symfony8 && grep -E '^PORT=' .env.example | cut -d= -f2)"
 
 release-check:
 	@$(MAKE) update-bundle
@@ -250,3 +256,8 @@ release-check:
 	@$(MAKE) test-symfony7
 	@$(MAKE) test-symfony8
 	@$(MAKE) verify
+
+
+# REQ-MAKE-008: update-deps-all (REQ-MAKE-008)
+BUNDLE_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/..)
+include $(BUNDLE_ROOT)/../.scripts/Makefile.demo-aggregate-update-deps.mk

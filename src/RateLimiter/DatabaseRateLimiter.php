@@ -23,16 +23,14 @@ class DatabaseRateLimiter implements RequestRateLimiterInterface
     /**
      * Constructor.
      *
-     * @param LoginAttemptRepository $repository         The login attempt repository
-     * @param int                    $maxAttempts        Maximum number of attempts
-     * @param int                    $timeoutSeconds     Timeout period in seconds
-     * @param int                    $watchPeriodSeconds Watch period in seconds
+     * @param LoginAttemptRepository $repository     The login attempt repository
+     * @param int                    $maxAttempts    Maximum number of attempts
+     * @param int                    $timeoutSeconds Timeout period in seconds
      */
     public function __construct(
         private readonly LoginAttemptRepository $repository,
         private readonly int $maxAttempts,
-        private readonly int $timeoutSeconds,
-        private readonly int $watchPeriodSeconds
+        private readonly int $timeoutSeconds
     ) {
     }
 
@@ -75,7 +73,7 @@ class DatabaseRateLimiter implements RequestRateLimiterInterface
         }
 
         // Ensure retryAfter is never null
-        if (null === $retryAfter) {
+        if (!$retryAfter instanceof \DateTimeImmutable) {
             $retryAfter = new \DateTimeImmutable();
         }
 
@@ -91,13 +89,11 @@ class DatabaseRateLimiter implements RequestRateLimiterInterface
      * Reset the rate limiter for the given request.
      *
      * @param Request $request The request
-     *
-     * @return void
      */
     public function reset(Request $request): void
     {
-        $ipAddress = $request->getClientIp() ?? 'unknown';
-        $username = $this->extractUsername($request);
+        $request->getClientIp() ?? 'unknown';
+        $this->extractUsername($request);
 
         // Clean up old attempts for this IP/username
         // Note: We don't delete all attempts, just let them expire naturally
@@ -133,7 +129,7 @@ class DatabaseRateLimiter implements RequestRateLimiterInterface
     {
         $attempts = $this->repository->getAttempts($ipAddress, $username, $this->timeoutSeconds);
 
-        if (empty($attempts)) {
+        if ($attempts === []) {
             return null;
         }
 

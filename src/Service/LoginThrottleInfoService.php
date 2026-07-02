@@ -78,7 +78,7 @@ class LoginThrottleInfoService
         }
 
         if ('database' === $storage) {
-            if (null === $this->repository) {
+            if (!$this->repository instanceof LoginAttemptRepository) {
                 // Repository not available, return default values
                 return [
                     'current_attempts' => 0,
@@ -94,7 +94,7 @@ class LoginThrottleInfoService
         }
 
         // For cache storage, try to use rate limiter if available
-        $result = $this->getAttemptInfoFromCache($config, $request, $maxAttempts, $timeout);
+        $result = $this->getAttemptInfoFromCache($maxAttempts);
         $result['tracking_type'] = null !== $username && '' !== $username ? 'username' : 'ip';
 
         return $result;
@@ -129,7 +129,7 @@ class LoginThrottleInfoService
             if ($isBlocked) {
                 // Get attempts by username to calculate retry_after (pass empty string for IP to ignore it)
                 $attempts = $this->repository->getAttempts('', $username, $timeout);
-                if (!empty($attempts)) {
+                if ($attempts !== []) {
                     $oldestAttempt = end($attempts);
                     if ($oldestAttempt) {
                         $retryAfter = $oldestAttempt->getCreatedAt()->modify(sprintf('+%d seconds', $timeout));
@@ -147,7 +147,7 @@ class LoginThrottleInfoService
             if ($isBlocked) {
                 // Get attempts by IP to calculate retry_after
                 $attempts = $this->repository->getAttempts($ipAddress, null, $timeout);
-                if (!empty($attempts)) {
+                if ($attempts !== []) {
                     $oldestAttempt = end($attempts);
                     if ($oldestAttempt) {
                         $retryAfter = $oldestAttempt->getCreatedAt()->modify(sprintf('+%d seconds', $timeout));
@@ -171,14 +171,11 @@ class LoginThrottleInfoService
     /**
      * Get attempt info from cache storage (using rate limiter).
      *
-     * @param array   $config      Firewall configuration
-     * @param Request $request     The request
-     * @param int     $maxAttempts Maximum attempts
-     * @param int     $timeout     Timeout in seconds
+     * @param int $maxAttempts Maximum attempts
      *
      * @return array{current_attempts: int, max_attempts: int, remaining_attempts: int, is_blocked: bool, retry_after: \DateTimeImmutable|null, tracking_type: string}
      */
-    private function getAttemptInfoFromCache(array $config, Request $request, int $maxAttempts, int $timeout): array
+    private function getAttemptInfoFromCache(int $maxAttempts): array
     {
         // For cache storage, we can't easily get the exact count without consuming a token
         // So we return a conservative estimate
