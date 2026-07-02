@@ -13,6 +13,44 @@ This guide provides step-by-step instructions for upgrading the Login Throttle B
 
 ## Upgrade Instructions by Version
 
+### Upgrading to 2.0.0
+
+**Release Date**: 2026-07-02
+
+#### What's New
+
+- **Modern stack baseline** — Aligns with Symfony 7 LTS and PHP 8.2+.
+- **CI reliability** — Full test matrix on supported PHP/Symfony versions with enforced 100% coverage.
+- **Leaner demos** — Symfony 7 and 8 demo applications only (`demo-symfony7`, `demo-symfony8`).
+
+#### Breaking Changes
+
+- **PHP 8.2+ required** — PHP 8.1 is no longer supported.
+- **Symfony 7.0+ required** — Symfony 6.x is no longer supported. Symfony 8.x remains supported.
+- **No configuration migration** — Existing `nowo_login_throttle.yaml` and `security.yaml` settings remain valid; only platform requirements change.
+
+#### Upgrade Steps
+
+1. **Upgrade PHP and Symfony** in your application before updating the bundle:
+   ```bash
+   php -v   # Must be >= 8.2
+   composer show symfony/framework-bundle   # Must be >= 7.0
+   ```
+
+2. **Update the bundle**:
+   ```bash
+   composer require nowo-tech/login-throttle-bundle:^2.0
+   ```
+
+3. **Clear cache**:
+   ```bash
+   php bin/console cache:clear
+   ```
+
+4. **Test login throttling** on all configured firewalls.
+
+If you cannot upgrade to PHP 8.2 or Symfony 7 yet, stay on `nowo-tech/login-throttle-bundle` `^1.0`.
+
 ### Upgrading to 1.0.0
 
 **Release Date**: 2025-07-02
@@ -22,7 +60,7 @@ This guide provides step-by-step instructions for upgrading the Login Throttle B
 - **First stable release** — The bundle API is declared stable. All `0.0.x` configuration remains valid; no migration is required for existing projects.
 - **Symfony Flex recipe 1.0** — New installs via Flex get bundle registration and default configuration automatically.
 - **Quality tooling** — PHPStan, Rector, and `make release-check` for maintainers and contributors.
-- **Expanded demos** — Symfony 6, 7.4, and 8.1 demo applications with Docker setup.
+- **Expanded demos** — Symfony 7.4 and 8.1 demo applications with Docker setup.
 - **Documentation** — Clarified `watch_period` semantics, database cleanup workflow, and demo `security.yaml` setup.
 
 #### Breaking Changes
@@ -819,6 +857,7 @@ If you encounter issues during upgrade:
 
 | Bundle Version | Symfony Version | PHP Version | Features |
 |---------------|-----------------|-------------|----------|
+| 2.0.0         | 7.0, 8.0, 8.1   | 8.2, 8.3, 8.4, 8.5 | Raised minimum PHP/Symfony; removed Symfony 6 demo; 100% CI coverage; no config changes |
 | 1.0.0         | 6.0, 7.0, 8.0, 8.1 | 8.1, 8.2, 8.3, 8.4, 8.5 | Stable API; Flex recipe 1.0; PHPStan/Rector; expanded demos; documentation clarifications |
 | 0.0.15        | 6.0, 7.0, 8.0   | 8.1, 8.2, 8.3, 8.4, 8.5 | Human-readable DB limiter service names, countdown timer docs, demo countdown UI |
 | 0.0.8         | 6.0, 7.0, 8.0   | 8.1, 8.2, 8.3, 8.4, 8.5 | Single & Multiple firewalls, Cache & Database storage, i18n support, Attempt info display, 100% test coverage, Enhanced release workflows, Fixed workflow execution |

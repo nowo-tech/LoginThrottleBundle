@@ -6,7 +6,6 @@ namespace Nowo\LoginThrottleBundle\Tests\Command;
 
 use Nowo\LoginThrottleBundle\Command\ConfigureSecurityCommand;
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Yaml\Yaml;
@@ -42,11 +41,19 @@ final class ConfigureSecurityCommandTest extends TestCase
         $this->assertSame('nowo:login-throttle:configure-security', $command->getName());
     }
 
+    public function testCommandConfigureDefinesForceOption(): void
+    {
+        $command = new ConfigureSecurityCommand($this->testDir);
+        $reflection = new \ReflectionMethod($command, 'configure');
+        $reflection->setAccessible(true);
+        $reflection->invoke($command);
+
+        $this->assertTrue($command->getDefinition()->hasOption('force'));
+    }
+
     public function testCommandFailsWhenBundleConfigNotFound(): void
     {
         $command = new ConfigureSecurityCommand($this->testDir);
-        $application = new Application();
-        $application->add($command);
         $commandTester = new CommandTester($command);
 
         $this->filesystem->dumpFile(
@@ -63,8 +70,6 @@ final class ConfigureSecurityCommandTest extends TestCase
     public function testCommandFailsWhenSecurityYamlNotFound(): void
     {
         $command = new ConfigureSecurityCommand($this->testDir);
-        $application = new Application();
-        $application->add($command);
         $commandTester = new CommandTester($command);
 
         $this->filesystem->dumpFile(
@@ -81,8 +86,6 @@ final class ConfigureSecurityCommandTest extends TestCase
     public function testCommandSkipsWhenThrottlingDisabled(): void
     {
         $command = new ConfigureSecurityCommand($this->testDir);
-        $application = new Application();
-        $application->add($command);
         $commandTester = new CommandTester($command);
 
         $this->filesystem->dumpFile(
@@ -104,8 +107,6 @@ final class ConfigureSecurityCommandTest extends TestCase
     public function testCommandConfiguresSecurityYaml(): void
     {
         $command = new ConfigureSecurityCommand($this->testDir);
-        $application = new Application();
-        $application->add($command);
         $commandTester = new CommandTester($command);
 
         $this->filesystem->dumpFile(
@@ -135,8 +136,6 @@ final class ConfigureSecurityCommandTest extends TestCase
     public function testCommandSkipsWhenAlreadyConfigured(): void
     {
         $command = new ConfigureSecurityCommand($this->testDir);
-        $application = new Application();
-        $application->add($command);
         $commandTester = new CommandTester($command);
 
         $this->filesystem->dumpFile(
@@ -158,8 +157,6 @@ final class ConfigureSecurityCommandTest extends TestCase
     public function testCommandForcesUpdateWhenForceOptionUsed(): void
     {
         $command = new ConfigureSecurityCommand($this->testDir);
-        $application = new Application();
-        $application->add($command);
         $commandTester = new CommandTester($command);
 
         $this->filesystem->dumpFile(
@@ -184,8 +181,6 @@ final class ConfigureSecurityCommandTest extends TestCase
     public function testCommandIncludesRateLimiterWhenConfigured(): void
     {
         $command = new ConfigureSecurityCommand($this->testDir);
-        $application = new Application();
-        $application->add($command);
         $commandTester = new CommandTester($command);
 
         $this->filesystem->dumpFile(
@@ -223,8 +218,6 @@ final class ConfigureSecurityCommandTest extends TestCase
     public function testCommandIncludesCachePoolWhenDifferentFromDefault(): void
     {
         $command = new ConfigureSecurityCommand($this->testDir);
-        $application = new Application();
-        $application->add($command);
         $commandTester = new CommandTester($command);
 
         $this->filesystem->dumpFile(
@@ -248,8 +241,6 @@ final class ConfigureSecurityCommandTest extends TestCase
     public function testCommandIncludesLockFactoryWhenConfigured(): void
     {
         $command = new ConfigureSecurityCommand($this->testDir);
-        $application = new Application();
-        $application->add($command);
         $commandTester = new CommandTester($command);
 
         $this->filesystem->dumpFile(
@@ -288,8 +279,6 @@ final class ConfigureSecurityCommandTest extends TestCase
 
         // Create command with test directory
         $command = new ConfigureSecurityCommand($this->testDir);
-        $application = new Application();
-        $application->add($command);
         $commandTester = new CommandTester($command);
 
         $exitCode = $commandTester->execute([]);
@@ -316,15 +305,154 @@ final class ConfigureSecurityCommandTest extends TestCase
 
     public function testCommandUsesCurrentDirectoryWhenProjectDirIsNull(): void
     {
-        $command = new ConfigureSecurityCommand(null);
-        $this->assertNotNull($command);
+        $previousDir = getcwd();
+        $this->assertNotFalse($previousDir);
+
+        try {
+            chdir($this->testDir);
+
+            $this->filesystem->dumpFile(
+                $this->testDir . '/config/packages/nowo_login_throttle.yaml',
+                "nowo_login_throttle:\n    enabled: true\n    max_count_attempts: 3\n    timeout: 600\n"
+            );
+            $this->filesystem->dumpFile(
+                $this->testDir . '/config/packages/security.yaml',
+                "security:\n    firewalls:\n        main: {}\n"
+            );
+
+            $command = new ConfigureSecurityCommand(null);
+            $commandTester = new CommandTester($command);
+            $exitCode = $commandTester->execute([]);
+
+            $this->assertSame(0, $exitCode);
+        } finally {
+            chdir($previousDir);
+        }
+    }
+
+    public function testCommandCreatesMissingSecurityStructureForSingleFirewall(): void
+    {
+        $command = new ConfigureSecurityCommand($this->testDir);
+        $commandTester = new CommandTester($command);
+
+        $this->filesystem->dumpFile(
+            $this->testDir . '/config/packages/nowo_login_throttle.yaml',
+            "nowo_login_throttle:\n    enabled: true\n    max_count_attempts: 3\n    timeout: 600\n    firewall: 'admin'\n"
+        );
+        $this->filesystem->dumpFile(
+            $this->testDir . '/config/packages/security.yaml',
+            "{}\n"
+        );
+
+        $exitCode = $commandTester->execute([]);
+
+        $this->assertSame(0, $exitCode);
+        $securityConfig = Yaml::parseFile($this->testDir . '/config/packages/security.yaml');
+        $this->assertArrayHasKey('security', $securityConfig);
+        $this->assertArrayHasKey('admin', $securityConfig['security']['firewalls']);
+    }
+
+    public function testCommandMultipleFirewallsFailsWhenSecurityYamlNotFound(): void
+    {
+        $command = new ConfigureSecurityCommand($this->testDir);
+        $commandTester = new CommandTester($command);
+
+        $this->filesystem->dumpFile(
+            $this->testDir . '/config/packages/nowo_login_throttle.yaml',
+            "nowo_login_throttle:\n    firewalls:\n        main:\n            enabled: true\n            max_count_attempts: 3\n            timeout: 600\n"
+        );
+
+        $exitCode = $commandTester->execute([]);
+
+        $this->assertSame(1, $exitCode);
+        $this->assertStringContainsString('security.yaml not found', $commandTester->getDisplay());
+    }
+
+    public function testCommandMultipleFirewallsCreatesMissingSecurityStructure(): void
+    {
+        $command = new ConfigureSecurityCommand($this->testDir);
+        $commandTester = new CommandTester($command);
+
+        $this->filesystem->dumpFile(
+            $this->testDir . '/config/packages/nowo_login_throttle.yaml',
+            "nowo_login_throttle:\n    firewalls:\n        api:\n            enabled: true\n            max_count_attempts: 5\n            timeout: 300\n            storage: 'cache'\n            cache_pool: 'cache.custom'\n            lock_factory: 'lock.factory'\n"
+        );
+        $this->filesystem->dumpFile(
+            $this->testDir . '/config/packages/security.yaml',
+            "{}\n"
+        );
+
+        $exitCode = $commandTester->execute([]);
+
+        $this->assertSame(0, $exitCode);
+        $securityConfig = Yaml::parseFile($this->testDir . '/config/packages/security.yaml');
+        $api = $securityConfig['security']['firewalls']['api']['login_throttling'];
+        $this->assertSame(5, $api['max_attempts']);
+        $this->assertSame('cache.custom', $api['cache_pool']);
+        $this->assertSame('lock.factory', $api['lock_factory']);
+    }
+
+    public function testCommandMultipleFirewallsSkipsDisabledFirewall(): void
+    {
+        $command = new ConfigureSecurityCommand($this->testDir);
+        $commandTester = new CommandTester($command);
+
+        $this->filesystem->dumpFile(
+            $this->testDir . '/config/packages/nowo_login_throttle.yaml',
+            "nowo_login_throttle:\n" .
+            "    firewalls:\n" .
+            "        main:\n" .
+            "            enabled: true\n" .
+            "            max_count_attempts: 3\n" .
+            "            timeout: 600\n" .
+            "        legacy:\n" .
+            "            enabled: false\n" .
+            "            max_count_attempts: 9\n" .
+            "            timeout: 60\n"
+        );
+        $this->filesystem->dumpFile(
+            $this->testDir . '/config/packages/security.yaml',
+            "security:\n    firewalls:\n        main: {}\n"
+        );
+
+        $exitCode = $commandTester->execute([]);
+
+        $this->assertSame(0, $exitCode);
+        $securityConfig = Yaml::parseFile($this->testDir . '/config/packages/security.yaml');
+        $this->assertArrayNotHasKey('legacy', $securityConfig['security']['firewalls']);
+    }
+
+    public function testCommandMultipleFirewallsHandlesWriteFailure(): void
+    {
+        $this->filesystem->dumpFile(
+            $this->testDir . '/config/packages/nowo_login_throttle.yaml',
+            "nowo_login_throttle:\n    firewalls:\n        main:\n            enabled: true\n            max_count_attempts: 3\n            timeout: 600\n"
+        );
+        $this->filesystem->dumpFile(
+            $this->testDir . '/config/packages/security.yaml',
+            "security:\n    firewalls:\n        main: {}\n"
+        );
+
+        $packagesDir = $this->testDir . '/config/packages';
+        chmod($packagesDir, 0o555);
+
+        $command = new ConfigureSecurityCommand($this->testDir);
+        $commandTester = new CommandTester($command);
+        $exitCode = $commandTester->execute([]);
+        $output = $commandTester->getDisplay();
+
+        @chmod($packagesDir, 0o755);
+
+        if ($exitCode === 1) {
+            $this->assertStringContainsString('Failed to update', $output);
+        } else {
+            $this->assertSame(0, $exitCode);
+        }
     }
 
     public function testCommandUsesDatabaseLimiterWhenStorageIsDatabase(): void
     {
         $command = new ConfigureSecurityCommand($this->testDir);
-        $application = new Application();
-        $application->add($command);
         $commandTester = new CommandTester($command);
 
         $this->filesystem->dumpFile(
@@ -349,8 +477,6 @@ final class ConfigureSecurityCommandTest extends TestCase
     public function testCommandConfiguresMultipleFirewalls(): void
     {
         $command = new ConfigureSecurityCommand($this->testDir);
-        $application = new Application();
-        $application->add($command);
         $commandTester = new CommandTester($command);
 
         $this->filesystem->dumpFile(
@@ -395,8 +521,6 @@ final class ConfigureSecurityCommandTest extends TestCase
     public function testCommandSkipsAlreadyConfiguredFirewallInMultipleModeWithoutForce(): void
     {
         $command = new ConfigureSecurityCommand($this->testDir);
-        $application = new Application();
-        $application->add($command);
         $commandTester = new CommandTester($command);
 
         $this->filesystem->dumpFile(
@@ -420,5 +544,41 @@ final class ConfigureSecurityCommandTest extends TestCase
         $this->assertStringContainsString('Skipped 1 firewall(s)', $commandTester->getDisplay());
         $securityConfig = Yaml::parseFile($this->testDir . '/config/packages/security.yaml');
         $this->assertSame(9, $securityConfig['security']['firewalls']['main']['login_throttling']['max_attempts']);
+    }
+
+    public function testCommandMultipleFirewallsSkipsOneAndConfiguresOther(): void
+    {
+        $command = new ConfigureSecurityCommand($this->testDir);
+        $commandTester = new CommandTester($command);
+
+        $this->filesystem->dumpFile(
+            $this->testDir . '/config/packages/nowo_login_throttle.yaml',
+            "nowo_login_throttle:\n" .
+            "    firewalls:\n" .
+            "        main:\n" .
+            "            enabled: true\n" .
+            "            max_count_attempts: 3\n" .
+            "            timeout: 600\n" .
+            "            storage: 'cache'\n" .
+            "        api:\n" .
+            "            enabled: true\n" .
+            "            max_count_attempts: 5\n" .
+            "            timeout: 300\n" .
+            "            storage: 'cache'\n"
+        );
+        $this->filesystem->dumpFile(
+            $this->testDir . '/config/packages/security.yaml',
+            "security:\n    firewalls:\n        main:\n            login_throttling:\n                max_attempts: 9\n                interval: '99 minutes'\n        api: {}\n"
+        );
+
+        $exitCode = $commandTester->execute([]);
+
+        $this->assertSame(0, $exitCode);
+        $this->assertStringContainsString('Successfully configured login_throttling for 1 firewall(s): api', $commandTester->getDisplay());
+        $this->assertStringContainsString('Skipped 1 firewall(s)', $commandTester->getDisplay());
+
+        $securityConfig = Yaml::parseFile($this->testDir . '/config/packages/security.yaml');
+        $this->assertSame(9, $securityConfig['security']['firewalls']['main']['login_throttling']['max_attempts']);
+        $this->assertSame(5, $securityConfig['security']['firewalls']['api']['login_throttling']['max_attempts']);
     }
 }

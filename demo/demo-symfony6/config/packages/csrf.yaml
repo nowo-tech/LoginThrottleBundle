@@ -1,4 +1,0 @@
-# CSRF protection (Symfony 6 compatible)
-framework:
-    form:
-        csrf_protection: true

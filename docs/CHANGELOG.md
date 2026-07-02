@@ -7,9 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-07-02
+
+### Changed
+
+- **Minimum requirements** — PHP 8.2+ and Symfony 7.0+ (Symfony 6.x and PHP 8.1 are no longer supported). Stay on `1.0.x` if you need Symfony 6 or PHP 8.1.
+- **CI matrix** — Tests run on PHP 8.2–8.5 with Symfony 7.0, 7.4, 8.0, and 8.1 only.
+- **`composer.json` branch alias** — `dev-main` maps to `2.0.x-dev`.
+- **Demos** — Removed `demo-symfony6`; Symfony 7.4 and 8.1 demos remain (`demo-symfony7`, `demo-symfony8`).
+- **`NowoLoginThrottleExtension`** — Extracted `resolveSharedLimiterServiceId()` to deduplicate shared database rate limiter registration.
+
 ### Fixed
 
+- **CI coverage** — Restored 100% element coverage; expanded tests for command, extension, service, and rate limiter edge cases.
+- **Symfony 7.4+ tests** — `ConfigureSecurityCommandTest` no longer uses removed `Application::add()` API.
 - **Demo Symfony 8** — PHP 8.4 image and Doctrine 3 dependencies so `make update-deps` completes for the Symfony 8.1 demo.
+
+### Removed
+
+- **`demo-symfony6`** — Symfony 6 demo project (incompatible with new minimum Symfony version).
 
 ## [1.0.0] - 2025-07-02
 

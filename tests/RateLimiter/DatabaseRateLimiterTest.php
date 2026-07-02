@@ -294,4 +294,27 @@ final class DatabaseRateLimiterTest extends TestCase
         $this->assertNotNull($rateLimit->getRetryAfter());
         $this->assertInstanceOf(\DateTimeImmutable::class, $rateLimit->getRetryAfter());
     }
+
+    public function testConsumeWhenBlockedWithInvalidOldestAttempt(): void
+    {
+        $request = Request::create('/login', 'POST', ['_username' => 'test@example.com']);
+        $request->server->set('REMOTE_ADDR', '192.168.1.1');
+
+        $this->repository
+            ->expects($this->once())
+            ->method('isBlocked')
+            ->with('192.168.1.1', 'test@example.com', 3, 600)
+            ->willReturn(true);
+
+        $this->repository
+            ->expects($this->once())
+            ->method('getAttempts')
+            ->with('192.168.1.1', 'test@example.com', 600)
+            ->willReturn([null]);
+
+        $rateLimit = $this->rateLimiter->consume($request);
+
+        $this->assertInstanceOf(RateLimit::class, $rateLimit);
+        $this->assertNotNull($rateLimit->getRetryAfter());
+    }
 }
