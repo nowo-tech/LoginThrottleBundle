@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Demo Symfony 8** — PHP 8.4 image and Doctrine 3 dependencies so `make update-deps` completes for the Symfony 8.1 demo.
+
 ## [1.0.0] - 2025-07-02
 
 ### Added
@@ -30,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`Configuration` info strings** — Clarified `watch_period` semantics in the configuration tree.
 - **Symfony compatibility docs** — README badges and requirements updated for Symfony 6.0+, 7.4+, 8.0+, and 8.1+.
 - **Rector code quality pass** — Applied Rector rules across source and tests; removed unused `watchPeriodSeconds` property from internal `DatabaseRateLimiter` (factory DI signature unchanged).
+- **Demo path-repo constraint** — Demos use `"nowo-tech/login-throttle-bundle": "@dev"` with the mounted path repository during local development.
 
 ### Fixed
 
