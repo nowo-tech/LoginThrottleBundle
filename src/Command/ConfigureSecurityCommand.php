@@ -217,7 +217,7 @@ class ConfigureSecurityCommand extends Command
             }
 
             $io->table(['Setting', 'Value'], $tableData);
-        // @codeCoverageIgnoreStart
+            // @codeCoverageIgnoreStart
         } catch (\Exception $e) {
             $io->error(sprintf('Failed to update security.yaml: %s', $e->getMessage()));
 
@@ -361,7 +361,7 @@ class ConfigureSecurityCommand extends Command
             if ($skippedFirewalls !== []) {
                 $io->warning(sprintf('Skipped %d firewall(s) (already configured): %s. Use --force to update.', count($skippedFirewalls), implode(', ', $skippedFirewalls)));
             }
-        // @codeCoverageIgnoreStart
+            // @codeCoverageIgnoreStart
         } catch (\Exception $e) {
             $io->error(sprintf('Failed to update security.yaml: %s', $e->getMessage()));
 
