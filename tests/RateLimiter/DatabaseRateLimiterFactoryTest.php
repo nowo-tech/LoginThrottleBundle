@@ -27,8 +27,7 @@ final class DatabaseRateLimiterFactoryTest extends TestCase
         $this->factory = new DatabaseRateLimiterFactory(
             $this->repository,
             3,    // maxAttempts
-            600,  // timeoutSeconds
-            3600  // watchPeriodSeconds
+            600   // timeoutSeconds
         );
     }
 
@@ -51,8 +50,8 @@ final class DatabaseRateLimiterFactoryTest extends TestCase
 
     public function testFactoryWithDifferentConfigurations(): void
     {
-        $factory1 = new DatabaseRateLimiterFactory($this->repository, 5, 300, 1800);
-        $factory2 = new DatabaseRateLimiterFactory($this->repository, 10, 1200, 7200);
+        $factory1 = new DatabaseRateLimiterFactory($this->repository, 5, 300);
+        $factory2 = new DatabaseRateLimiterFactory($this->repository, 10, 1200);
 
         $rateLimiter1 = $factory1->create();
         $rateLimiter2 = $factory2->create();

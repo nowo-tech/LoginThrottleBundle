@@ -51,8 +51,6 @@ class NowoLoginThrottleBundle extends Bundle
      *
      * This method is called during the kernel boot process. It checks if the
      * bundle configuration file exists, and if not, generates a default one.
-     *
-     * @return void
      */
     public function boot(): void
     {

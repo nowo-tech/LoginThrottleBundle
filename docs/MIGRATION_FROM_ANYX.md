@@ -443,7 +443,7 @@ If you encounter issues during migration:
 1. Check the [Troubleshooting](#troubleshooting) section
 2. Review the [FAQ](#faq)
 3. Check the [documentation](../README.md)
-4. Open an issue on [GitHub](https://github.com/nowo-tech/login-throttle-bundle/issues)
+4. Open an issue on [GitHub](https://github.com/nowo-tech/LoginThrottleBundle/issues)
 
 ## Summary
 

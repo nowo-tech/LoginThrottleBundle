@@ -29,8 +29,7 @@ final class DatabaseRateLimiterTest extends TestCase
         $this->rateLimiter = new DatabaseRateLimiter(
             $this->repository,
             3,    // maxAttempts
-            600,  // timeoutSeconds
-            3600  // watchPeriodSeconds
+            600   // timeoutSeconds
         );
     }
 
@@ -75,7 +74,7 @@ final class DatabaseRateLimiterTest extends TestCase
             ->willReturn(true);
 
         $oldestAttempt = new LoginAttempt('192.168.1.1', 'test@example.com');
-        $retryAfter = new \DateTimeImmutable('+10 minutes');
+        new \DateTimeImmutable('+10 minutes');
 
         $this->repository
             ->expects($this->once())
@@ -195,28 +194,21 @@ final class DatabaseRateLimiterTest extends TestCase
         $this->repository
             ->expects($this->exactly(2))
             ->method('isBlocked')
-            ->willReturnCallback(function ($ip, $username, $maxAttempts, $timeout) {
-                if ($ip === '192.168.1.1' && $username === 'user@example.com' && $maxAttempts === 3 && $timeout === 600) {
-                    return false;
-                }
-                if ($ip === '192.168.1.1' && $username === 'email@example.com' && $maxAttempts === 3 && $timeout === 600) {
-                    return false;
-                }
-
+            ->willReturnCallback(function ($ip, $username, $maxAttempts, $timeout): bool {
                 return false;
             });
 
         $this->repository
             ->expects($this->exactly(2))
             ->method('recordAttempt')
-            ->willReturnCallback(function ($ip, $username) {
+            ->willReturnCallback(function ($ip, $username): LoginAttempt {
                 return new LoginAttempt($ip, $username);
             });
 
         $this->repository
             ->expects($this->exactly(2))
             ->method('countAttempts')
-            ->willReturnCallback(function ($ip, $username, $timeout) {
+            ->willReturnCallback(function ($ip, $username, $timeout): int {
                 if ($ip === '192.168.1.1' && $username === 'user@example.com' && $timeout === 600) {
                     return 1;
                 }

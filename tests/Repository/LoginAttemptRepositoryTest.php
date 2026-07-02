@@ -84,7 +84,7 @@ final class LoginAttemptRepositoryTest extends TestCase
         $this->queryBuilder
             ->expects($this->once())
             ->method('getQuery')
-            ->willReturnCallback(function () use ($query) {
+            ->willReturnCallback(function () use ($query): MockObject {
                 return $query;
             });
 
@@ -128,7 +128,7 @@ final class LoginAttemptRepositoryTest extends TestCase
         $this->queryBuilder
             ->expects($this->once())
             ->method('getQuery')
-            ->willReturnCallback(function () use ($query) {
+            ->willReturnCallback(function () use ($query): MockObject {
                 return $query;
             });
 
@@ -172,7 +172,7 @@ final class LoginAttemptRepositoryTest extends TestCase
         $this->queryBuilder
             ->expects($this->once())
             ->method('getQuery')
-            ->willReturnCallback(function () use ($query) {
+            ->willReturnCallback(function () use ($query): MockObject {
                 return $query;
             });
 
@@ -216,7 +216,7 @@ final class LoginAttemptRepositoryTest extends TestCase
         $this->queryBuilder
             ->expects($this->once())
             ->method('getQuery')
-            ->willReturnCallback(function () use ($query) {
+            ->willReturnCallback(function () use ($query): MockObject {
                 return $query;
             });
 

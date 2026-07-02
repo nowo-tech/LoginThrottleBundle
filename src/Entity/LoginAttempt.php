@@ -106,8 +106,6 @@ class LoginAttempt
      * Set the blocked status.
      *
      * @param bool $blocked The blocked status
-     *
-     * @return self
      */
     public function setBlocked(bool $blocked): self
     {

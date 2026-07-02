@@ -1,12 +1,11 @@
 parameters:
   level: 8
-  memoryLimit: 512M
   paths:
     - src
-    - tests
   excludePaths:
     - demo/*
 
 includes:
+  - phpstan-baseline.neon
   - vendor/phpstan/phpstan-symfony/extension.neon
   - vendor/phpstan/phpstan-phpunit/extension.neon

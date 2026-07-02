@@ -16,6 +16,10 @@ services:
     environment:
       - COMPOSER_ALLOW_SUPERUSER=1
       - DATABASE_URL=mysql://${MYSQL_USER:-demo}:${MYSQL_PASSWORD:-demo}@mysql:3306/${MYSQL_DATABASE:-login_throttle_demo}?serverVersion=8.0
+    # Mitigate Docker/WSL DNS failures resolving repo.packagist.org (composer curl error 6).
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     command: php-fpm
     depends_on:
       mysql:

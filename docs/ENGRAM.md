@@ -1,5 +1,7 @@
 # Engram
 
+Repository-local **product spec** and **`REQ-*`** traceability (Makefiles, demos) are described in [Spec-driven development](SPEC-DRIVEN-DEVELOPMENT.md).
+
 This repository is prepared to work with Engram MCP in Cursor.
 
 ## MCP configuration
