@@ -1291,7 +1291,7 @@
             "dist": {
                 "type": "path",
                 "url": "/var/login-throttle-bundle",
-                "reference": "54d91dbd779a0034c3aadfd1297377b8d6226f88"
+                "reference": "24e59f018cf7dc9770034ff8fd9f720389004e42"
             },
             "require": {
                 "doctrine/doctrine-bundle": "^2.10 || ^3.0",
