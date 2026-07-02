@@ -450,6 +450,72 @@ final class LoginThrottleInfoServiceTest extends TestCase
         $this->service->getAttemptInfo('main', $request);
     }
 
+    public function testGetAttemptInfoWithDatabaseStorageWithoutRepository(): void
+    {
+        $service = new LoginThrottleInfoService();
+        $service->setFirewallsConfig([
+            'main' => [
+                'max_attempts' => 5,
+                'timeout' => 600,
+                'storage' => 'database',
+            ],
+        ]);
+
+        $request = Request::create('/login', 'POST', ['_username' => 'test@example.com']);
+        $request->server->set('REMOTE_ADDR', '192.168.1.1');
+
+        $result = $service->getAttemptInfo('main', $request);
+
+        $this->assertSame(0, $result['current_attempts']);
+        $this->assertSame(5, $result['max_attempts']);
+        $this->assertSame(5, $result['remaining_attempts']);
+        $this->assertFalse($result['is_blocked']);
+        $this->assertNull($result['retry_after']);
+        $this->assertSame('username', $result['tracking_type']);
+    }
+
+    public function testGetTimeoutSecondsWithExtendedUnits(): void
+    {
+        $config = [
+            'main' => [
+                'max_attempts' => 3,
+                'interval' => '2 hours',
+                'storage' => 'database',
+            ],
+        ];
+        $this->service->setFirewallsConfig($config);
+
+        $request = Request::create('/login', 'POST');
+        $request->server->set('REMOTE_ADDR', '192.168.1.1');
+
+        $intervals = [
+            '2 hours' => 7200,
+            '1 day' => 86400,
+            '1 week' => 604800,
+            '1 month' => 2592000,
+            '1 year' => 31536000,
+        ];
+
+        $callCount = 0;
+        $this->repository
+            ->expects($this->exactly(count($intervals)))
+            ->method('countAttemptsByIp')
+            ->willReturnCallback(function ($ip, $seconds) use (&$callCount, $intervals): int {
+                $expected = array_values($intervals)[$callCount];
+                $this->assertSame($expected, $seconds);
+                ++$callCount;
+
+                return 0;
+            });
+
+        foreach ($intervals as $interval => $expectedSeconds) {
+            $config['main']['interval'] = $interval;
+            unset($config['main']['timeout']);
+            $this->service->setFirewallsConfig($config);
+            $this->service->getAttemptInfo('main', $request);
+        }
+    }
+
     public function testGetAttemptInfoWithCacheStorageNoUsername(): void
     {
         $config = [

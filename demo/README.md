@@ -1,6 +1,6 @@
 # Login Throttle Bundle - Demo
 
-This directory contains demo projects for Symfony 6.0, 7.0, and 8.0 demonstrating the usage of the Login Throttle Bundle.
+This directory contains demo projects for Symfony 7 and 8 demonstrating the usage of the Login Throttle Bundle.
 
 ## Features
 
@@ -24,16 +24,15 @@ This directory contains demo projects for Symfony 6.0, 7.0, and 8.0 demonstratin
 ## Requirements
 
 - Docker and Docker Compose
-- Or PHP 8.1+ (for Symfony 6), PHP 8.2+ (for Symfony 7/8) and Composer (for local development)
+- Or PHP 8.2+ and Composer (for local development)
 - MySQL 8.0 (included in Docker Compose)
 
 ## Available Demo Versions
 
-Three demo projects are available, each demonstrating the bundle with different Symfony versions:
+Two demo projects are available:
 
-- **Symfony 6.0 Demo**: PHP 8.1+, Port 8000 (http://localhost:8000)
-- **Symfony 7.0 Demo**: PHP 8.2+, Port 8001 (http://localhost:8001)
-- **Symfony 8.0 Demo**: PHP 8.2+, Port 8002 (http://localhost:8002)
+- **Symfony 7.4 Demo**: PHP 8.2+, Port 8001 (http://localhost:8001)
+- **Symfony 8.1 Demo**: PHP 8.4+, Port 8002 (http://localhost:8002)
 
 ## Quick Start with Docker
 
@@ -41,7 +40,6 @@ The easiest way to start a demo is using the Makefile:
 
 ```bash
 cd demo
-make up-symfony6   # Start Symfony 6.0 demo (port 8000)
 make up-symfony7   # Start Symfony 7.0 demo (port 8001)
 make up-symfony8   # Start Symfony 8.0 demo (port 8002)
 ```
@@ -75,7 +73,7 @@ docker-compose exec php composer database
 # Access at: http://localhost:8001 (port configured in .env file)
 ```
 
-Same process works for `demo-symfony6` (port 8000) and `demo-symfony8` (port 8002).
+Same process works for `demo-symfony8` (port 8002).
 
 ## Demo Users
 
@@ -89,7 +87,7 @@ The demo includes the following test users:
 Each demo includes **3 different firewalls** with different throttling configurations:
 
 ### 1. Main Firewall (Standard Web Login)
-- **URL**: http://localhost:8000/login (S6), http://localhost:8001/login (S7), http://localhost:8002/login (S8)
+- **URL**: http://localhost:8001/login (S7), http://localhost:8002/login (S8)
 - **Configuration**: 3 attempts, 10 minutes timeout
 - **Storage**: Database
 - **Use Case**: Standard web application login
@@ -97,7 +95,7 @@ Each demo includes **3 different firewalls** with different throttling configura
 **Test**: Try 3 wrong passwords → blocked for 10 minutes
 
 ### 2. API Firewall (API Authentication)
-- **URL**: http://localhost:8000/api/login-page (S6), http://localhost:8001/api/login-page (S7), http://localhost:8002/api/login-page (S8)
+- **URL**: http://localhost:8001/api/login-page (S7), http://localhost:8002/api/login-page (S8)
 - **Configuration**: 5 attempts, 5 minutes timeout
 - **Storage**: Database
 - **Use Case**: API endpoints (more lenient for API usage)
@@ -105,7 +103,7 @@ Each demo includes **3 different firewalls** with different throttling configura
 **Test**: Try 5 wrong passwords → blocked for 5 minutes
 
 ### 3. Admin Firewall (Admin Panel)
-- **URL**: http://localhost:8000/admin/login (S6), http://localhost:8001/admin/login (S7), http://localhost:8002/admin/login (S8)
+- **URL**: http://localhost:8001/admin/login (S7), http://localhost:8002/admin/login (S8)
 - **Configuration**: 3 attempts, 30 minutes timeout
 - **Storage**: Database
 - **Use Case**: Admin panel (very strict security)
@@ -197,17 +195,6 @@ symfony server:start
 
 From the `demo/` directory:
 
-### Symfony 6.0 Commands
-```bash
-make up-symfony6        # Start Symfony 6.0 demo containers (port 8000)
-make down-symfony6      # Stop Symfony 6.0 demo containers
-make install-symfony6   # Install dependencies for Symfony 6.0
-make database-symfony6  # Setup database for Symfony 6.0
-make shell-symfony6     # Open shell in Symfony 6.0 PHP container
-make logs-symfony6      # Show Symfony 6.0 container logs
-make test-symfony6      # Run tests for Symfony 6.0 demo
-```
-
 ### Symfony 7.0 Commands
 ```bash
 make up-symfony7        # Start Symfony 7.0 demo containers (port 8001)
@@ -241,7 +228,7 @@ make help               # Show all available commands
 Each demo follows the same structure:
 
 ```
-demo-symfony6/  (or demo-symfony7/ or demo-symfony8/)
+demo-symfony7/  (or demo-symfony8/)
 ├── config/              # Symfony configuration
 │   ├── packages/
 │   │   ├── nowo_login_throttle.yaml  # Bundle configuration
@@ -264,10 +251,6 @@ demo-symfony6/  (or demo-symfony7/ or demo-symfony8/)
 If the default ports are already in use, change them in `.env`:
 
 ```bash
-# For Symfony 6.0 demo
-cd demo-symfony6
-PORT=8000  # Default: 8000
-
 # For Symfony 7.0 demo
 cd demo-symfony7
 PORT=8001  # Default: 8001
@@ -319,4 +302,3 @@ For more information about the Login Throttle Bundle, see:
 - [Bundle README](../../README.md)
 - [Configuration Guide](../../docs/CONFIGURATION.md)
 - [Service Examples](../../docs/SERVICES.md)
-

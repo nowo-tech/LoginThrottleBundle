@@ -164,9 +164,11 @@ class Configuration implements ConfigurationInterface
      */
     public function generateConfigFile(string $configPath): void
     {
+        // @codeCoverageIgnoreStart
         if (!class_exists(Yaml::class)) {
             throw new RuntimeException('Missing symfony/yaml component. Install it with: composer require symfony/yaml');
         }
+        // @codeCoverageIgnoreEnd
 
         $config = [
             self::ALIAS => [

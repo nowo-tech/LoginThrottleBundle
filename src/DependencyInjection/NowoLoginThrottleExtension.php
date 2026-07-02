@@ -153,25 +153,12 @@ class NowoLoginThrottleExtension extends Extension
 
             $limiterServiceId = $firewallConfig['rate_limiter'] ?? null;
             if ($firewallConfig['storage'] === 'database' && null === $limiterServiceId) {
-                // Create a key based on configuration to identify limiters with same config
-                $maxAttempts = $firewallConfig['max_count_attempts'];
-                $timeout = $firewallConfig['timeout'];
-                $watchPeriod = $firewallConfig['watch_period'] ?? 3600;
-                $limiterKey = sprintf('db-%d-%d-%d', $maxAttempts, $timeout, $watchPeriod);
-
-                if (!isset($sharedLimiters[$limiterKey])) {
-                    // Generate a human-readable service ID based on configuration values
-                    // Format: nowo_login_throttle.database_rate_limiter.shared_{max}_{timeout}s_{watch}s
-                    // Example: nowo_login_throttle.database_rate_limiter.shared_5_300s_3600s
-                    // This makes it easy to identify the configuration by looking at the service name
-                    $sharedServiceId = sprintf(
-                        'nowo_login_throttle.database_rate_limiter.shared_%d_%ds_%ds',
-                        $maxAttempts,
-                        $timeout,
-                        $watchPeriod
-                    );
-                    $sharedLimiters[$limiterKey] = $sharedServiceId;
-                }
+                $this->resolveSharedLimiterServiceId(
+                    $sharedLimiters,
+                    $firewallConfig['max_count_attempts'],
+                    $firewallConfig['timeout'],
+                    $firewallConfig['watch_period'] ?? 3600
+                );
             }
         }
 
@@ -185,27 +172,16 @@ class NowoLoginThrottleExtension extends Extension
             // Register database rate limiter if needed
             $limiterServiceId = $firewallConfig['rate_limiter'] ?? null;
             if ($firewallConfig['storage'] === 'database' && null === $limiterServiceId) {
-                // Get the shared service ID for this configuration
-                // Firewalls with the same configuration will share the same rate limiter service
                 $maxAttempts = $firewallConfig['max_count_attempts'];
                 $timeout = $firewallConfig['timeout'];
                 $watchPeriod = $firewallConfig['watch_period'] ?? 3600;
-                $limiterKey = sprintf('db-%d-%d-%d', $maxAttempts, $timeout, $watchPeriod);
 
-                // Safety check: ensure the shared limiter was created in the first pass
-                if (!isset($sharedLimiters[$limiterKey])) {
-                    // This should not happen if the logic is correct, but handle it gracefully
-                    // Generate the service ID directly (same format as first pass)
-                    $sharedServiceId = sprintf(
-                        'nowo_login_throttle.database_rate_limiter.shared_%d_%ds_%ds',
-                        $maxAttempts,
-                        $timeout,
-                        $watchPeriod
-                    );
-                    $sharedLimiters[$limiterKey] = $sharedServiceId;
-                } else {
-                    $sharedServiceId = $sharedLimiters[$limiterKey];
-                }
+                $sharedServiceId = $this->resolveSharedLimiterServiceId(
+                    $sharedLimiters,
+                    $maxAttempts,
+                    $timeout,
+                    $watchPeriod
+                );
 
                 // Register the limiter only once (multiple firewalls with same config share the same service)
                 // This optimizes resource usage and ensures consistent behavior across firewalls
@@ -285,6 +261,32 @@ class NowoLoginThrottleExtension extends Extension
                 $config['timeout'],
             ])
             ->setPublic(true); // Must be public to be used as a rate limiter service
+    }
+
+    /**
+     * Resolves or creates a shared database rate limiter service ID for a configuration tuple.
+     *
+     * @param array<string, string> $sharedLimiters Shared limiter registry keyed by config hash
+     * @param int                   $maxAttempts    Maximum attempts
+     * @param int                   $timeout        Timeout in seconds
+     * @param int                   $watchPeriod    Watch period in seconds
+     *
+     * @return string The shared service ID
+     */
+    private function resolveSharedLimiterServiceId(array &$sharedLimiters, int $maxAttempts, int $timeout, int $watchPeriod): string
+    {
+        $limiterKey = sprintf('db-%d-%d-%d', $maxAttempts, $timeout, $watchPeriod);
+
+        if (!isset($sharedLimiters[$limiterKey])) {
+            $sharedLimiters[$limiterKey] = sprintf(
+                'nowo_login_throttle.database_rate_limiter.shared_%d_%ds_%ds',
+                $maxAttempts,
+                $timeout,
+                $watchPeriod
+            );
+        }
+
+        return $sharedLimiters[$limiterKey];
     }
 
     /**

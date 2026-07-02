@@ -21,7 +21,7 @@ use Symfony\Component\HttpKernel\Bundle\Bundle;
  * - Pre-configured settings with sensible defaults
  * - Default `nowo_login_throttle.yaml` generated on boot when missing
  * - Console command to sync `login_throttling` into `security.yaml` (`nowo:login-throttle:configure-security`)
- * - Compatible with Symfony 6.0, 7.0, and 8.0
+ * - Compatible with Symfony 7.0 and 8.0
  *
  * @author Héctor Franco Aceituno <hectorfranco@nowo.tech>
  * @copyright 2025 Nowo.tech
