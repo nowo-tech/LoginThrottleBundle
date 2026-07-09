@@ -13,6 +13,33 @@ This guide provides step-by-step instructions for upgrading the Login Throttle B
 
 ## Upgrade Instructions by Version
 
+### Upgrading to 2.1.0
+
+**Release Date**: 2026-07-09
+
+#### What's New
+
+- **GitHub Spec Kit** for maintainers — baseline spec under `specs/001-baseline/` and workflow docs in [`SPEC-KIT.md`](SPEC-KIT.md).
+- **Demo Docker fixes** — `intl` extension in Symfony 7 and 8 demo images.
+
+#### Breaking Changes
+
+None — No changes to bundle configuration, public API, or runtime requirements.
+
+#### Upgrade Steps
+
+1. **Update the bundle**:
+   ```bash
+   composer update nowo-tech/login-throttle-bundle
+   ```
+
+2. **Clear cache**:
+   ```bash
+   php bin/console cache:clear
+   ```
+
+3. **Test login throttling** on all configured firewalls.
+
 ### Upgrading to 2.0.0
 
 **Release Date**: 2026-07-02
@@ -857,6 +884,7 @@ If you encounter issues during upgrade:
 
 | Bundle Version | Symfony Version | PHP Version | Features |
 |---------------|-----------------|-------------|----------|
+| 2.1.0         | 7.0, 8.0, 8.1   | 8.2, 8.3, 8.4, 8.5 | Spec Kit baseline; demo Docker intl fix; no integrator changes |
 | 2.0.0         | 7.0, 8.0, 8.1   | 8.2, 8.3, 8.4, 8.5 | Raised minimum PHP/Symfony; removed Symfony 6 demo; 100% CI coverage; no config changes |
 | 1.0.0         | 6.0, 7.0, 8.0, 8.1 | 8.1, 8.2, 8.3, 8.4, 8.5 | Stable API; Flex recipe 1.0; PHPStan/Rector; expanded demos; documentation clarifications |
 | 0.0.15        | 6.0, 7.0, 8.0   | 8.1, 8.2, 8.3, 8.4, 8.5 | Human-readable DB limiter service names, countdown timer docs, demo countdown UI |

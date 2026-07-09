@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-07-09
+
+### Added
+
+- **GitHub Spec Kit** — `.specify/` scaffolding, Cursor Agent skills (`.cursor/skills/speckit-*`), and maintainer guide [`docs/SPEC-KIT.md`](SPEC-KIT.md).
+- **Baseline specification** — `specs/001-baseline/` with `spec.md` and `code-inventory.md` mapping 100% of production code under `src/`.
+
+### Changed
+
+- **Spec-driven development docs** — [`docs/SPEC-DRIVEN-DEVELOPMENT.md`](SPEC-DRIVEN-DEVELOPMENT.md) documents the three-layer model (Spec Kit baseline, product behavior, traceability).
+- **README** — Link to Spec Kit guide in the documentation index.
+
+### Fixed
+
+- **Demo Docker images (Symfony 7 & 8)** — Install `intl` PHP extension required by Symfony in Alpine containers.
+
 ## [2.0.0] - 2026-07-02
 
 ### Changed

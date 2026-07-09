@@ -5,10 +5,11 @@ RUN apk add --no-cache \
     git \
     unzip \
     libzip-dev \
+    icu-dev \
     zip
 
 # Install PHP extensions
-RUN docker-php-ext-install -j$(nproc) zip pdo pdo_mysql
+RUN docker-php-ext-install -j$(nproc) zip intl pdo pdo_mysql
 
 # Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
