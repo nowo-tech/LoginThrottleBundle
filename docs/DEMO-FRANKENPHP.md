@@ -1,6 +1,6 @@
 # Demo applications and FrankenPHP
 
-The **Login Throttle Bundle** demo applications (`demo-symfony7`, `demo-symfony8`) currently run with **PHP-FPM** in Docker, not FrankenPHP.
+The **Login Throttle Bundle** demo application (`demo-symfony8`) currently runs with **PHP-FPM** in Docker, not FrankenPHP.
 
 If you want to run the demos (or your own app using this bundle) with **FrankenPHP** (Caddy + PHP, including worker mode for production), use the same approach as other Nowo bundles that ship FrankenPHP-based demos:
 
