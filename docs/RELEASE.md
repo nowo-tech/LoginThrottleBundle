@@ -31,3 +31,5 @@ Expected steps:
 - Verify Packagist metadata is updated.
 - Confirm the release notes contain tag message and changelog context.
 - Validate installation in a clean Symfony app.
+
+After creating the release commit and tag, run `make check-no-cursor-coauthor` again **before** `git push` (REQ-GIT-001). The release commit itself is not covered by an earlier `release-check` run.

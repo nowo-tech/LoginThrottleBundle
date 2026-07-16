@@ -13,6 +13,38 @@ This guide provides step-by-step instructions for upgrading the Login Throttle B
 
 ## Upgrade Instructions by Version
 
+### Upgrading to 2.2.0
+
+**Release Date**: 2026-07-16
+
+#### What's New
+
+- **Maintainer git hygiene** — CI and hooks enforce no Cursor co-author trailers ([`GITHUB_CI.md`](GITHUB_CI.md)).
+- **Single demo** — Only `demo-symfony8` ships in the repository.
+- **Code of Conduct** — Community standards in `CODE_OF_CONDUCT.md`.
+
+#### Breaking Changes
+
+None for application integrators — No changes to bundle configuration, public API, or runtime requirements (PHP 8.2+, Symfony 7.0+).
+
+Contributors/maintainers cloning this repo should run `make setup-hooks` so local commits respect REQ-GIT-001.
+
+#### Upgrade Steps
+
+1. **Update the bundle**:
+   ```bash
+   composer update nowo-tech/login-throttle-bundle
+   ```
+
+2. **Clear cache**:
+   ```bash
+   php bin/console cache:clear
+   ```
+
+3. **Test login throttling** on all configured firewalls.
+
+If you previously used `demo/demo-symfony7` from this repository, switch to `demo/demo-symfony8`.
+
 ### Upgrading to 2.1.0
 
 **Release Date**: 2026-07-09
@@ -884,6 +916,7 @@ If you encounter issues during upgrade:
 
 | Bundle Version | Symfony Version | PHP Version | Features |
 |---------------|-----------------|-------------|----------|
+| 2.2.0         | 7.0, 8.0, 8.1   | 8.2, 8.3, 8.4, 8.5 | Single Symfony 8 demo; REQ-GIT-001 / GITHUB_CI; Code of Conduct; no integrator API changes |
 | 2.1.0         | 7.0, 8.0, 8.1   | 8.2, 8.3, 8.4, 8.5 | Spec Kit baseline; demo Docker intl fix; no integrator changes |
 | 2.0.0         | 7.0, 8.0, 8.1   | 8.2, 8.3, 8.4, 8.5 | Raised minimum PHP/Symfony; removed Symfony 6 demo; 100% CI coverage; no config changes |
 | 1.0.0         | 6.0, 7.0, 8.0, 8.1 | 8.1, 8.2, 8.3, 8.4, 8.5 | Stable API; Flex recipe 1.0; PHPStan/Rector; expanded demos; documentation clarifications |

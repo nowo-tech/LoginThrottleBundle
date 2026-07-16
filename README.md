@@ -347,10 +347,10 @@ A complete demo project is included in the `demo/` directory demonstrating:
 
 ```bash
 cd demo
-make up-symfony7
+make up-symfony8
 ```
 
-Access the demo at: http://localhost:8001
+Access the demo at: http://localhost:8002
 
 See [demo/README.md](demo/README.md) for detailed instructions.
 
@@ -358,10 +358,13 @@ FrankenPHP worker mode: Supported and documented for demos in `docs/DEMO-FRANKEN
 
 ## Documentation
 
+
+- [GitHub Actions CI requirements](docs/GITHUB_CI.md)
 - [Installation](docs/INSTALLATION.md)
 - [Configuration](docs/CONFIGURATION.md)
 - [Usage](docs/USAGE.md)
 - [Contributing](docs/CONTRIBUTING.md)
+- [Code of Conduct](CODE_OF_CONDUCT.md)
 - [Changelog](docs/CHANGELOG.md)
 - [Upgrading](docs/UPGRADING.md)
 - [Release](docs/RELEASE.md)

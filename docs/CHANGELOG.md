@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-07-16
+
+### Added
+
+- **Code of Conduct** — [`CODE_OF_CONDUCT.md`](../CODE_OF_CONDUCT.md) (Contributor Covenant).
+- **Git hygiene (REQ-GIT-001)** — `.scripts/check-no-cursor-coauthor.sh`, commit-msg hook, Cursor rule, and CI job `git-hygiene` so history never includes Cursor co-author trailers.
+- **CI documentation** — [`docs/GITHUB_CI.md`](GITHUB_CI.md) describes REQ-GIT-001 adoption and verification.
+
+### Changed
+
+- **Demos** — Only `demo-symfony8` remains; Makefile/README updated accordingly.
+- **Release checklist** — [`docs/RELEASE.md`](RELEASE.md) reminds maintainers to re-run `make check-no-cursor-coauthor` before push.
+- **README / CONTRIBUTING** — Links to Code of Conduct and GitHub CI docs.
+
+### Removed
+
+- **`demo-symfony7`** — Symfony 7 demo dropped; use `demo-symfony8` for local demos (bundle still supports Symfony 7.0+ at runtime).
+
 ## [2.1.0] - 2026-07-09
 
 ### Added
