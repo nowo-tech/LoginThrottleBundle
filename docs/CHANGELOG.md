@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-07-22
+
+### Changed
+
+- **Translation domain (REQ-I18N-003)** — Domain and resource files renamed from `nowo_login_throttle` to `NowoLoginThrottleBundle` (`src/Resources/translations/NowoLoginThrottleBundle.{locale}.yaml`). Message keys still use the `nowo_login_throttle.*` prefix. Bundle DI alias / config root `nowo_login_throttle` is unchanged.
+- **`composer.json` branch alias** — `dev-main` maps to `3.0.x-dev`.
+- **Documentation** — [`TRANSLATIONS.md`](TRANSLATIONS.md), [`UPGRADING.md`](UPGRADING.md), demo templates, and baseline inventory updated for the new domain.
+
+### Breaking Changes
+
+- Applications that call `|trans(..., 'nowo_login_throttle')` or `->trans(..., domain: 'nowo_login_throttle')` must switch the domain to `'NowoLoginThrottleBundle'`.
+- Application overrides must be renamed from `translations/nowo_login_throttle.{locale}.yaml` to `translations/NowoLoginThrottleBundle.{locale}.yaml`.
+
 ## [2.2.0] - 2026-07-16
 
 ### Added
@@ -176,7 +189,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fixed `testConsumeWithDifferentUsernameFields` to allow multiple `isBlocked()` calls
 
 - **Demo Translation Files**: Fixed translation file structure in demo
-  - Created domain-specific translation files (`nowo_login_throttle.es.yaml`, `nowo_login_throttle.en.yaml`)
+  - Created domain-specific translation files (`NowoLoginThrottleBundle.es.yaml`, `NowoLoginThrottleBundle.en.yaml`)
   - Corrected YAML structure to match bundle translation format
   - Translations now load correctly in demo application
 
@@ -189,7 +202,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **Translation Files**: Improved translation file organization
-  - Moved translation files from `messages.*.yaml` to domain-specific `nowo_login_throttle.*.yaml` format
+  - Moved translation files from `messages.*.yaml` to domain-specific `NowoLoginThrottleBundle.*.yaml` format
   - Better alignment with Symfony translation best practices
 
 ## [0.0.11] - 2025-01-15
@@ -366,7 +379,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Better error messages when changelog entries are not found
 - **Internationalization (i18n) Support**:
   - Added translation files for Spanish (`messages.es.yaml`) and English (`messages.en.yaml`)
-  - Translation keys under `nowo_login_throttle` domain for error and info messages
+  - Translation keys under `NowoLoginThrottleBundle` domain for error and info messages
   - Support for displaying login attempt information in multiple languages
   - `symfony/translation` added as suggested dependency for i18n support
 

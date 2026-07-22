@@ -11,7 +11,62 @@ This guide provides step-by-step instructions for upgrading the Login Throttle B
 5. **Clear cache**: Run `php bin/console cache:clear`
 6. **Test your application**: Verify that login throttling functionality works as expected
 
+## REQ-I18N-003 — Translation domain
+
+The translation domain is now `NowoLoginThrottleBundle` (files: `src/Resources/translations/NowoLoginThrottleBundle.{locale}.yaml`).
+
+- Update `|trans(..., 'nowo_login_throttle')` / `->trans(..., 'nowo_login_throttle')` to use `'NowoLoginThrottleBundle'`.
+- Rename application overrides from `translations/nowo_login_throttle.{locale}.yaml` to `translations/NowoLoginThrottleBundle.{locale}.yaml`.
+- Message keys still use the `nowo_login_throttle.*` prefix inside those files.
+- DI config root / alias `nowo_login_throttle` is unchanged.
+
 ## Upgrade Instructions by Version
+
+### Upgrading to 3.0.0
+
+**Release Date**: 2026-07-22
+
+#### What's New
+
+- **Standard Symfony translation domain** — Resources and Twig/PHP domain use `NowoLoginThrottleBundle` (REQ-I18N-003). See [`TRANSLATIONS.md`](TRANSLATIONS.md).
+
+#### Breaking Changes
+
+- **Translation domain** — `nowo_login_throttle` → `NowoLoginThrottleBundle` (file names and `trans()` domain argument).
+- Message keys (`nowo_login_throttle.error.*`, etc.) and DI config alias `nowo_login_throttle` are **unchanged**.
+
+#### Upgrade Steps
+
+1. **Update the bundle**:
+   ```bash
+   composer require nowo-tech/login-throttle-bundle:^3.0
+   ```
+
+2. **Update Twig / PHP** domain arguments:
+   ```twig
+   {# before #}
+   {{ 'nowo_login_throttle.error.account_blocked'|trans({...}, 'nowo_login_throttle') }}
+   {# after #}
+   {{ 'nowo_login_throttle.error.account_blocked'|trans({...}, 'NowoLoginThrottleBundle') }}
+   ```
+
+3. **Rename application overrides** (if any):
+   ```bash
+   # Example
+   mv translations/nowo_login_throttle.en.yaml translations/NowoLoginThrottleBundle.en.yaml
+   ```
+
+4. **Clear cache**:
+   ```bash
+   php bin/console cache:clear
+   ```
+
+5. **Verify translations**:
+   ```bash
+   php bin/console debug:translation en --domain=NowoLoginThrottleBundle
+   ```
+
+If you cannot migrate templates/overrides yet, stay on `nowo-tech/login-throttle-bundle` `^2.2`.
 
 ### Upgrading to 2.2.0
 
@@ -620,12 +675,12 @@ None - This is a minor release with new features. All existing functionality rem
    ```twig
    {% if error and attempt_info %}
        {% if attempt_info.is_blocked %}
-           ⚠️ {{ 'nowo_login_throttle.error.account_blocked'|trans({'%max_attempts%': attempt_info.max_attempts}, 'nowo_login_throttle') }}
+           ⚠️ {{ 'nowo_login_throttle.error.account_blocked'|trans({'%max_attempts%': attempt_info.max_attempts}, 'NowoLoginThrottleBundle') }}
        {% else %}
            📊 {% if attempt_info.tracking_type == 'username' %}
-               {{ 'nowo_login_throttle.info.attempts_count_by_email'|trans({'%current%': attempt_info.current_attempts, '%max%': attempt_info.max_attempts}, 'nowo_login_throttle') }}
+               {{ 'nowo_login_throttle.info.attempts_count_by_email'|trans({'%current%': attempt_info.current_attempts, '%max%': attempt_info.max_attempts}, 'NowoLoginThrottleBundle') }}
            {% else %}
-               {{ 'nowo_login_throttle.info.attempts_count_by_ip'|trans({'%current%': attempt_info.current_attempts, '%max%': attempt_info.max_attempts}, 'nowo_login_throttle') }}
+               {{ 'nowo_login_throttle.info.attempts_count_by_ip'|trans({'%current%': attempt_info.current_attempts, '%max%': attempt_info.max_attempts}, 'NowoLoginThrottleBundle') }}
            {% endif %}
        {% endif %}
    {% endif %}
@@ -916,6 +971,7 @@ If you encounter issues during upgrade:
 
 | Bundle Version | Symfony Version | PHP Version | Features |
 |---------------|-----------------|-------------|----------|
+| 3.0.0         | 7.0, 8.0, 8.1   | 8.2, 8.3, 8.4, 8.5 | Translation domain `NowoLoginThrottleBundle` (REQ-I18N-003); DI alias unchanged |
 | 2.2.0         | 7.0, 8.0, 8.1   | 8.2, 8.3, 8.4, 8.5 | Single Symfony 8 demo; REQ-GIT-001 / GITHUB_CI; Code of Conduct; no integrator API changes |
 | 2.1.0         | 7.0, 8.0, 8.1   | 8.2, 8.3, 8.4, 8.5 | Spec Kit baseline; demo Docker intl fix; no integrator changes |
 | 2.0.0         | 7.0, 8.0, 8.1   | 8.2, 8.3, 8.4, 8.5 | Raised minimum PHP/Symfony; removed Symfony 6 demo; 100% CI coverage; no config changes |

@@ -48,30 +48,30 @@
 
 | Source file | Spec section | Requirement IDs |
 | --- | --- | --- |
-| `Resources/translations/nowo_login_throttle.en.yaml` | English messages | FR-I18N-001 |
-| `Resources/translations/nowo_login_throttle.es.yaml` | Spanish messages | FR-I18N-001 |
-| `Resources/translations/nowo_login_throttle.de.yaml` | German messages | FR-I18N-001 |
-| `Resources/translations/nowo_login_throttle.fr.yaml` | French messages | FR-I18N-001 |
-| `Resources/translations/nowo_login_throttle.it.yaml` | Italian messages | FR-I18N-001 |
-| `Resources/translations/nowo_login_throttle.nl.yaml` | Dutch messages | FR-I18N-001 |
-| `Resources/translations/nowo_login_throttle.pt.yaml` | Portuguese messages | FR-I18N-001 |
-| `Resources/translations/nowo_login_throttle.pt_BR.yaml` | Brazilian Portuguese | FR-I18N-001 |
-| `Resources/translations/nowo_login_throttle.ar.yaml` | Arabic messages | FR-I18N-001 |
-| `Resources/translations/nowo_login_throttle.cs.yaml` | Czech messages | FR-I18N-001 |
-| `Resources/translations/nowo_login_throttle.da.yaml` | Danish messages | FR-I18N-001 |
-| `Resources/translations/nowo_login_throttle.el.yaml` | Greek messages | FR-I18N-001 |
-| `Resources/translations/nowo_login_throttle.fi.yaml` | Finnish messages | FR-I18N-001 |
-| `Resources/translations/nowo_login_throttle.hu.yaml` | Hungarian messages | FR-I18N-001 |
-| `Resources/translations/nowo_login_throttle.ja.yaml` | Japanese messages | FR-I18N-001 |
-| `Resources/translations/nowo_login_throttle.ko.yaml` | Korean messages | FR-I18N-001 |
-| `Resources/translations/nowo_login_throttle.no.yaml` | Norwegian messages | FR-I18N-001 |
-| `Resources/translations/nowo_login_throttle.pl.yaml` | Polish messages | FR-I18N-001 |
-| `Resources/translations/nowo_login_throttle.ro.yaml` | Romanian messages | FR-I18N-001 |
-| `Resources/translations/nowo_login_throttle.ru.yaml` | Russian messages | FR-I18N-001 |
-| `Resources/translations/nowo_login_throttle.sv.yaml` | Swedish messages | FR-I18N-001 |
-| `Resources/translations/nowo_login_throttle.tr.yaml` | Turkish messages | FR-I18N-001 |
-| `Resources/translations/nowo_login_throttle.zh_CN.yaml` | Chinese (Simplified) | FR-I18N-001 |
-| `Resources/translations/nowo_login_throttle.zh_TW.yaml` | Chinese (Traditional) | FR-I18N-001 |
+| `Resources/translations/NowoLoginThrottleBundle.en.yaml` | English messages | FR-I18N-001 |
+| `Resources/translations/NowoLoginThrottleBundle.es.yaml` | Spanish messages | FR-I18N-001 |
+| `Resources/translations/NowoLoginThrottleBundle.de.yaml` | German messages | FR-I18N-001 |
+| `Resources/translations/NowoLoginThrottleBundle.fr.yaml` | French messages | FR-I18N-001 |
+| `Resources/translations/NowoLoginThrottleBundle.it.yaml` | Italian messages | FR-I18N-001 |
+| `Resources/translations/NowoLoginThrottleBundle.nl.yaml` | Dutch messages | FR-I18N-001 |
+| `Resources/translations/NowoLoginThrottleBundle.pt.yaml` | Portuguese messages | FR-I18N-001 |
+| `Resources/translations/NowoLoginThrottleBundle.pt_BR.yaml` | Brazilian Portuguese | FR-I18N-001 |
+| `Resources/translations/NowoLoginThrottleBundle.ar.yaml` | Arabic messages | FR-I18N-001 |
+| `Resources/translations/NowoLoginThrottleBundle.cs.yaml` | Czech messages | FR-I18N-001 |
+| `Resources/translations/NowoLoginThrottleBundle.da.yaml` | Danish messages | FR-I18N-001 |
+| `Resources/translations/NowoLoginThrottleBundle.el.yaml` | Greek messages | FR-I18N-001 |
+| `Resources/translations/NowoLoginThrottleBundle.fi.yaml` | Finnish messages | FR-I18N-001 |
+| `Resources/translations/NowoLoginThrottleBundle.hu.yaml` | Hungarian messages | FR-I18N-001 |
+| `Resources/translations/NowoLoginThrottleBundle.ja.yaml` | Japanese messages | FR-I18N-001 |
+| `Resources/translations/NowoLoginThrottleBundle.ko.yaml` | Korean messages | FR-I18N-001 |
+| `Resources/translations/NowoLoginThrottleBundle.no.yaml` | Norwegian messages | FR-I18N-001 |
+| `Resources/translations/NowoLoginThrottleBundle.pl.yaml` | Polish messages | FR-I18N-001 |
+| `Resources/translations/NowoLoginThrottleBundle.ro.yaml` | Romanian messages | FR-I18N-001 |
+| `Resources/translations/NowoLoginThrottleBundle.ru.yaml` | Russian messages | FR-I18N-001 |
+| `Resources/translations/NowoLoginThrottleBundle.sv.yaml` | Swedish messages | FR-I18N-001 |
+| `Resources/translations/NowoLoginThrottleBundle.tr.yaml` | Turkish messages | FR-I18N-001 |
+| `Resources/translations/NowoLoginThrottleBundle.zh_CN.yaml` | Chinese (Simplified) | FR-I18N-001 |
+| `Resources/translations/NowoLoginThrottleBundle.zh_TW.yaml` | Chinese (Traditional) | FR-I18N-001 |
 
 ## Coverage summary
 

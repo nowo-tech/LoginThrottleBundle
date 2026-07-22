@@ -35,14 +35,14 @@ The `default_path` specifies where your application's translation files are loca
 
 The bundle includes translation files in two languages:
 
-- **English**: `src/Resources/translations/nowo_login_throttle.en.yaml`
-- **Spanish**: `src/Resources/translations/nowo_login_throttle.es.yaml`
+- **English**: `src/Resources/translations/NowoLoginThrottleBundle.en.yaml`
+- **Spanish**: `src/Resources/translations/NowoLoginThrottleBundle.es.yaml`
 
 These files are automatically loaded by Symfony and contain all the translation keys used by the bundle.
 
 ### Translation Domain
 
-All bundle translations use the `nowo_login_throttle` domain. This ensures they don't conflict with your application's translations.
+All bundle translations use the `NowoLoginThrottleBundle` domain. This ensures they don't conflict with your application's translations.
 
 ## Available Translation Keys
 
@@ -108,21 +108,21 @@ You can override the bundle's translations by creating your own translation file
 Translation files must follow this naming pattern:
 
 ```
-translations/nowo_login_throttle.{locale}.yaml
+translations/NowoLoginThrottleBundle.{locale}.yaml
 ```
 
 For example:
-- `translations/nowo_login_throttle.en.yaml` (English)
-- `translations/nowo_login_throttle.es.yaml` (Spanish)
-- `translations/nowo_login_throttle.fr.yaml` (French)
-- `translations/nowo_login_throttle.de.yaml` (German)
+- `translations/NowoLoginThrottleBundle.en.yaml` (English)
+- `translations/NowoLoginThrottleBundle.es.yaml` (Spanish)
+- `translations/NowoLoginThrottleBundle.fr.yaml` (French)
+- `translations/NowoLoginThrottleBundle.de.yaml` (German)
 
 ### File Structure
 
 Your custom translation files must use the same structure as the bundle's files:
 
 ```yaml
-# translations/nowo_login_throttle.en.yaml
+# translations/NowoLoginThrottleBundle.en.yaml
 nowo_login_throttle:
     error:
         authentication_failed: "Your custom error message"
@@ -135,14 +135,14 @@ nowo_login_throttle:
         last_attempt_warning: "Your custom warning message"
 ```
 
-> **Important**: The root key must be `nowo_login_throttle:` (matching the domain name) when the file is named `nowo_login_throttle.{locale}.yaml`.
+> **Important**: Message keys keep the `nowo_login_throttle.*` prefix (YAML root key `nowo_login_throttle:`). The Symfony **domain** (second argument to `trans`) and the **file name** are `NowoLoginThrottleBundle`.
 
 ### Partial Overrides
 
 You can override only specific keys. Symfony will use your translations where they exist and fall back to the bundle's translations for keys you don't override:
 
 ```yaml
-# translations/nowo_login_throttle.en.yaml
+# translations/NowoLoginThrottleBundle.en.yaml
 nowo_login_throttle:
     error:
         account_blocked: "Custom blocked message (%max_attempts%)"
@@ -156,7 +156,7 @@ nowo_login_throttle:
 Use the `trans` filter with the translation key and domain:
 
 ```twig
-{{ 'nowo_login_throttle.error.account_blocked'|trans({'%max_attempts%': 3}, 'nowo_login_throttle') }}
+{{ 'nowo_login_throttle.error.account_blocked'|trans({'%max_attempts%': 3}, 'NowoLoginThrottleBundle') }}
 ```
 
 ### With LoginThrottleInfoService
@@ -167,10 +167,10 @@ When using `LoginThrottleInfoService` to display attempt information, you'll typ
 {% if error and attempt_info %}
     {% if attempt_info.is_blocked %}
         <div class="alert alert-danger">
-            ⚠️ {{ 'nowo_login_throttle.error.account_blocked'|trans({'%max_attempts%': attempt_info.max_attempts}, 'nowo_login_throttle') }}
+            ⚠️ {{ 'nowo_login_throttle.error.account_blocked'|trans({'%max_attempts%': attempt_info.max_attempts}, 'NowoLoginThrottleBundle') }}
             {% if attempt_info.retry_after %}
                 <br>
-                {{ 'nowo_login_throttle.error.retry_after'|trans({'%retry_after%': attempt_info.retry_after|date('H:i:s')}, 'nowo_login_throttle') }}
+                {{ 'nowo_login_throttle.error.retry_after'|trans({'%retry_after%': attempt_info.retry_after|date('H:i:s')}, 'NowoLoginThrottleBundle') }}
             {% endif %}
         </div>
     {% else %}
@@ -179,22 +179,22 @@ When using `LoginThrottleInfoService` to display attempt information, you'll typ
                 {{ 'nowo_login_throttle.info.attempts_count_by_email'|trans({
                     '%current%': attempt_info.current_attempts|default(0),
                     '%max%': attempt_info.max_attempts|default(3)
-                }, 'nowo_login_throttle') }}
+                }, 'NowoLoginThrottleBundle') }}
             {% else %}
                 {{ 'nowo_login_throttle.info.attempts_count_by_ip'|trans({
                     '%current%': attempt_info.current_attempts|default(0),
                     '%max%': attempt_info.max_attempts|default(3)
-                }, 'nowo_login_throttle') }}
+                }, 'NowoLoginThrottleBundle') }}
             {% endif %}
             
             {% if attempt_info.remaining_attempts > 0 %}
                 <br>
                 {{ 'nowo_login_throttle.info.remaining_attempts'|trans({
                     '%remaining%': attempt_info.remaining_attempts|default(0)
-                }, 'nowo_login_throttle') }}
+                }, 'NowoLoginThrottleBundle') }}
             {% else %}
                 <br>
-                ⚠️ {{ 'nowo_login_throttle.info.last_attempt_warning'|trans({}, 'nowo_login_throttle') }}
+                ⚠️ {{ 'nowo_login_throttle.info.last_attempt_warning'|trans({}, 'NowoLoginThrottleBundle') }}
             {% endif %}
         </div>
     {% endif %}
@@ -214,7 +214,7 @@ Here's how to add a countdown timer to your login template:
     {% set retryAfterDate = attempt_info.retry_after|date('c') %}
     {% set retryAfterTime = attempt_info.retry_after|date('H:i:s') %}
     <p>
-        {{ 'nowo_login_throttle.error.retry_after'|trans({'%retry_after%': '<span id="countdown-timer">' ~ retryAfterTime ~ '</span>'}, 'nowo_login_throttle')|raw }}
+        {{ 'nowo_login_throttle.error.retry_after'|trans({'%retry_after%': '<span id="countdown-timer">' ~ retryAfterTime ~ '</span>'}, 'NowoLoginThrottleBundle')|raw }}
     </p>
     <script>
         (function() {
@@ -274,7 +274,7 @@ Here's a complete example showing how to integrate the countdown timer in your l
                 <p style="margin-top: 15px; font-weight: bold;">
                     ⚠️ {{ 'nowo_login_throttle.error.account_blocked'|trans({
                         '%max_attempts%': attempt_info.max_attempts
-                    }, 'nowo_login_throttle') }}
+                    }, 'NowoLoginThrottleBundle') }}
                 </p>
                 
                 {% if attempt_info.retry_after %}
@@ -283,7 +283,7 @@ Here's a complete example showing how to integrate the countdown timer in your l
                         {% set retryAfterTime = attempt_info.retry_after|date('H:i:s') %}
                         {{ 'nowo_login_throttle.error.retry_after'|trans({
                             '%retry_after%': '<span id="countdown-timer">' ~ retryAfterTime ~ '</span>'
-                        }, 'nowo_login_throttle')|raw }}
+                        }, 'NowoLoginThrottleBundle')|raw }}
                     </p>
                     <script>
                         (function() {
@@ -380,7 +380,7 @@ Always use default values for parameters to prevent display issues:
 {{ 'nowo_login_throttle.info.attempts_count_by_email'|trans({
     '%current%': attempt_info.current_attempts|default(0),
     '%max%': attempt_info.max_attempts|default(3)
-}, 'nowo_login_throttle') }}
+}, 'NowoLoginThrottleBundle') }}
 ```
 
 ## Adding New Languages
@@ -391,13 +391,13 @@ To add support for a new language:
 
 ```bash
 # Example: Adding French support
-touch translations/nowo_login_throttle.fr.yaml
+touch translations/NowoLoginThrottleBundle.fr.yaml
 ```
 
 2. Add translations for all keys:
 
 ```yaml
-# translations/nowo_login_throttle.fr.yaml
+# translations/NowoLoginThrottleBundle.fr.yaml
 nowo_login_throttle:
     error:
         authentication_failed: "Identifiants invalides."
@@ -426,10 +426,10 @@ Use the Symfony console to debug translations:
 
 ```bash
 # List all translations in the domain
-php bin/console debug:translation nowo_login_throttle --domain=nowo_login_throttle
+php bin/console debug:translation nowo_login_throttle --domain=NowoLoginThrottleBundle
 
 # Check a specific translation key
-php bin/console debug:translation nowo_login_throttle.info.attempts_count_by_email --domain=nowo_login_throttle
+php bin/console debug:translation nowo_login_throttle.info.attempts_count_by_email --domain=NowoLoginThrottleBundle
 ```
 
 ### Verify File Loading
@@ -462,7 +462,7 @@ Ensure your translation files are in the correct location and have the correct s
 
 ## Best Practices
 
-1. **Always use the domain**: Always specify `'nowo_login_throttle'` as the domain when using translations to avoid conflicts.
+1. **Always use the domain**: Always specify `'NowoLoginThrottleBundle'` as the domain when using translations to avoid conflicts.
 
 2. **Provide default values**: Use `|default()` for parameters to prevent display issues when values are null.
 
@@ -528,35 +528,35 @@ And the corresponding Twig template:
             {% if attempt_info.is_blocked %}
                 ⚠️ {{ 'nowo_login_throttle.error.account_blocked'|trans({
                     '%max_attempts%': attempt_info.max_attempts
-                }, 'nowo_login_throttle') }}
+                }, 'NowoLoginThrottleBundle') }}
                 
                 {% if attempt_info.retry_after %}
                     <br>
                     {{ 'nowo_login_throttle.error.retry_after'|trans({
                         '%retry_after%': attempt_info.retry_after|date('H:i:s')
-                    }, 'nowo_login_throttle') }}
+                    }, 'NowoLoginThrottleBundle') }}
                 {% endif %}
             {% else %}
                 📊 {% if attempt_info.tracking_type == 'username' %}
                     {{ 'nowo_login_throttle.info.attempts_count_by_email'|trans({
                         '%current%': attempt_info.current_attempts|default(0),
                         '%max%': attempt_info.max_attempts|default(3)
-                    }, 'nowo_login_throttle') }}
+                    }, 'NowoLoginThrottleBundle') }}
                 {% else %}
                     {{ 'nowo_login_throttle.info.attempts_count_by_ip'|trans({
                         '%current%': attempt_info.current_attempts|default(0),
                         '%max%': attempt_info.max_attempts|default(3)
-                    }, 'nowo_login_throttle') }}
+                    }, 'NowoLoginThrottleBundle') }}
                 {% endif %}
                 
                 {% if attempt_info.remaining_attempts > 0 %}
                     <br>
                     {{ 'nowo_login_throttle.info.remaining_attempts'|trans({
                         '%remaining%': attempt_info.remaining_attempts|default(0)
-                    }, 'nowo_login_throttle') }}
+                    }, 'NowoLoginThrottleBundle') }}
                 {% else %}
                     <br>
-                    ⚠️ {{ 'nowo_login_throttle.info.last_attempt_warning'|trans({}, 'nowo_login_throttle') }}
+                    ⚠️ {{ 'nowo_login_throttle.info.last_attempt_warning'|trans({}, 'NowoLoginThrottleBundle') }}
                 {% endif %}
             {% endif %}
         </div>
