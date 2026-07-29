@@ -2,13 +2,34 @@
 
 This document provides examples of different service configurations for the Login Throttle Bundle, considering various deployment scenarios including local development, Docker containers, and Kubernetes.
 
-## Table of Contents
+## Table of contents
 
 - [Local Development](#local-development)
+  - [Basic Configuration (File Cache)](#basic-configuration-file-cache)
+  - [Local Development with Redis (Optional)](#local-development-with-redis-optional)
 - [Docker Containers](#docker-containers)
+  - [Docker with Redis Service](#docker-with-redis-service)
+  - [Docker Compose Example](#docker-compose-example)
+  - [Docker with Environment Variables](#docker-with-environment-variables)
 - [Kubernetes](#kubernetes)
+  - [Kubernetes with Redis Cluster](#kubernetes-with-redis-cluster)
+  - [Kubernetes ConfigMap Example](#kubernetes-configmap-example)
+  - [Kubernetes with Redis Sentinel (High Availability)](#kubernetes-with-redis-sentinel-high-availability)
 - [Multiple Environments](#multiple-environments)
+  - [Environment-Specific Configuration](#environment-specific-configuration)
+  - [Environment-Specific Cache Configuration](#environment-specific-cache-configuration)
 - [Advanced Configurations](#advanced-configurations)
+  - [Custom Rate Limiter with Token Bucket Policy](#custom-rate-limiter-with-token-bucket-policy)
+  - [Multiple Firewalls with Different Limits](#multiple-firewalls-with-different-limits)
+  - [Database-Backed Rate Limiter (Alternative)](#database-backed-rate-limiter-alternative)
+  - [Memcached Configuration](#memcached-configuration)
+- [Storage Comparison](#storage-comparison)
+- [Best Practices](#best-practices)
+- [Troubleshooting](#troubleshooting)
+  - [Issue: Rate limiting not working across containers](#issue-rate-limiting-not-working-across-containers)
+  - [Issue: Race conditions in Kubernetes](#issue-race-conditions-in-kubernetes)
+  - [Issue: Redis connection errors](#issue-redis-connection-errors)
+  - [Issue: Different limits per environment](#issue-different-limits-per-environment)
 
 ## Local Development
 

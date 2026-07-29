@@ -6,7 +6,6 @@ namespace Nowo\LoginThrottleBundle\Tests\DependencyInjection;
 
 use Nowo\LoginThrottleBundle\DependencyInjection\NowoLoginThrottleExtension;
 use PHPUnit\Framework\TestCase;
-use ReflectionMethod;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 
 /**
@@ -272,7 +271,7 @@ final class NowoLoginThrottleExtensionTest extends TestCase
             'watch_period' => 3600,
         ];
 
-        $method = new ReflectionMethod(NowoLoginThrottleExtension::class, 'registerDatabaseRateLimiter');
+        $method = new \ReflectionMethod(NowoLoginThrottleExtension::class, 'registerDatabaseRateLimiter');
         $method->setAccessible(true);
 
         $firstId = $method->invoke($this->extension, $this->container, $config, 'api');
@@ -291,7 +290,7 @@ final class NowoLoginThrottleExtensionTest extends TestCase
         ];
         $serviceId = 'nowo_login_throttle.database_rate_limiter.shared_3_600s_3600s';
 
-        $method = new ReflectionMethod(NowoLoginThrottleExtension::class, 'registerDatabaseRateLimiterByServiceId');
+        $method = new \ReflectionMethod(NowoLoginThrottleExtension::class, 'registerDatabaseRateLimiterByServiceId');
         $method->setAccessible(true);
 
         $method->invoke($this->extension, $this->container, $serviceId, $config);

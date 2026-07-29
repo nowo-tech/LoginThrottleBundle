@@ -8,6 +8,7 @@ use Nowo\LoginThrottleBundle\NowoLoginThrottleBundle;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\Yaml\Yaml;
 
 /**
  * Tests for NowoLoginThrottleBundle boot method.
@@ -51,7 +52,7 @@ final class NowoLoginThrottleBundleBootTest extends TestCase
         $configPath = $this->testDir . '/config/packages/nowo_login_throttle.yaml';
         $this->assertFileExists($configPath);
 
-        $config = \Symfony\Component\Yaml\Yaml::parseFile($configPath);
+        $config = Yaml::parseFile($configPath);
         $this->assertArrayHasKey('nowo_login_throttle', $config);
         $this->assertTrue($config['nowo_login_throttle']['enabled']);
         $this->assertSame(3, $config['nowo_login_throttle']['max_count_attempts']);
@@ -78,7 +79,7 @@ final class NowoLoginThrottleBundleBootTest extends TestCase
         $bundle->boot();
 
         // Verify config was not overwritten
-        $config = \Symfony\Component\Yaml\Yaml::parseFile($this->testDir . '/config/packages/nowo_login_throttle.yaml');
+        $config = Yaml::parseFile($this->testDir . '/config/packages/nowo_login_throttle.yaml');
         $this->assertSame(5, $config['nowo_login_throttle']['max_count_attempts']);
     }
 

@@ -4,6 +4,37 @@ This document describes how to configure the Login Throttle Bundle.
 
 For service configuration examples for different deployment scenarios (local development, Docker containers, Kubernetes), see [SERVICES.md](SERVICES.md).
 
+## Table of contents
+
+- [Configuration File](#configuration-file)
+- [Configuration Options](#configuration-options)
+- [How It Works](#how-it-works)
+  - [Login Throttling](#login-throttling)
+  - [Rate Limiter](#rate-limiter)
+- [Examples](#examples)
+  - [Basic Configuration](#basic-configuration)
+  - [Advanced Configuration with Custom Rate Limiter](#advanced-configuration-with-custom-rate-limiter)
+  - [Multiple Firewalls](#multiple-firewalls)
+  - [Disabling Login Throttling](#disabling-login-throttling)
+- [Automatic Configuration](#automatic-configuration)
+  - [Configuration Priority](#configuration-priority)
+  - [Manual Configuration](#manual-configuration)
+- [Storage Backends](#storage-backends)
+  - [Cache Storage (Default)](#cache-storage-default)
+  - [Database Storage](#database-storage)
+- [Migration from anyx/login-gate-bundle](#migration-from-anyxlogin-gate-bundle)
+  - [Before (anyx/login-gate-bundle)](#before-anyxlogin-gate-bundle)
+  - [After (nowo-tech/login-throttle-bundle)](#after-nowo-techlogin-throttle-bundle)
+- [Best Practices](#best-practices)
+- [Service Configuration Examples](#service-configuration-examples)
+- [Troubleshooting](#troubleshooting)
+  - [Issue: Login throttling not working](#issue-login-throttling-not-working)
+  - [Issue: Custom rate limiter not working](#issue-custom-rate-limiter-not-working)
+  - [Issue: Configuration not loading](#issue-configuration-not-loading)
+  - [Issue: Rate limiting not working across containers](#issue-rate-limiting-not-working-across-containers)
+  - [Issue: Race conditions in distributed systems](#issue-race-conditions-in-distributed-systems)
+  - [Issue: Command not found](#issue-command-not-found)
+
 ## Configuration File
 
 The bundle configuration is defined in `config/packages/nowo_login_throttle.yaml`:

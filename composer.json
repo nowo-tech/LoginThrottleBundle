@@ -41,12 +41,13 @@
         "symfony/translation": "Required for internationalization support (i18n)"
     },
     "require-dev": {
-        "phpunit/phpunit": "^10.0",
         "friendsofphp/php-cs-fixer": "^3.0",
-        "rector/rector": "^1.2",
-        "phpstan/phpstan": "^1.12",
-        "phpstan/phpstan-phpunit": "^1.4",
-        "phpstan/phpstan-symfony": "^1.4",
+        "nowo-tech/phpstan-frankenphp": "^1.0",
+        "phpstan/phpstan": "^2.0",
+        "phpstan/phpstan-phpunit": "^2.0",
+        "phpstan/phpstan-symfony": "^2.0",
+        "phpunit/phpunit": "^10.0",
+        "rector/rector": "^2.0",
         "symfony/yaml": "^7.0 || ^8.0"
     },
     "autoload": {
@@ -102,4 +103,3 @@
         "qa": "Run all quality assurance checks"
     }
 }
-

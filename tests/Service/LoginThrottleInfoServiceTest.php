@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Nowo\LoginThrottleBundle\Tests\Service;
 
 use Nowo\LoginThrottleBundle\Entity\LoginAttempt;
-use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepository;
+use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface;
 use Nowo\LoginThrottleBundle\Service\LoginThrottleInfoService;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -20,11 +20,11 @@ use Symfony\Component\HttpFoundation\Request;
 final class LoginThrottleInfoServiceTest extends TestCase
 {
     private LoginThrottleInfoService $service;
-    private LoginAttemptRepository|MockObject $repository;
+    private \PHPUnit\Framework\MockObject\MockObject $repository;
 
     protected function setUp(): void
     {
-        $this->repository = $this->createMock(LoginAttemptRepository::class);
+        $this->repository = $this->createMock(LoginAttemptRepositoryInterface::class);
         $this->service = new LoginThrottleInfoService();
         $this->service->setRepository($this->repository);
     }
@@ -156,7 +156,7 @@ final class LoginThrottleInfoServiceTest extends TestCase
             ->with('192.168.1.1', 600)
             ->willReturn(3);
 
-        $oldestAttempt = new LoginAttempt('192.168.1.1', null);
+        $oldestAttempt = new LoginAttempt('192.168.1.1');
 
         $this->repository
             ->expects($this->once())
@@ -257,7 +257,7 @@ final class LoginThrottleInfoServiceTest extends TestCase
         $this->repository
             ->expects($this->exactly(2))
             ->method('countAttemptsByUsername')
-            ->willReturnCallback(function ($username, $seconds): int {
+            ->willReturnCallback(static function ($username, $seconds): int {
                 return 0;
             });
 
@@ -429,8 +429,8 @@ final class LoginThrottleInfoServiceTest extends TestCase
             ->expects($this->exactly(2))
             ->method('countAttemptsByIp')
             ->willReturnCallback(function ($ip, $seconds) use (&$callCount): int {
-                $callCount++;
-                if ($callCount === 1) {
+                ++$callCount;
+                if (1 === $callCount) {
                     $this->assertEquals('192.168.1.1', $ip);
                     $this->assertEquals(30, $seconds);
                 } else {
@@ -498,7 +498,7 @@ final class LoginThrottleInfoServiceTest extends TestCase
 
         $callCount = 0;
         $this->repository
-            ->expects($this->exactly(count($intervals)))
+            ->expects($this->exactly(\count($intervals)))
             ->method('countAttemptsByIp')
             ->willReturnCallback(function ($ip, $seconds) use (&$callCount, $intervals): int {
                 $expected = array_values($intervals)[$callCount];
@@ -508,7 +508,7 @@ final class LoginThrottleInfoServiceTest extends TestCase
                 return 0;
             });
 
-        foreach ($intervals as $interval => $expectedSeconds) {
+        foreach (array_keys($intervals) as $interval) {
             $config['main']['interval'] = $interval;
             unset($config['main']['timeout']);
             $this->service->setFirewallsConfig($config);

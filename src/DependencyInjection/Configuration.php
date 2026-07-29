@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Nowo\LoginThrottleBundle\DependencyInjection;
 
-use RuntimeException;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
 use Symfony\Component\Yaml\Yaml;
@@ -23,7 +22,7 @@ use Symfony\Component\Yaml\Yaml;
  * @author Héctor Franco Aceituno <hectorfranco@nowo.tech>
  * @copyright 2025 Nowo.tech
  */
-class Configuration implements ConfigurationInterface
+final class Configuration implements ConfigurationInterface
 {
     /**
      * The extension alias.
@@ -160,13 +159,13 @@ class Configuration implements ConfigurationInterface
      *
      * @param string $configPath Absolute path to the configuration file to generate
      *
-     * @throws RuntimeException If the symfony/yaml component is not installed
+     * @throws \RuntimeException If the symfony/yaml component is not installed
      */
     public function generateConfigFile(string $configPath): void
     {
         // @codeCoverageIgnoreStart
         if (!class_exists(Yaml::class)) {
-            throw new RuntimeException('Missing symfony/yaml component. Install it with: composer require symfony/yaml');
+            throw new \RuntimeException('Missing symfony/yaml component. Install it with: composer require symfony/yaml');
         }
         // @codeCoverageIgnoreEnd
 
@@ -205,17 +204,17 @@ class Configuration implements ConfigurationInterface
     public static function secondsToInterval(int $seconds): string
     {
         if ($seconds < 60) {
-            return sprintf('%d seconds', $seconds);
+            return \sprintf('%d seconds', $seconds);
         }
 
         if ($seconds < 3600) {
             $minutes = (int) round($seconds / 60);
 
-            return sprintf('%d minute%s', $minutes, $minutes > 1 ? 's' : '');
+            return \sprintf('%d minute%s', $minutes, $minutes > 1 ? 's' : '');
         }
 
         $hours = (int) round($seconds / 3600);
 
-        return sprintf('%d hour%s', $hours, $hours > 1 ? 's' : '');
+        return \sprintf('%d hour%s', $hours, $hours > 1 ? 's' : '');
     }
 }

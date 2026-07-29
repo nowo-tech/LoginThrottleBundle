@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Nowo\LoginThrottleBundle\RateLimiter;
 
-use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepository;
+use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface;
 
 /**
  * Factory for creating DatabaseRateLimiter instances.
@@ -15,17 +15,17 @@ use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepository;
  * @author Héctor Franco Aceituno <hectorfranco@nowo.tech>
  * @copyright 2025 Nowo.tech
  */
-class DatabaseRateLimiterFactory
+final class DatabaseRateLimiterFactory
 {
     /**
      * Constructor.
      *
-     * @param LoginAttemptRepository $repository     The login attempt repository
-     * @param int                    $maxAttempts    Maximum number of attempts
-     * @param int                    $timeoutSeconds Timeout period in seconds
+     * @param LoginAttemptRepositoryInterface $repository     The login attempt repository
+     * @param int                             $maxAttempts    Maximum number of attempts
+     * @param int                             $timeoutSeconds Timeout period in seconds
      */
     public function __construct(
-        private readonly LoginAttemptRepository $repository,
+        private readonly LoginAttemptRepositoryInterface $repository,
         private readonly int $maxAttempts,
         private readonly int $timeoutSeconds
     ) {

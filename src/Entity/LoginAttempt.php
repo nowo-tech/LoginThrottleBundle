@@ -18,13 +18,14 @@ use Doctrine\ORM\Mapping as ORM;
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'login_attempts')]
-#[ORM\Index(columns: ['ip_address', 'username'], name: 'idx_ip_username')]
-#[ORM\Index(columns: ['created_at'], name: 'idx_created_at')]
-class LoginAttempt
+#[ORM\Index(name: 'idx_ip_username', columns: ['ip_address', 'username'])]
+#[ORM\Index(name: 'idx_created_at', columns: ['created_at'])]
+final class LoginAttempt
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: Types::INTEGER)]
+    /** @phpstan-ignore property.unusedType (Doctrine UnitOfWork assigns int after persist) */
     private ?int $id = null;
 
     #[ORM\Column(name: 'ip_address', type: Types::STRING, length: 45)]

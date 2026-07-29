@@ -2,6 +2,37 @@
 
 This guide explains how to configure the Login Throttle Bundle to store login attempts in a database instead of using cache/Redis.
 
+## Table of contents
+
+- [Overview](#overview)
+- [Benefits of Database Storage](#benefits-of-database-storage)
+- [Requirements](#requirements)
+- [Quick Start](#quick-start)
+  - [Step 1: Configure Storage](#step-1-configure-storage)
+  - [Step 2: Configure Doctrine](#step-2-configure-doctrine)
+  - [Step 3: Create Migration](#step-3-create-migration)
+  - [Step 4: Configure Security](#step-4-configure-security)
+  - [Step 5: Clear Cache](#step-5-clear-cache)
+- [Configuration Options](#configuration-options)
+- [How It Works](#how-it-works)
+- [Manual Security Configuration](#manual-security-configuration)
+- [Cleanup](#cleanup)
+  - [Using Symfony Scheduler](#using-symfony-scheduler)
+  - [Manual cleanup command](#manual-cleanup-command)
+- [Querying Login Attempts](#querying-login-attempts)
+- [Performance Considerations](#performance-considerations)
+  - [Indexes](#indexes)
+  - [Database Load](#database-load)
+  - [When to Use Database Storage](#when-to-use-database-storage)
+- [Migration from Cache to Database](#migration-from-cache-to-database)
+- [Troubleshooting](#troubleshooting)
+  - [Issue: "Table login_attempts does not exist"](#issue-table-login_attempts-does-not-exist)
+  - [Issue: "Service not found: Nowo\LoginThrottleBundle\Repository\LoginAttemptRepository"](#issue-service-not-found-nowologinthrottlebundlerepositoryloginattemptrepository)
+  - [Issue: Rate limiter not working](#issue-rate-limiter-not-working)
+  - [Issue: High database load](#issue-high-database-load)
+- [Comparison: Cache vs Database Storage](#comparison-cache-vs-database-storage)
+- [Additional Resources](#additional-resources)
+
 ## Overview
 
 By default, the bundle uses Symfony's cache system (which can be file, Redis, Memcached, etc.) to store login attempt data. However, if you prefer to store attempts in a database (like `anyx/login-gate-bundle` did with ORM storage), you can configure the bundle to use database storage.

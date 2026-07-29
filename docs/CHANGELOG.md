@@ -5,7 +5,101 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Table of contents
+
+- [[Unreleased]](#unreleased)
+- [[3.1.0] - 2026-07-29](#310---2026-07-29)
+  - [Added](#added)
+  - [Changed](#changed)
+- [[3.0.0] - 2026-07-22](#300---2026-07-22)
+  - [Changed](#changed-1)
+  - [Breaking Changes](#breaking-changes)
+- [[2.2.0] - 2026-07-16](#220---2026-07-16)
+  - [Added](#added-1)
+  - [Changed](#changed-2)
+  - [Removed](#removed)
+- [[2.1.0] - 2026-07-09](#210---2026-07-09)
+  - [Added](#added-2)
+  - [Changed](#changed-3)
+  - [Fixed](#fixed)
+- [[2.0.0] - 2026-07-02](#200---2026-07-02)
+  - [Changed](#changed-4)
+  - [Fixed](#fixed-1)
+  - [Removed](#removed-1)
+- [[1.0.0] - 2025-07-02](#100---2025-07-02)
+  - [Added](#added-3)
+  - [Changed](#changed-5)
+  - [Fixed](#fixed-2)
+- [[0.0.15] - 2025-01-15](#0015---2025-01-15)
+  - [Added](#added-4)
+  - [Changed](#changed-6)
+  - [Documentation](#documentation)
+- [[0.0.14] - 2025-01-15](#0014---2025-01-15)
+  - [Fixed](#fixed-3)
+  - [Changed](#changed-7)
+- [[0.0.13] - 2025-01-15](#0013---2025-01-15)
+  - [Added](#added-5)
+  - [Fixed](#fixed-4)
+- [[0.0.12] - 2025-01-15](#0012---2025-01-15)
+  - [Fixed](#fixed-5)
+  - [Added](#added-6)
+  - [Changed](#changed-8)
+- [[0.0.11] - 2025-01-15](#0011---2025-01-15)
+  - [Fixed](#fixed-6)
+  - [Changed](#changed-9)
+- [[0.0.10] - 2025-01-15](#0010---2025-01-15)
+  - [Fixed](#fixed-7)
+  - [Changed](#changed-10)
+- [[0.0.9] - 2025-01-15](#009---2025-01-15)
+  - [Fixed](#fixed-8)
+  - [Changed](#changed-11)
+- [[0.0.8] - 2025-01-15](#008---2025-01-15)
+  - [Fixed](#fixed-9)
+- [[0.0.7] - 2025-01-15](#007---2025-01-15)
+  - [Fixed](#fixed-10)
+  - [Changed](#changed-12)
+- [[0.0.6] - 2025-01-15](#006---2025-01-15)
+  - [Added](#added-7)
+  - [Changed](#changed-13)
+  - [Fixed](#fixed-11)
+- [[0.0.5] - 2025-01-15](#005---2025-01-15)
+  - [Added](#added-8)
+  - [Changed](#changed-14)
+  - [Fixed](#fixed-12)
+- [[0.0.4] - 2025-01-15](#004---2025-01-15)
+  - [Added](#added-9)
+  - [Changed](#changed-15)
+  - [Changed](#changed-16)
+  - [Fixed](#fixed-13)
+  - [Testing](#testing)
+- [[0.0.3] - 2025-12-30](#003---2025-12-30)
+  - [Added](#added-10)
+  - [Fixed](#fixed-14)
+  - [Changed](#changed-17)
+- [[0.0.2] - 2025-12-30](#002---2025-12-30)
+  - [Fixed](#fixed-15)
+  - [Changed](#changed-18)
+- [[0.0.1] - 2025-12-30](#001---2025-12-30)
+  - [Added](#added-11)
+  - [Features](#features)
+
 ## [Unreleased]
+
+## [3.1.0] - 2026-07-29
+
+### Added
+
+- **FrankenPHP Symfony 8 demo** — PHP **8.5**, `FRANKENPHP_MODE`; `make demo-smoke` / `down-dev` (REQ-DEMO-002/010, REQ-TEST-011, REQ-MAKE-007). See [`DEMO-FRANKENPHP.md`](DEMO-FRANKENPHP.md).
+- **FrankenPHP Friendly** banner and GitHub About topics/homepage; TOC on long docs (REQ-DOCS-017/018/005).
+- **`LoginAttemptRepositoryInterface`** — typed DI alias and test doubles; `LoginAttemptRepository` implements it.
+
+### Changed
+
+- **PHPStan / Rector** — PHPStan 2 + empty baseline (`ignoreErrors: []`); Rector 2; `nowo-tech/phpstan-frankenphp` (REQ-CS-006).
+- **Concrete `src/` classes are `final`** — Prefer composition / the repository interface over subclassing bundle classes (REQ-PHP-001).
+- **PHPUnit** — `SYMFONY_DEPRECATIONS_HELPER=max[direct]=0`; README documents **100%** line coverage (REQ-SF-005, REQ-TEST-007).
+- **Security posture** — Formalize REQ-SEC-004 **Pass (conditional)** / Medium residual in [`SECURITY.md`](SECURITY.md).
+- **Demo stack** — `.env.example` uses `APP_DEBUG=1`; MySQL without host ports; nginx/phpMyAdmin removed from compose (FrankenPHP serves HTTP).
 
 ## [3.0.0] - 2026-07-22
 

@@ -11,6 +11,8 @@ return (new PhpCsFixer\Config())
     ->setRiskyAllowed(true)
     ->setRules([
         '@PSR12' => true,
+        '@Symfony' => true,
+        '@Symfony:risky' => true,
         '@PHP81Migration' => true,
         'array_syntax' => ['syntax' => 'short'],
         'binary_operator_spaces' => true,
@@ -24,7 +26,10 @@ return (new PhpCsFixer\Config())
         ],
         'concat_space' => ['spacing' => 'one'],
         'declare_strict_types' => true,
-        'fully_qualified_strict_types' => true,
+        'fully_qualified_strict_types' => [
+            // Convert \Foo\Bar to use Foo\Bar; + Bar (instanceof, new, types, ::class, etc.).
+            'import_symbols' => true,
+        ],
         'function_typehint_space' => true,
         'include' => true,
         'lowercase_cast' => true,

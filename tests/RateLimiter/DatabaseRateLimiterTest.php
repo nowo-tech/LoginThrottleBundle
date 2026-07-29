@@ -6,7 +6,7 @@ namespace Nowo\LoginThrottleBundle\Tests\RateLimiter;
 
 use Nowo\LoginThrottleBundle\Entity\LoginAttempt;
 use Nowo\LoginThrottleBundle\RateLimiter\DatabaseRateLimiter;
-use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepository;
+use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
@@ -21,11 +21,11 @@ use Symfony\Component\RateLimiter\RateLimit;
 final class DatabaseRateLimiterTest extends TestCase
 {
     private DatabaseRateLimiter $rateLimiter;
-    private LoginAttemptRepository|MockObject $repository;
+    private \PHPUnit\Framework\MockObject\MockObject $repository;
 
     protected function setUp(): void
     {
-        $this->repository = $this->createMock(LoginAttemptRepository::class);
+        $this->repository = $this->createMock(LoginAttemptRepositoryInterface::class);
         $this->rateLimiter = new DatabaseRateLimiter(
             $this->repository,
             3,    // maxAttempts
@@ -47,7 +47,8 @@ final class DatabaseRateLimiterTest extends TestCase
         $this->repository
             ->expects($this->once())
             ->method('recordAttempt')
-            ->with('192.168.1.1', 'test@example.com');
+            ->with('192.168.1.1', 'test@example.com')
+            ->willReturn(new LoginAttempt('192.168.1.1', 'test@example.com'));
 
         $this->repository
             ->expects($this->once())
@@ -74,7 +75,6 @@ final class DatabaseRateLimiterTest extends TestCase
             ->willReturn(true);
 
         $oldestAttempt = new LoginAttempt('192.168.1.1', 'test@example.com');
-        new \DateTimeImmutable('+10 minutes');
 
         $this->repository
             ->expects($this->once())
@@ -104,7 +104,8 @@ final class DatabaseRateLimiterTest extends TestCase
         $this->repository
             ->expects($this->once())
             ->method('recordAttempt')
-            ->with('192.168.1.1', 'test@example.com');
+            ->with('192.168.1.1', 'test@example.com')
+            ->willReturn(new LoginAttempt('192.168.1.1', 'test@example.com'));
 
         $this->repository
             ->expects($this->once())
@@ -142,7 +143,8 @@ final class DatabaseRateLimiterTest extends TestCase
         $this->repository
             ->expects($this->once())
             ->method('recordAttempt')
-            ->with('192.168.1.1', null);
+            ->with('192.168.1.1', null)
+            ->willReturn(new LoginAttempt('192.168.1.1'));
 
         $this->repository
             ->expects($this->once())
@@ -171,7 +173,8 @@ final class DatabaseRateLimiterTest extends TestCase
         $this->repository
             ->expects($this->once())
             ->method('recordAttempt')
-            ->with($expectedIp, 'test@example.com');
+            ->with($expectedIp, 'test@example.com')
+            ->willReturn(new LoginAttempt($expectedIp, 'test@example.com'));
 
         $this->repository
             ->expects($this->once())
@@ -194,25 +197,25 @@ final class DatabaseRateLimiterTest extends TestCase
         $this->repository
             ->expects($this->exactly(2))
             ->method('isBlocked')
-            ->willReturnCallback(function ($ip, $username, $maxAttempts, $timeout): bool {
+            ->willReturnCallback(static function ($ip, $username, $maxAttempts, $timeout): bool {
                 return false;
             });
 
         $this->repository
             ->expects($this->exactly(2))
             ->method('recordAttempt')
-            ->willReturnCallback(function ($ip, $username): LoginAttempt {
+            ->willReturnCallback(static function ($ip, $username): LoginAttempt {
                 return new LoginAttempt($ip, $username);
             });
 
         $this->repository
             ->expects($this->exactly(2))
             ->method('countAttempts')
-            ->willReturnCallback(function ($ip, $username, $timeout): int {
-                if ($ip === '192.168.1.1' && $username === 'user@example.com' && $timeout === 600) {
+            ->willReturnCallback(static function ($ip, $username, $timeout): int {
+                if ('192.168.1.1' === $ip && 'user@example.com' === $username && 600 === $timeout) {
                     return 1;
                 }
-                if ($ip === '192.168.1.1' && $username === 'email@example.com' && $timeout === 600) {
+                if ('192.168.1.1' === $ip && 'email@example.com' === $username && 600 === $timeout) {
                     return 1;
                 }
 
@@ -295,7 +298,7 @@ final class DatabaseRateLimiterTest extends TestCase
         $this->assertInstanceOf(\DateTimeImmutable::class, $rateLimit->getRetryAfter());
     }
 
-    public function testConsumeWhenBlockedWithInvalidOldestAttempt(): void
+    public function testConsumeWhenBlockedUsesOldestAttemptForRetryAfter(): void
     {
         $request = Request::create('/login', 'POST', ['_username' => 'test@example.com']);
         $request->server->set('REMOTE_ADDR', '192.168.1.1');
@@ -306,15 +309,20 @@ final class DatabaseRateLimiterTest extends TestCase
             ->with('192.168.1.1', 'test@example.com', 3, 600)
             ->willReturn(true);
 
+        // DESC order: newest first, oldest last
+        $newestAttempt = new LoginAttempt('192.168.1.1', 'test@example.com');
+        $oldestAttempt = new LoginAttempt('192.168.1.1', 'test@example.com');
+
         $this->repository
             ->expects($this->once())
             ->method('getAttempts')
             ->with('192.168.1.1', 'test@example.com', 600)
-            ->willReturn([null]);
+            ->willReturn([$newestAttempt, $oldestAttempt]);
 
         $rateLimit = $this->rateLimiter->consume($request);
 
         $this->assertInstanceOf(RateLimit::class, $rateLimit);
         $this->assertNotNull($rateLimit->getRetryAfter());
+        $this->assertInstanceOf(\DateTimeImmutable::class, $rateLimit->getRetryAfter());
     }
 }

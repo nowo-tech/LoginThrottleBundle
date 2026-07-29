@@ -287,7 +287,7 @@ final class ConfigureSecurityCommandTest extends TestCase
         // The command should fail (exit code 1) when it can't write
         // If it succeeds, it means the file was writable (which can happen on some systems)
         // In that case, we just verify the command doesn't crash
-        if ($exitCode === 1) {
+        if (1 === $exitCode) {
             // Command failed as expected - verify error message
             $this->assertTrue(
                 str_contains($output, 'Failed to update') || str_contains($output, 'Exception') || str_contains($output, 'Error') || str_contains($output, 'Permission'),
@@ -320,7 +320,7 @@ final class ConfigureSecurityCommandTest extends TestCase
                 "security:\n    firewalls:\n        main: {}\n"
             );
 
-            $command = new ConfigureSecurityCommand(null);
+            $command = new ConfigureSecurityCommand();
             $commandTester = new CommandTester($command);
             $exitCode = $commandTester->execute([]);
 
@@ -443,7 +443,7 @@ final class ConfigureSecurityCommandTest extends TestCase
 
         @chmod($packagesDir, 0o755);
 
-        if ($exitCode === 1) {
+        if (1 === $exitCode) {
             $this->assertStringContainsString('Failed to update', $output);
         } else {
             $this->assertSame(0, $exitCode);

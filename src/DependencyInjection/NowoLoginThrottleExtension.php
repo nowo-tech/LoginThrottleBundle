@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nowo\LoginThrottleBundle\DependencyInjection;
 
+use Nowo\LoginThrottleBundle\RateLimiter\DatabaseRateLimiter;
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepository;
 use Symfony\Component\Config\Definition\Processor;
 use Symfony\Component\Config\FileLocator;
@@ -21,7 +22,7 @@ use Symfony\Component\DependencyInjection\Reference;
  * @author Héctor Franco Aceituno <hectorfranco@nowo.tech>
  * @copyright 2025 Nowo.tech
  */
-class NowoLoginThrottleExtension extends Extension
+final class NowoLoginThrottleExtension extends Extension
 {
     /**
      * Loads the services configuration and processes the bundle configuration.
@@ -43,7 +44,7 @@ class NowoLoginThrottleExtension extends Extension
 
         // Check if using multiple firewalls configuration
         // Only use multiple firewalls if firewalls array is not empty
-        if (isset($config['firewalls']) && is_array($config['firewalls']) && $config['firewalls'] !== []) {
+        if (isset($config['firewalls']) && \is_array($config['firewalls']) && [] !== $config['firewalls']) {
             // Multiple firewalls configuration
             $this->processMultipleFirewalls($container, $config['firewalls']);
         } else {
@@ -58,7 +59,7 @@ class NowoLoginThrottleExtension extends Extension
             $container->setParameter('nowo_login_throttle.lock_factory', $config['lock_factory']);
 
             // Register database rate limiter service if storage is database
-            if ($config['storage'] === 'database' && $config['enabled']) {
+            if ('database' === $config['storage'] && $config['enabled']) {
                 $this->registerDatabaseRateLimiter($container, [
                     'max_count_attempts' => $config['max_count_attempts'],
                     'timeout' => $config['timeout'],
@@ -106,7 +107,7 @@ class NowoLoginThrottleExtension extends Extension
 
         // Determine the rate limiter to use
         $limiterService = $rateLimiter;
-        if ($config['storage'] === 'database' && null === $rateLimiter) {
+        if ('database' === $config['storage'] && null === $rateLimiter) {
             // Use the database rate limiter service
             $limiterService = 'nowo_login_throttle.database_rate_limiter';
         }
@@ -152,7 +153,7 @@ class NowoLoginThrottleExtension extends Extension
             }
 
             $limiterServiceId = $firewallConfig['rate_limiter'] ?? null;
-            if ($firewallConfig['storage'] === 'database' && null === $limiterServiceId) {
+            if ('database' === $firewallConfig['storage'] && null === $limiterServiceId) {
                 $this->resolveSharedLimiterServiceId(
                     $sharedLimiters,
                     $firewallConfig['max_count_attempts'],
@@ -171,7 +172,7 @@ class NowoLoginThrottleExtension extends Extension
 
             // Register database rate limiter if needed
             $limiterServiceId = $firewallConfig['rate_limiter'] ?? null;
-            if ($firewallConfig['storage'] === 'database' && null === $limiterServiceId) {
+            if ('database' === $firewallConfig['storage'] && null === $limiterServiceId) {
                 $maxAttempts = $firewallConfig['max_count_attempts'];
                 $timeout = $firewallConfig['timeout'];
                 $watchPeriod = $firewallConfig['watch_period'] ?? 3600;
@@ -225,8 +226,8 @@ class NowoLoginThrottleExtension extends Extension
     {
         // For single firewall (main/default), use default service ID. For multiple firewalls, use unique IDs
         $serviceId = 'nowo_login_throttle.database_rate_limiter';
-        if ($firewallName !== 'default' && $firewallName !== 'main') {
-            $serviceId = sprintf('nowo_login_throttle.database_rate_limiter.%s', $firewallName);
+        if ('default' !== $firewallName && 'main' !== $firewallName) {
+            $serviceId = \sprintf('nowo_login_throttle.database_rate_limiter.%s', $firewallName);
         }
 
         // Check if service already exists (for shared limiters)
@@ -254,7 +255,7 @@ class NowoLoginThrottleExtension extends Extension
         }
 
         // Register the database rate limiter service
-        $container->register($serviceId, \Nowo\LoginThrottleBundle\RateLimiter\DatabaseRateLimiter::class)
+        $container->register($serviceId, DatabaseRateLimiter::class)
             ->setArguments([
                 new Reference(LoginAttemptRepository::class),
                 $config['max_count_attempts'],
@@ -275,10 +276,10 @@ class NowoLoginThrottleExtension extends Extension
      */
     private function resolveSharedLimiterServiceId(array &$sharedLimiters, int $maxAttempts, int $timeout, int $watchPeriod): string
     {
-        $limiterKey = sprintf('db-%d-%d-%d', $maxAttempts, $timeout, $watchPeriod);
+        $limiterKey = \sprintf('db-%d-%d-%d', $maxAttempts, $timeout, $watchPeriod);
 
         if (!isset($sharedLimiters[$limiterKey])) {
-            $sharedLimiters[$limiterKey] = sprintf(
+            $sharedLimiters[$limiterKey] = \sprintf(
                 'nowo_login_throttle.database_rate_limiter.shared_%d_%ds_%ds',
                 $maxAttempts,
                 $timeout,

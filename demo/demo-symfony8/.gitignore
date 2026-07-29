@@ -24,6 +24,9 @@
 *.rar
 *.7z
 
+# pnpm store (REQ-GITIGNORE-003)
+.pnpm-store/
+
 ###> symfony/framework-bundle ###
 /.env.local
 /.env.local.php

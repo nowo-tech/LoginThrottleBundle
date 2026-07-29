@@ -6,7 +6,7 @@ namespace Nowo\LoginThrottleBundle\Tests\RateLimiter;
 
 use Nowo\LoginThrottleBundle\RateLimiter\DatabaseRateLimiter;
 use Nowo\LoginThrottleBundle\RateLimiter\DatabaseRateLimiterFactory;
-use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepository;
+use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
@@ -19,11 +19,11 @@ use PHPUnit\Framework\TestCase;
 final class DatabaseRateLimiterFactoryTest extends TestCase
 {
     private DatabaseRateLimiterFactory $factory;
-    private LoginAttemptRepository|MockObject $repository;
+    private \PHPUnit\Framework\MockObject\MockObject $repository;
 
     protected function setUp(): void
     {
-        $this->repository = $this->createMock(LoginAttemptRepository::class);
+        $this->repository = $this->createMock(LoginAttemptRepositoryInterface::class);
         $this->factory = new DatabaseRateLimiterFactory(
             $this->repository,
             3,    // maxAttempts

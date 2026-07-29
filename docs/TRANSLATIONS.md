@@ -2,6 +2,42 @@
 
 This guide explains how to handle translations for the Login Throttle Bundle.
 
+## Table of contents
+
+- [Overview](#overview)
+- [Installing the Translation Component](#installing-the-translation-component)
+- [Configuring the Translator](#configuring-the-translator)
+- [Bundle Translation Files](#bundle-translation-files)
+  - [Translation Domain](#translation-domain)
+- [Available Translation Keys](#available-translation-keys)
+  - [Error Messages](#error-messages)
+  - [Information Messages](#information-messages)
+- [Default Translations](#default-translations)
+  - [English](#english)
+  - [Spanish](#spanish)
+- [Overriding Translations](#overriding-translations)
+  - [File Naming Convention](#file-naming-convention)
+  - [File Structure](#file-structure)
+  - [Partial Overrides](#partial-overrides)
+- [Using Translations in Templates](#using-translations-in-templates)
+  - [Basic Usage](#basic-usage)
+  - [With LoginThrottleInfoService](#with-loginthrottleinfoservice)
+- [Countdown Timer (Cuenta Regresiva)](#countdown-timer-cuenta-regresiva)
+  - [Basic Implementation](#basic-implementation)
+  - [How It Works](#how-it-works)
+  - [Complete Example](#complete-example)
+  - [Customization Options](#customization-options)
+  - [Multiple Timers on the Same Page](#multiple-timers-on-the-same-page)
+  - [Parameter Handling](#parameter-handling)
+- [Adding New Languages](#adding-new-languages)
+- [Debugging Translations](#debugging-translations)
+  - [Check Available Translations](#check-available-translations)
+  - [Verify File Loading](#verify-file-loading)
+  - [Common Issues](#common-issues)
+- [Best Practices](#best-practices)
+- [Example: Complete Integration](#example-complete-integration)
+- [Additional Resources](#additional-resources)
+
 ## Overview
 
 The bundle includes built-in translation files for Spanish and English, but you can override them or add support for additional languages in your application.

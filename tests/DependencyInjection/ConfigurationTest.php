@@ -6,6 +6,7 @@ namespace Nowo\LoginThrottleBundle\Tests\DependencyInjection;
 
 use Nowo\LoginThrottleBundle\DependencyInjection\Configuration;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\Config\Definition\Processor;
 
 /**
@@ -74,7 +75,7 @@ final class ConfigurationTest extends TestCase
 
     public function testConfigurationValidationRejectsEmptyFirewall(): void
     {
-        $this->expectException(\Symfony\Component\Config\Definition\Exception\InvalidConfigurationException::class);
+        $this->expectException(InvalidConfigurationException::class);
 
         $configs = [
             [
@@ -87,7 +88,7 @@ final class ConfigurationTest extends TestCase
 
     public function testConfigurationValidationRejectsInvalidMaxAttempts(): void
     {
-        $this->expectException(\Symfony\Component\Config\Definition\Exception\InvalidConfigurationException::class);
+        $this->expectException(InvalidConfigurationException::class);
 
         $configs = [
             [
@@ -100,7 +101,7 @@ final class ConfigurationTest extends TestCase
 
     public function testConfigurationValidationRejectsInvalidTimeout(): void
     {
-        $this->expectException(\Symfony\Component\Config\Definition\Exception\InvalidConfigurationException::class);
+        $this->expectException(InvalidConfigurationException::class);
 
         $configs = [
             [
@@ -122,7 +123,7 @@ final class ConfigurationTest extends TestCase
 
     public function testConfigurationValidationRejectsInvalidWatchPeriod(): void
     {
-        $this->expectException(\Symfony\Component\Config\Definition\Exception\InvalidConfigurationException::class);
+        $this->expectException(InvalidConfigurationException::class);
 
         $configs = [
             [

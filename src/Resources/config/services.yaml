@@ -21,6 +21,8 @@ services:
     arguments:
       $registry: '@doctrine'
 
+  Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface: '@Nowo\LoginThrottleBundle\Repository\LoginAttemptRepository'
+
   # Database rate limiter (registered conditionally in Extension when storage=database)
   # This service is registered dynamically in NowoLoginThrottleExtension::registerDatabaseRateLimiter()
   # It implements RequestRateLimiterInterface and can be used as a limiter in security.yaml

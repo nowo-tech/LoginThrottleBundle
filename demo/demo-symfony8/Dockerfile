@@ -1,38 +1,24 @@
-FROM php:8.4-fpm-alpine
+# FrankenPHP (Dunglas) - PHP 8.5 Alpine (Symfony 8) (REQ-DEMO-010)
+# https://frankenphp.dev/docs/docker/
+FROM dunglas/frankenphp:1-php8.5-alpine
 
-# Install system dependencies
-RUN apk add --no-cache \
-    git \
-    unzip \
-    libzip-dev \
-    icu-dev \
-    zip
+RUN apk add --no-cache git unzip bash
+RUN install-php-extensions intl zip pdo_mysql
 
-# Install PHP extensions
-RUN docker-php-ext-install -j$(nproc) zip intl pdo pdo_mysql
-
-# Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+# Mounted `.:/app` / vendor nested repos need Git 2.35+ safe.directory
+RUN git config --global --add safe.directory '*'
 
-# Configure git safe directory
-RUN git config --global --add safe.directory /app && \
-    git config --global --add safe.directory /var/login-throttle-bundle
-
-# Set working directory
 WORKDIR /app
 
-# Set environment
 ENV COMPOSER_ALLOW_SUPERUSER=1
 ENV PATH="/app/vendor/bin:${PATH}"
+ENV SERVER_NAME=:80
 
-# Create entrypoint script to fix permissions
-RUN echo '#!/bin/sh' > /usr/local/bin/docker-entrypoint.sh && \
-    echo 'set -e' >> /usr/local/bin/docker-entrypoint.sh && \
-    echo 'git config --global --add safe.directory /app 2>/dev/null || true' >> /usr/local/bin/docker-entrypoint.sh && \
-    echo 'git config --global --add safe.directory /var/login-throttle-bundle 2>/dev/null || true' >> /usr/local/bin/docker-entrypoint.sh && \
-    echo 'mkdir -p /app/var/cache /app/var/log' >> /usr/local/bin/docker-entrypoint.sh && \
-    echo 'chmod -R 777 /app/var' >> /usr/local/bin/docker-entrypoint.sh && \
-    echo 'exec "$@"' >> /usr/local/bin/docker-entrypoint.sh && \
-    chmod +x /usr/local/bin/docker-entrypoint.sh
+COPY docker/frankenphp/Caddyfile /etc/frankenphp/Caddyfile
+COPY docker/frankenphp/Caddyfile.dev /etc/frankenphp/Caddyfile.dev
+
+COPY docker/entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 ENTRYPOINT ["docker-entrypoint.sh"]

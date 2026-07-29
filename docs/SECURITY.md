@@ -1,5 +1,18 @@
 # Security — Login Throttle Bundle
 
+## Table of contents
+
+- [Scope](#scope)
+- [Attack surface](#attack-surface)
+- [Threats and mitigations](#threats-and-mitigations)
+- [Secrets and cryptography](#secrets-and-cryptography)
+- [Logging](#logging)
+- [Dependencies](#dependencies)
+- [Permissions and exposure](#permissions-and-exposure)
+- [Reporting a vulnerability](#reporting-a-vulnerability)
+- [Release security checklist (12.4.1)](#release-security-checklist-1241)
+- [AI security audit](#ai-security-audit)
+
 ## Scope
 
 This Symfony bundle provides **login attempt throttling** (rate limiting), typically backed by persistence (e.g. database), and integrates with Symfony Security (firewall, login flows). It may expose **admin or diagnostic endpoints** in demos—production applications must configure **roles**, **firewalls**, and **environment** appropriately.
@@ -60,5 +73,16 @@ Before tagging a release, confirm:
 | **Cryptography** | If HTTPS termination is app concern, document for integrators; bundle does not embed keys. |
 | **Permissions / exposure** | Document required roles for any admin features. |
 | **Limits / DoS** | Throttle limits documented; storage growth considered. |
+| **AI security audit (REQ-SEC-004)** | Grade **Pass (conditional)** / risk **Medium** (2026-07-29). Recorded in the Nowo monorepo `BUNDLES_SECURITY_ANALYSIS.md`. |
 
 Record confirmation in the release PR or tag notes.
+
+## AI security audit
+
+| Field | Value |
+| ----- | ----- |
+| Date | 2026-07-29 |
+| Grade | Pass (conditional) |
+| Risk | Medium |
+| Method | Cursor security-review / campaign static pass (`src/`, Flex recipe, demo, SECURITY docs) |
+| Open residuals | No Critical/High. **Accepted Medium:** login throttling is security-sensitive; integrators must configure firewalls, roles for any admin/diagnostic surfaces, and avoid logging passwords. Pair with application-level monitoring; database storage growth under attack load is an operational concern. |

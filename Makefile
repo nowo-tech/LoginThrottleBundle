@@ -1,16 +1,18 @@
-COMPOSE = docker compose
+# Prefer Compose V2 plugin (GitHub Actions / modern Docker Desktop); fall back to docker-compose V1 (REQ-MAKE-010).
+COMPOSE_BIN := $(shell docker compose version >/dev/null 2>&1 && echo "docker compose" || echo "docker-compose")
+COMPOSE     := $(COMPOSE_BIN)
 SERVICE_PHP = php
 
-.PHONY: help ensure-up up down build shell install assets test test-coverage test-with-db \
+.PHONY: help ensure-up up down down-dev build shell install assets test test-coverage test-with-db \
 	test-coverage-with-db cs-check cs-fix rector rector-dry phpstan qa release-check \
-	release-check-demos composer-sync clean update validate validate-translations \
-	setup-hooks check-no-cursor-coauthor strip-cursor-coauthor-from-history
+	release-check-demos demo-smoke composer-sync clean update validate validate-translations \
+	setup-hooks check-no-cursor-coauthor strip-cursor-coauthor-from-history update-deps
 
 help:
 	@echo "Usage: make <target>"
 	@echo ""
 	@echo "Container:"
-	@echo "  up down build shell"
+	@echo "  up down down-dev build shell"
 	@echo "Dependencies:"
 	@echo "  install"
 	@echo "Assets:"
@@ -20,13 +22,13 @@ help:
 	@echo "Quality:"
 	@echo "  cs-check cs-fix rector rector-dry phpstan qa validate-translations"
 	@echo "Release:"
-	@echo "  release-check composer-sync"
+	@echo "  release-check demo-smoke composer-sync"
 	@echo "Cleanup:"
 	@echo "  clean"
 	@echo "Composer:"
 	@echo "  update validate"
 	@echo "Demos:"
-	@echo "  release-check-demos"
+	@echo "  release-check-demos demo-smoke"
 
 ensure-up:
 	@$(COMPOSE) ps -q $(SERVICE_PHP) >/dev/null 2>&1 || true
@@ -39,6 +41,9 @@ up:
 
 down:
 	@$(COMPOSE) down
+
+down-dev:
+	@$(COMPOSE) down --remove-orphans
 
 build:
 	@$(COMPOSE) build --no-cache
@@ -102,6 +107,9 @@ release-check: check-no-cursor-coauthor
 release-check-demos:
 	@$(MAKE) -C demo release-check
 
+demo-smoke:
+	@$(MAKE) -C demo demo-smoke
+
 clean:
 	rm -rf vendor .phpunit.cache coverage
 	rm -f coverage.xml coverage-php.txt .php-cs-fixer.cache
@@ -112,9 +120,6 @@ update: ensure-up
 validate: ensure-up
 	@$(COMPOSE) exec -T $(SERVICE_PHP) composer validate --strict
 
-
-
-
 setup-hooks:
 	@chmod +x .githooks/pre-commit 2>/dev/null || true
 	@chmod +x .githooks/commit-msg 2>/dev/null || true
@@ -123,7 +128,9 @@ setup-hooks:
 
 # REQ-MAKE-008: update-deps (REQ-MAKE-008)
 BUNDLE_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
-include $(BUNDLE_ROOT)/../.scripts/Makefile.update-deps.mk
+# Optional: monorepo helper absent on standalone GitHub Actions checkout (REQ-MAKE-009).
+-include $(BUNDLE_ROOT)/../.scripts/Makefile.update-deps.mk
+
 check-no-cursor-coauthor:
 	@chmod +x .scripts/check-no-cursor-coauthor.sh
 	@./.scripts/check-no-cursor-coauthor.sh HEAD

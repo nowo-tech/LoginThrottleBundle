@@ -30,6 +30,7 @@
 | --- | --- | --- |
 | `Entity/LoginAttempt.php` | Login attempt entity | FR-ORM-001 |
 | `Repository/LoginAttemptRepository.php` | Attempt queries/cleanup | FR-ORM-002 |
+| `Repository/LoginAttemptRepositoryInterface.php` | Repository contract for DI / tests | FR-ORM-002 |
 
 ## Rate limiting
 

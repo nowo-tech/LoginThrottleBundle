@@ -26,7 +26,7 @@ use Symfony\Component\Yaml\Yaml;
     name: 'nowo:login-throttle:configure-security',
     description: 'Configures security.yaml with login_throttling settings'
 )]
-class ConfigureSecurityCommand extends Command
+final class ConfigureSecurityCommand extends Command
 {
     /**
      * Constructor.
@@ -82,7 +82,7 @@ class ConfigureSecurityCommand extends Command
 
         // Check if bundle config exists
         if (!file_exists($bundleConfigPath)) {
-            $io->error(sprintf('Bundle configuration file not found: %s', $bundleConfigPath));
+            $io->error(\sprintf('Bundle configuration file not found: %s', $bundleConfigPath));
             $io->note('Please ensure the bundle is properly installed and configured.');
 
             return Command::FAILURE;
@@ -93,7 +93,7 @@ class ConfigureSecurityCommand extends Command
         $throttleConfig = $bundleConfig['nowo_login_throttle'] ?? [];
 
         // Check if using multiple firewalls configuration
-        if (!empty($throttleConfig['firewalls']) && is_array($throttleConfig['firewalls'])) {
+        if (!empty($throttleConfig['firewalls']) && \is_array($throttleConfig['firewalls'])) {
             return $this->configureMultipleFirewalls($io, $filesystem, $securityYamlPath, $throttleConfig['firewalls'], $input->getOption('force'));
         }
 
@@ -113,7 +113,7 @@ class ConfigureSecurityCommand extends Command
         $lockFactory = $throttleConfig['lock_factory'] ?? null;
 
         // Use database rate limiter if storage is database and no custom rate limiter is set
-        if ($storage === 'database' && null === $rateLimiter) {
+        if ('database' === $storage && null === $rateLimiter) {
             $rateLimiter = 'nowo_login_throttle.database_rate_limiter';
         }
 
@@ -141,11 +141,11 @@ class ConfigureSecurityCommand extends Command
     private function configureSingleFirewall(SymfonyStyle $io, Filesystem $filesystem, string $securityYamlPath, string $firewall, array $config, bool $force): int
     {
         // Convert timeout to interval string
-        $interval = $this->secondsToInterval($config['timeout']);
+        $interval = $this->secondsToInterval((int) $config['timeout']);
 
         // Load or create security.yaml
         if (!file_exists($securityYamlPath)) {
-            $io->warning(sprintf('security.yaml not found at: %s', $securityYamlPath));
+            $io->warning(\sprintf('security.yaml not found at: %s', $securityYamlPath));
             $io->note('Please create a basic security.yaml file first.');
 
             return Command::FAILURE;
@@ -156,7 +156,7 @@ class ConfigureSecurityCommand extends Command
         // Check if login_throttling is already configured
         $firewallConfig = $securityConfig['security']['firewalls'][$firewall] ?? [];
         if (isset($firewallConfig['login_throttling']) && !$force) {
-            $io->info(sprintf('login_throttling is already configured for firewall "%s".', $firewall));
+            $io->info(\sprintf('login_throttling is already configured for firewall "%s".', $firewall));
             $io->note('Use --force to update the existing configuration.');
 
             return Command::SUCCESS;
@@ -179,15 +179,15 @@ class ConfigureSecurityCommand extends Command
             'interval' => $interval,
         ];
 
-        if (null !== ($config['rate_limiter'] ?? null)) {
+        if (null !== $config['rate_limiter']) {
             $loginThrottling['limiter'] = $config['rate_limiter'];
         }
 
-        if (null !== ($config['cache_pool'] ?? null) && 'cache.rate_limiter' !== ($config['cache_pool'] ?? 'cache.rate_limiter')) {
+        if (null !== $config['cache_pool'] && 'cache.rate_limiter' !== $config['cache_pool']) {
             $loginThrottling['cache_pool'] = $config['cache_pool'];
         }
 
-        if (null !== ($config['lock_factory'] ?? null)) {
+        if (null !== $config['lock_factory']) {
             $loginThrottling['lock_factory'] = $config['lock_factory'];
         }
 
@@ -197,29 +197,29 @@ class ConfigureSecurityCommand extends Command
         try {
             $yaml = Yaml::dump($securityConfig, 10, 2);
             $filesystem->dumpFile($securityYamlPath, $yaml);
-            $io->success(sprintf('Successfully configured login_throttling in security.yaml for firewall "%s"', $firewall));
+            $io->success(\sprintf('Successfully configured login_throttling in security.yaml for firewall "%s"', $firewall));
             $tableData = [
                 ['Firewall', $firewall],
                 ['Max Attempts', (string) $config['max_attempts']],
                 ['Interval', $interval],
             ];
 
-            if (null !== ($config['rate_limiter'] ?? null)) {
+            if (null !== $config['rate_limiter']) {
                 $tableData[] = ['Rate Limiter', $config['rate_limiter']];
             }
 
-            if (null !== ($config['cache_pool'] ?? null)) {
+            if (null !== $config['cache_pool']) {
                 $tableData[] = ['Cache Pool', $config['cache_pool']];
             }
 
-            if (null !== ($config['lock_factory'] ?? null)) {
+            if (null !== $config['lock_factory']) {
                 $tableData[] = ['Lock Factory', $config['lock_factory']];
             }
 
             $io->table(['Setting', 'Value'], $tableData);
             // @codeCoverageIgnoreStart
         } catch (\Exception $e) {
-            $io->error(sprintf('Failed to update security.yaml: %s', $e->getMessage()));
+            $io->error(\sprintf('Failed to update security.yaml: %s', $e->getMessage()));
 
             return Command::FAILURE;
         }
@@ -243,7 +243,7 @@ class ConfigureSecurityCommand extends Command
     {
         // Load or create security.yaml
         if (!file_exists($securityYamlPath)) {
-            $io->warning(sprintf('security.yaml not found at: %s', $securityYamlPath));
+            $io->warning(\sprintf('security.yaml not found at: %s', $securityYamlPath));
             $io->note('Please create a basic security.yaml file first.');
 
             return Command::FAILURE;
@@ -293,8 +293,8 @@ class ConfigureSecurityCommand extends Command
             // Format: nowo_login_throttle.database_rate_limiter.shared_{max}_{timeout}s_{watch}s
             // Example: nowo_login_throttle.database_rate_limiter.shared_5_300s_3600s
             // This makes it easy to identify the configuration by looking at the service name
-            if ($storage === 'database' && null === $rateLimiter) {
-                $rateLimiter = sprintf(
+            if ('database' === $storage && null === $rateLimiter) {
+                $rateLimiter = \sprintf(
                     'nowo_login_throttle.database_rate_limiter.shared_%d_%ds_%ds',
                     $maxAttempts,
                     $timeout,
@@ -315,7 +315,7 @@ class ConfigureSecurityCommand extends Command
                 $loginThrottling['limiter'] = $rateLimiter;
             }
 
-            if (null !== $cachePool && 'cache.rate_limiter' !== $cachePool) {
+            if ('cache.rate_limiter' !== $cachePool) {
                 $loginThrottling['cache_pool'] = $cachePool;
             }
 
@@ -332,8 +332,8 @@ class ConfigureSecurityCommand extends Command
             $yaml = Yaml::dump($securityConfig, 10, 2);
             $filesystem->dumpFile($securityYamlPath, $yaml);
 
-            if ($configuredFirewalls !== []) {
-                $io->success(sprintf('Successfully configured login_throttling for %d firewall(s): %s', count($configuredFirewalls), implode(', ', $configuredFirewalls)));
+            if ([] !== $configuredFirewalls) {
+                $io->success(\sprintf('Successfully configured login_throttling for %d firewall(s): %s', \count($configuredFirewalls), implode(', ', $configuredFirewalls)));
 
                 // Show summary table
                 $tableData = [];
@@ -341,7 +341,7 @@ class ConfigureSecurityCommand extends Command
                     if (!($firewallConfig['enabled'] ?? true)) {
                         continue;
                     }
-                    if (in_array($firewallName, $skippedFirewalls, true)) {
+                    if (\in_array($firewallName, $skippedFirewalls, true)) {
                         continue;
                     }
 
@@ -353,17 +353,17 @@ class ConfigureSecurityCommand extends Command
                     ];
                 }
 
-                if ($tableData !== []) {
+                if ([] !== $tableData) {
                     $io->table(['Firewall', 'Max Attempts', 'Interval', 'Storage'], $tableData);
                 }
             }
 
-            if ($skippedFirewalls !== []) {
-                $io->warning(sprintf('Skipped %d firewall(s) (already configured): %s. Use --force to update.', count($skippedFirewalls), implode(', ', $skippedFirewalls)));
+            if ([] !== $skippedFirewalls) {
+                $io->warning(\sprintf('Skipped %d firewall(s) (already configured): %s. Use --force to update.', \count($skippedFirewalls), implode(', ', $skippedFirewalls)));
             }
             // @codeCoverageIgnoreStart
         } catch (\Exception $e) {
-            $io->error(sprintf('Failed to update security.yaml: %s', $e->getMessage()));
+            $io->error(\sprintf('Failed to update security.yaml: %s', $e->getMessage()));
 
             return Command::FAILURE;
         }
@@ -382,17 +382,17 @@ class ConfigureSecurityCommand extends Command
     private function secondsToInterval(int $seconds): string
     {
         if ($seconds < 60) {
-            return sprintf('%d seconds', $seconds);
+            return \sprintf('%d seconds', $seconds);
         }
 
         if ($seconds < 3600) {
             $minutes = (int) round($seconds / 60);
 
-            return sprintf('%d minute%s', $minutes, $minutes > 1 ? 's' : '');
+            return \sprintf('%d minute%s', $minutes, $minutes > 1 ? 's' : '');
         }
 
         $hours = (int) round($seconds / 3600);
 
-        return sprintf('%d hour%s', $hours, $hours > 1 ? 's' : '');
+        return \sprintf('%d hour%s', $hours, $hours > 1 ? 's' : '');
     }
 }

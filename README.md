@@ -1,6 +1,10 @@
 # Login Throttle Bundle
 
-[![CI](https://github.com/nowo-tech/LoginThrottleBundle/actions/workflows/ci.yml/badge.svg)](https://github.com/nowo-tech/LoginThrottleBundle/actions/workflows/ci.yml) [![Packagist Version](https://img.shields.io/packagist/v/nowo-tech/login-throttle-bundle.svg?style=flat)](https://packagist.org/packages/nowo-tech/login-throttle-bundle) [![Packagist Downloads](https://img.shields.io/packagist/dt/nowo-tech/login-throttle-bundle.svg)](https://packagist.org/packages/nowo-tech/login-throttle-bundle) [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![PHP](https://img.shields.io/badge/PHP-8.2%2B-777BB4?logo=php)](https://php.net) [![Symfony](https://img.shields.io/badge/Symfony-7.0%2B%20%7C%208.0%2B-000000?logo=symfony)](https://symfony.com)
+[![CI](https://github.com/nowo-tech/LoginThrottleBundle/actions/workflows/ci.yml/badge.svg)](https://github.com/nowo-tech/LoginThrottleBundle/actions/workflows/ci.yml) [![Packagist Version](https://img.shields.io/packagist/v/nowo-tech/login-throttle-bundle.svg?style=flat)](https://packagist.org/packages/nowo-tech/login-throttle-bundle) [![Packagist Downloads](https://img.shields.io/packagist/dt/nowo-tech/login-throttle-bundle.svg)](https://packagist.org/packages/nowo-tech/login-throttle-bundle) [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![PHP](https://img.shields.io/badge/PHP-8.2%2B-777BB4?logo=php)](https://php.net) [![Symfony](https://img.shields.io/badge/Symfony-7.0%2B%20%7C%208.0%2B-000000?logo=symfony)](https://symfony.com) [![Coverage](https://img.shields.io/badge/Coverage-100%25-brightgreen)](#tests-and-coverage)
+
+![FrankenPHP Friendly Worker Mode](docs/images/frankenphp-friendly.png)
+
+FrankenPHP worker mode: supported (PHPStan FrankenPHP rules + Symfony 8 demo with `FRANKENPHP_MODE=worker`).
 
 > ⭐ **Found this useful?** Give it a star on GitHub! It helps us maintain and improve the project.
 
@@ -306,8 +310,12 @@ The GitHub Actions CI/CD pipeline automatically:
 
 ## Tests and coverage
 
-- Tests: PHPUnit (PHP)
-- PHP: 51.74%
+| Scope | Detail |
+|-------|--------|
+| **PHPUnit** | `composer test` / `make test` — suite under `tests/` (109 tests). |
+| **PHP lines** | **100%** line coverage required (CI fails below 100%). Run `composer test-coverage` / `make test-coverage`. |
+
+CI runs tests, PHPStan, and PHP-CS-Fixer on push/PR (see `.github/workflows/ci.yml`).
 - TS/JS: N/A
 - Python: N/A
 
@@ -353,8 +361,6 @@ make up-symfony8
 Access the demo at: http://localhost:8002
 
 See [demo/README.md](demo/README.md) for detailed instructions.
-
-FrankenPHP worker mode: Supported and documented for demos in `docs/DEMO-FRANKENPHP.md`.
 
 ## Documentation
 

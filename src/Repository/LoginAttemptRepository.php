@@ -16,7 +16,7 @@ use Nowo\LoginThrottleBundle\Entity\LoginAttempt;
  * @author Héctor Franco Aceituno <hectorfranco@nowo.tech>
  * @copyright 2025 Nowo.tech
  */
-class LoginAttemptRepository extends ServiceEntityRepository
+final class LoginAttemptRepository extends ServiceEntityRepository implements LoginAttemptRepositoryInterface
 {
     /**
      * Constructor.
@@ -44,7 +44,7 @@ class LoginAttemptRepository extends ServiceEntityRepository
             ->where('la.ipAddress = :ipAddress')
             ->andWhere('la.createdAt >= :since')
             ->setParameter('ipAddress', $ipAddress)
-            ->setParameter('since', new \DateTimeImmutable(sprintf('-%d seconds', $seconds)));
+            ->setParameter('since', new \DateTimeImmutable(\sprintf('-%d seconds', $seconds)));
 
         if (null !== $username) {
             $qb->andWhere('la.username = :username')
@@ -69,7 +69,7 @@ class LoginAttemptRepository extends ServiceEntityRepository
             ->where('la.ipAddress = :ipAddress')
             ->andWhere('la.createdAt >= :since')
             ->setParameter('ipAddress', $ipAddress)
-            ->setParameter('since', new \DateTimeImmutable(sprintf('-%d seconds', $seconds)));
+            ->setParameter('since', new \DateTimeImmutable(\sprintf('-%d seconds', $seconds)));
 
         return (int) $qb->getQuery()->getSingleScalarResult();
     }
@@ -89,7 +89,7 @@ class LoginAttemptRepository extends ServiceEntityRepository
             ->where('la.username = :username')
             ->andWhere('la.createdAt >= :since')
             ->setParameter('username', $username)
-            ->setParameter('since', new \DateTimeImmutable(sprintf('-%d seconds', $seconds)));
+            ->setParameter('since', new \DateTimeImmutable(\sprintf('-%d seconds', $seconds)));
 
         return (int) $qb->getQuery()->getSingleScalarResult();
     }
@@ -140,7 +140,7 @@ class LoginAttemptRepository extends ServiceEntityRepository
         $qb = $this->createQueryBuilder('la')
             ->delete()
             ->where('la.createdAt < :before')
-            ->setParameter('before', new \DateTimeImmutable(sprintf('-%d seconds', $watchPeriodSeconds)));
+            ->setParameter('before', new \DateTimeImmutable(\sprintf('-%d seconds', $watchPeriodSeconds)));
 
         return $qb->getQuery()->execute();
     }
@@ -152,13 +152,13 @@ class LoginAttemptRepository extends ServiceEntityRepository
      * @param string|null $username  Username (optional, null to ignore username filter)
      * @param int         $seconds   Time period in seconds
      *
-     * @return LoginAttempt[]
+     * @return list<LoginAttempt>
      */
     public function getAttempts(string $ipAddress, ?string $username, int $seconds): array
     {
         $qb = $this->createQueryBuilder('la')
             ->where('la.createdAt >= :since')
-            ->setParameter('since', new \DateTimeImmutable(sprintf('-%d seconds', $seconds)))
+            ->setParameter('since', new \DateTimeImmutable(\sprintf('-%d seconds', $seconds)))
             ->orderBy('la.createdAt', 'DESC');
 
         if ('' !== $ipAddress) {
@@ -171,6 +171,9 @@ class LoginAttemptRepository extends ServiceEntityRepository
                 ->setParameter('username', $username);
         }
 
-        return $qb->getQuery()->getResult();
+        /** @var list<LoginAttempt> $result */
+        $result = $qb->getQuery()->getResult();
+
+        return $result;
     }
 }

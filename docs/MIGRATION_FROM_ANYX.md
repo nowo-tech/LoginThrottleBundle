@@ -2,18 +2,50 @@
 
 This guide will help you migrate from the deprecated `anyx/login-gate-bundle` to `nowo-tech/login-throttle-bundle`, which uses Symfony's native `login_throttling` feature.
 
-## Table of Contents
+## Table of contents
 
 - [Overview](#overview)
 - [Why Migrate?](#why-migrate)
 - [Prerequisites](#prerequisites)
 - [Step-by-Step Migration](#step-by-step-migration)
+  - [Step 1: Remove the Old Bundle](#step-1-remove-the-old-bundle)
+  - [Step 2: Remove Bundle Registration](#step-2-remove-bundle-registration)
+  - [Step 3: Install the New Bundle](#step-3-install-the-new-bundle)
+  - [Step 4: Update Configuration](#step-4-update-configuration)
+  - [Step 5: Configure Security](#step-5-configure-security)
+  - [Step 6: Remove Old Configuration Files](#step-6-remove-old-configuration-files)
+  - [Step 7: Update Database (if using ORM storage)](#step-7-update-database-if-using-orm-storage)
+  - [Step 8: Clear Cache](#step-8-clear-cache)
 - [Configuration Mapping](#configuration-mapping)
 - [Code Changes](#code-changes)
+  - [No Code Changes Required!](#no-code-changes-required)
 - [Storage Migration](#storage-migration)
+  - [From ORM Storage](#from-orm-storage)
+  - [From Session Storage](#from-session-storage)
+  - [From Memcached/Redis Storage](#from-memcachedredis-storage)
 - [Testing Your Migration](#testing-your-migration)
+  - [1. Test Login Throttling](#1-test-login-throttling)
+  - [2. Verify Configuration](#2-verify-configuration)
+  - [3. Test with Different Firewalls](#3-test-with-different-firewalls)
 - [Troubleshooting](#troubleshooting)
+  - [Issue: Login throttling not working after migration](#issue-login-throttling-not-working-after-migration)
+  - [Issue: "Rate limiter not found" error](#issue-rate-limiter-not-found-error)
+  - [Issue: Throttling not working across multiple servers](#issue-throttling-not-working-across-multiple-servers)
+  - [Issue: Old database tables still exist](#issue-old-database-tables-still-exist)
+  - [Issue: Configuration command not found](#issue-configuration-command-not-found)
 - [FAQ](#faq)
+  - [Q: Do I need to migrate my database?](#q-do-i-need-to-migrate-my-database)
+  - [Q: Will my existing configuration work?](#q-will-my-existing-configuration-work)
+  - [Q: Do I need to change my code?](#q-do-i-need-to-change-my-code)
+  - [Q: What about custom storage backends?](#q-what-about-custom-storage-backends)
+  - [Q: Can I use a custom rate limiter?](#q-can-i-use-a-custom-rate-limiter)
+  - [Q: Is this bundle compatible with Symfony 5.x?](#q-is-this-bundle-compatible-with-symfony-5x)
+  - [Q: What happens to existing login attempts in the database?](#q-what-happens-to-existing-login-attempts-in-the-database)
+  - [Q: How do I configure for Kubernetes/multiple servers?](#q-how-do-i-configure-for-kubernetesmultiple-servers)
+  - [Q: Can I customize the throttling behavior?](#q-can-i-customize-the-throttling-behavior)
+- [Additional Resources](#additional-resources)
+- [Need Help?](#need-help)
+- [Summary](#summary)
 
 ## Overview
 

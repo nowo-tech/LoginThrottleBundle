@@ -2,8 +2,7 @@ doctrine:
     dbal:
         url: '%env(resolve:DATABASE_URL)%'
     orm:
-        auto_generate_proxy_classes: true
-        enable_lazy_ghost_objects: true
+        enable_native_lazy_objects: true
         entity_managers:
             default:
                 auto_mapping: true
@@ -19,4 +18,3 @@ doctrine:
                         dir: 'Entity'
                         prefix: 'Nowo\LoginThrottleBundle\Entity'
                         alias: NowoLoginThrottleBundle
-

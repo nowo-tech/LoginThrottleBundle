@@ -2,6 +2,39 @@
 
 This guide provides step-by-step instructions for upgrading the Login Throttle Bundle between versions.
 
+## Table of contents
+
+- [General Upgrade Process](#general-upgrade-process)
+- [REQ-I18N-003 — Translation domain](#req-i18n-003--translation-domain)
+- [Upgrade Instructions by Version](#upgrade-instructions-by-version)
+  - [Upgrading to 3.1.0](#upgrading-to-310)
+  - [Upgrading to 3.0.0](#upgrading-to-300)
+  - [Upgrading to 2.2.0](#upgrading-to-220)
+  - [Upgrading to 2.1.0](#upgrading-to-210)
+  - [Upgrading to 2.0.0](#upgrading-to-200)
+  - [Upgrading to 1.0.0](#upgrading-to-100)
+  - [Upgrading to 0.0.15](#upgrading-to-0015)
+  - [Upgrading to 0.0.14](#upgrading-to-0014)
+  - [Upgrading to 0.0.13](#upgrading-to-0013)
+  - [Upgrading to 0.0.12](#upgrading-to-0012)
+  - [Upgrading to 0.0.11](#upgrading-to-0011)
+  - [Upgrading to 0.0.10](#upgrading-to-0010)
+  - [Upgrading to 0.0.9](#upgrading-to-009)
+  - [Upgrading to 0.0.8](#upgrading-to-008)
+  - [Upgrading to 0.0.7](#upgrading-to-007)
+  - [Upgrading to 0.0.6](#upgrading-to-006)
+  - [Upgrading to 0.0.5](#upgrading-to-005)
+  - [Upgrading to 0.0.4](#upgrading-to-004)
+  - [Upgrading to 0.0.3](#upgrading-to-003)
+  - [Upgrading to 0.0.2](#upgrading-to-002)
+  - [Upgrading to 0.0.1 (Initial Release)](#upgrading-to-001-initial-release)
+- [Troubleshooting Upgrades](#troubleshooting-upgrades)
+  - [Common Issues](#common-issues)
+  - [Getting Help](#getting-help)
+- [Version Compatibility](#version-compatibility)
+- [Additional Resources](#additional-resources)
+- [Notes](#notes)
+
 ## General Upgrade Process
 
 1. **Backup your configuration**: Always backup your `config/packages/nowo_login_throttle.yaml` file before upgrading
@@ -21,6 +54,39 @@ The translation domain is now `NowoLoginThrottleBundle` (files: `src/Resources/t
 - DI config root / alias `nowo_login_throttle` is unchanged.
 
 ## Upgrade Instructions by Version
+
+### Upgrading to 3.1.0
+
+**Release Date**: 2026-07-29
+
+#### What's New
+
+- **`LoginAttemptRepositoryInterface`** — inject the interface instead of the concrete repository.
+- **FrankenPHP demo** — Symfony 8 demo runs on FrankenPHP (PHP 8.5); see [`DEMO-FRANKENPHP.md`](DEMO-FRANKENPHP.md).
+- **Toolchain** — PHPStan 2 / Rector 2; empty PHPStan baseline; FrankenPHP PHPStan rules.
+
+#### Breaking Changes (limited)
+
+- Concrete classes under `src/` are now **`final`**. If you subclassed bundle classes, switch to composition or the new repository interface. Typical integrators (config + Twig only) are unaffected.
+
+#### Upgrade Steps
+
+1. **Update the bundle**:
+   ```bash
+   composer require nowo-tech/login-throttle-bundle:^3.1
+   ```
+
+2. **Prefer the repository interface** (optional but recommended):
+   ```php
+   use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface;
+   ```
+
+3. **Clear cache**:
+   ```bash
+   php bin/console cache:clear
+   ```
+
+4. **Test login throttling** on all configured firewalls.
 
 ### Upgrading to 3.0.0
 
@@ -971,6 +1037,7 @@ If you encounter issues during upgrade:
 
 | Bundle Version | Symfony Version | PHP Version | Features |
 |---------------|-----------------|-------------|----------|
+| 3.1.0         | 7.0, 8.0, 8.1   | 8.2, 8.3, 8.4, 8.5 | FrankenPHP demo; `LoginAttemptRepositoryInterface`; classes `final`; PHPStan 2 |
 | 3.0.0         | 7.0, 8.0, 8.1   | 8.2, 8.3, 8.4, 8.5 | Translation domain `NowoLoginThrottleBundle` (REQ-I18N-003); DI alias unchanged |
 | 2.2.0         | 7.0, 8.0, 8.1   | 8.2, 8.3, 8.4, 8.5 | Single Symfony 8 demo; REQ-GIT-001 / GITHUB_CI; Code of Conduct; no integrator API changes |
 | 2.1.0         | 7.0, 8.0, 8.1   | 8.2, 8.3, 8.4, 8.5 | Spec Kit baseline; demo Docker intl fix; no integrator changes |

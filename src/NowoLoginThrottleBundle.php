@@ -6,6 +6,7 @@ namespace Nowo\LoginThrottleBundle;
 
 use Nowo\LoginThrottleBundle\DependencyInjection\Configuration;
 use Nowo\LoginThrottleBundle\DependencyInjection\NowoLoginThrottleExtension;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\Extension\ExtensionInterface;
 use Symfony\Component\HttpKernel\Bundle\Bundle;
 
@@ -26,7 +27,7 @@ use Symfony\Component\HttpKernel\Bundle\Bundle;
  * @author Héctor Franco Aceituno <hectorfranco@nowo.tech>
  * @copyright 2025 Nowo.tech
  */
-class NowoLoginThrottleBundle extends Bundle
+final class NowoLoginThrottleBundle extends Bundle
 {
     /**
      * Overridden to allow for the custom extension alias.
@@ -35,15 +36,18 @@ class NowoLoginThrottleBundle extends Bundle
      * The extension is cached after the first call to ensure the same instance is returned
      * on subsequent calls.
      *
-     * @return ExtensionInterface|null The container extension instance, or null if not available
+     * @return ExtensionInterface The container extension instance
      */
-    public function getContainerExtension(): ?ExtensionInterface
+    public function getContainerExtension(): ExtensionInterface
     {
-        if (null === $this->extension) {
+        if (!$this->extension instanceof ExtensionInterface) {
             $this->extension = new NowoLoginThrottleExtension();
         }
 
-        return $this->extension;
+        /** @var ExtensionInterface $extension */
+        $extension = $this->extension;
+
+        return $extension;
     }
 
     /**
@@ -56,13 +60,21 @@ class NowoLoginThrottleBundle extends Bundle
     {
         parent::boot();
 
+        if (!$this->container instanceof ContainerInterface) {
+            return;
+        }
+
         if (!$this->container->hasParameter('kernel.project_dir')) {
             return;
         }
 
         $projectDir = $this->container->getParameter('kernel.project_dir');
+        if (!\is_string($projectDir) || '' === $projectDir) {
+            return;
+        }
+
         $aliasBundle = Configuration::ALIAS;
-        $configPath = $projectDir . sprintf('/config/packages/%s.yaml', $aliasBundle);
+        $configPath = $projectDir . \sprintf('/config/packages/%s.yaml', $aliasBundle);
         $configDir = $projectDir . '/config/packages';
 
         // Check if the configuration already exists in any file
@@ -90,12 +102,14 @@ class NowoLoginThrottleBundle extends Bundle
             return false;
         }
 
-        $files = glob($configDir . '/*.yaml') + glob($configDir . '/*.yml');
+        $yamlFiles = glob($configDir . '/*.yaml') ?: [];
+        $ymlFiles = glob($configDir . '/*.yml') ?: [];
+        $files = array_merge($yamlFiles, $ymlFiles);
         $alias = Configuration::ALIAS;
 
         foreach ($files as $file) {
             $content = file_get_contents($file);
-            if ($content && strpos($content, $alias . ':') !== false) {
+            if ($content && str_contains($content, $alias . ':')) {
                 return true;
             }
         }

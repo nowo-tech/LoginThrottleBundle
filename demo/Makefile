@@ -1,89 +1,94 @@
-# Makefile for Login Throttle Bundle Demo
+# Makefile for Login Throttle Bundle Demo (FrankenPHP + MySQL)
 
-.PHONY: help up-symfony8 down-symfony8 install-symfony8 database-symfony8 shell-symfony8 logs-symfony8 test-symfony8 update-bundle update-bundle-symfony8 release-check verify clean
+# Prefer Compose V2 plugin (GitHub Actions / modern Docker Desktop); fall back to docker-compose V1 (REQ-MAKE-010).
+COMPOSE ?= $(shell docker compose version >/dev/null 2>&1 && echo "docker compose" || echo "docker-compose")
 
-# Default target
+.PHONY: help up up-symfony8 down down-symfony8 install-symfony8 database-symfony8 shell-symfony8 logs-symfony8 test-symfony8 update-bundle update-bundle-symfony8 release-check verify demo-smoke release-verify clean
+
 help:
 	@echo "Login Throttle Bundle - Demo Commands"
 	@echo ""
-	@echo "Usage: make <target>"
+	@echo "Symfony 8 FrankenPHP demo (Port 8002):"
+	@echo "  up / up-symfony8     Start stack, install, migrate, fixtures"
+	@echo "  down / down-symfony8 Stop containers"
+	@echo "  demo-smoke           REQ-TEST-011: up -> HTTP 200 -> down"
+	@echo "  release-verify       Alias of demo-smoke"
+	@echo "  install-symfony8     Composer install"
+	@echo "  database-symfony8    Create DB / migrate / fixtures"
+	@echo "  shell-symfony8       Shell in PHP container"
+	@echo "  logs-symfony8        Follow logs"
+	@echo "  test-symfony8        Demo PHPUnit"
+	@echo "  update-bundle        Sync path-repo bundle"
+	@echo "  release-check        update-bundle + test + verify"
+	@echo "  verify               Print demo URL"
+	@echo "  clean                Remove vendor/cache artifacts"
 	@echo ""
-	@echo "Symfony 8.0 Demo (Port 8002):"
-	@echo "  up-symfony8        Start Symfony 8.0 demo containers"
-	@echo "  down-symfony8      Stop Symfony 8.0 demo containers"
-	@echo "  install-symfony8   Install dependencies for Symfony 8.0 demo"
-	@echo "  database-symfony8  Setup database (create, migrate, load fixtures)"
-	@echo "  shell-symfony8     Open shell in Symfony 8.0 PHP container"
-	@echo "  logs-symfony8      Show Symfony 8.0 container logs"
-	@echo "  test-symfony8      Run tests for Symfony 8.0 demo"
-	@echo ""
-	@echo "Other commands:"
-	@echo "  update-bundle      Sync bundle code in the demo"
-	@echo "  release-check      Run full demo verification flow"
-	@echo "  verify             Basic health check of running demo"
-	@echo "  clean              Remove vendor and cache from the demo"
-	@echo ""
-	@echo "Access URLs:"
-	@echo "  Symfony 8.0: http://localhost:8002"
-	@echo "  phpMyAdmin:  http://localhost:8082"
+	@echo "Access: http://localhost:8002 (PORT from .env)"
 
-# Symfony 8.0 Demo
-up-symfony8:
-	@echo "🚀 Starting Symfony 8.0 demo..."
-	cd demo-symfony8 && \
+up up-symfony8:
+	@set -e; \
+	echo "Starting Symfony 8 FrankenPHP demo..."; \
+	cd demo-symfony8; \
 	if [ ! -f .env ]; then \
-		if [ -f .env.example ]; then \
-			cp .env.example .env && \
-			echo "✅ Created .env from .env.example"; \
-		else \
-			echo "⚠️  Warning: .env.example not found, creating basic .env file"; \
-			echo "# Environment variables" > .env; \
-		fi; \
-	fi && \
-	docker-compose build && \
-	docker-compose up -d && \
-	echo "⏳ Waiting for containers to be ready..." && \
-	sleep 3 && \
-	echo "📦 Installing dependencies..." && \
-	docker-compose exec -T php composer install --no-interaction --no-scripts && \
-	echo "🔧 Running post-install scripts (if bin/console exists)..." && \
-	(docker-compose exec -T php test -f bin/console && docker-compose exec -T php composer run-script post-install-cmd || echo "⚠️  Skipping post-install scripts (bin/console not found)") && \
-	echo "🗄️  Setting up database..." && \
-	if docker-compose exec -T php test -f bin/console; then \
-		echo "   Creating database..." && \
-		docker-compose exec -T php php bin/console doctrine:database:create --if-not-exists && \
-		echo "   Running migrations..." && \
-		docker-compose exec -T php php bin/console doctrine:migrations:migrate --no-interaction && \
-		echo "   Updating schema (if needed)..." && \
-		(docker-compose exec -T php php bin/console doctrine:schema:update --force --complete || echo "⚠️  Schema update skipped (migrations should be sufficient)") && \
-		echo "   Loading fixtures..." && \
-		docker-compose exec -T php php bin/console doctrine:fixtures:load --no-interaction && \
-		echo "✅ Database setup completed"; \
+		cp .env.example .env && echo "Created .env from .env.example"; \
+	fi; \
+	$(COMPOSE) build; \
+	$(COMPOSE) up -d; \
+	echo "Waiting for containers to be ready..."; \
+	sleep 5; \
+	echo "Installing dependencies..."; \
+	$(COMPOSE) exec -T php composer install --no-interaction --no-scripts; \
+	$(COMPOSE) exec -T php php bin/console cache:clear --env=dev --no-warmup || true; \
+	$(COMPOSE) exec -T php php bin/console cache:warmup --env=dev; \
+	echo "Setting up database..."; \
+	if $(COMPOSE) exec -T php test -f bin/console; then \
+		$(COMPOSE) exec -T php php bin/console doctrine:database:create --if-not-exists; \
+		$(COMPOSE) exec -T php php bin/console doctrine:migrations:migrate --no-interaction; \
+		($(COMPOSE) exec -T php php bin/console doctrine:schema:update --force --complete || true); \
+		$(COMPOSE) exec -T php php bin/console doctrine:fixtures:load --no-interaction; \
+		echo "Database setup completed"; \
 	else \
-		echo "❌ Error: bin/console not found. Cannot setup database." && exit 1; \
-	fi && \
+		echo "Error: bin/console not found." && exit 1; \
+	fi; \
 	PORT=$$(grep "^PORT=" .env 2>/dev/null | cut -d= -f2 | tr -d '\r'); \
 	[ -z "$$PORT" ] && PORT=$$(grep "^PORT=" .env.example 2>/dev/null | cut -d= -f2 | tr -d '\r'); \
-	echo "Demo started at: http://localhost:$$PORT" && \
-	echo "✅ phpMyAdmin is ready at http://localhost:8082"
+	PORT=$${PORT:-8002}; \
+	echo "Demo started at: http://localhost:$$PORT"
 
-down-symfony8:
-	cd demo-symfony8 && docker-compose down
+down down-symfony8:
+	cd demo-symfony8 && $(COMPOSE) down
+
+# REQ-TEST-011
+demo-smoke:
+	@set -e; \
+	PORT_EXAMPLE=$$(grep "^PORT=" demo-symfony8/.env.example 2>/dev/null | cut -d= -f2 | tr -d '\r'); \
+	[ -z "$$PORT_EXAMPLE" ] && PORT_EXAMPLE=8002; \
+	echo "Demo smoke: demo-symfony8 (expect http://127.0.0.1:$$PORT_EXAMPLE)"; \
+	$(MAKE) up-symfony8; \
+	PORT=$$(grep "^PORT=" demo-symfony8/.env 2>/dev/null | cut -d= -f2 | tr -d '\r'); \
+	[ -z "$$PORT" ] && PORT=$$PORT_EXAMPLE; \
+	sleep 8; \
+	code=$$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:$$PORT/" 2>/dev/null || echo "000"); \
+	$(MAKE) down-symfony8 2>/dev/null || true; \
+	if [ "$$code" != "200" ] && [ "$$code" != "302" ]; then echo "demo failed with HTTP $$code (port $$PORT)"; exit 1; fi; \
+	echo "demo-symfony8 OK (HTTP $$code)"
+
+release-verify: demo-smoke
 
 install-symfony8:
-	cd demo-symfony8 && docker-compose exec -T php composer install
+	cd demo-symfony8 && $(COMPOSE) exec -T php composer install
 
 database-symfony8:
-	cd demo-symfony8 && docker-compose exec -T php composer database
+	cd demo-symfony8 && $(COMPOSE) exec -T php composer database
 
 shell-symfony8:
-	cd demo-symfony8 && docker-compose exec php sh
+	cd demo-symfony8 && $(COMPOSE) exec php sh
 
 logs-symfony8:
-	cd demo-symfony8 && docker-compose logs -f
+	cd demo-symfony8 && $(COMPOSE) logs -f
 
 test-symfony8:
-	cd demo-symfony8 && docker-compose exec -T php composer test
+	cd demo-symfony8 && $(COMPOSE) exec -T php composer test
 
 clean:
 	rm -rf demo-symfony8/vendor
@@ -100,14 +105,14 @@ update-bundle-symfony8:
 	cd demo-symfony8 && docker compose exec -T php php bin/console cache:clear --env=dev --no-warmup || true
 
 verify:
-	@echo "Symfony 8 demo: http://localhost:$$(cd demo-symfony8 && grep -E '^PORT=' .env.example | cut -d= -f2)"
+	@echo "Symfony 8 demo: http://localhost:$$(cd demo-symfony8 && grep -E '^PORT=' .env.example | cut -d= -f2 | tr -d '\r')"
 
 release-check:
 	@$(MAKE) update-bundle
 	@$(MAKE) test-symfony8
 	@$(MAKE) verify
 
-
 # REQ-MAKE-008: update-deps-all (REQ-MAKE-008)
 BUNDLE_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/..)
-include $(BUNDLE_ROOT)/../.scripts/Makefile.demo-aggregate-update-deps.mk
+# Optional: monorepo helper absent on standalone GitHub Actions checkout (REQ-MAKE-009).
+-include $(BUNDLE_ROOT)/../.scripts/Makefile.demo-aggregate-update-deps.mk

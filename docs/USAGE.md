@@ -2,6 +2,13 @@
 
 This document describes common usage patterns for `nowo-tech/login-throttle-bundle`.
 
+## Table of contents
+
+- [Basic usage](#basic-usage)
+- [Typical workflow](#typical-workflow)
+- [Multi-firewall usage](#multi-firewall-usage)
+- [Storage selection](#storage-selection)
+
 ## Basic usage
 
 1. Install and enable the bundle.

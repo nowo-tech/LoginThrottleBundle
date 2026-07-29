@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Nowo\LoginThrottleBundle\RateLimiter;
 
-use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepository;
+use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface;
 use Symfony\Component\HttpFoundation\RateLimiter\RequestRateLimiterInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\RateLimiter\RateLimit;
@@ -18,17 +18,17 @@ use Symfony\Component\RateLimiter\RateLimit;
  * @author Héctor Franco Aceituno <hectorfranco@nowo.tech>
  * @copyright 2025 Nowo.tech
  */
-class DatabaseRateLimiter implements RequestRateLimiterInterface
+final class DatabaseRateLimiter implements RequestRateLimiterInterface
 {
     /**
      * Constructor.
      *
-     * @param LoginAttemptRepository $repository     The login attempt repository
-     * @param int                    $maxAttempts    Maximum number of attempts
-     * @param int                    $timeoutSeconds Timeout period in seconds
+     * @param LoginAttemptRepositoryInterface $repository     The login attempt repository
+     * @param int                             $maxAttempts    Maximum number of attempts
+     * @param int                             $timeoutSeconds Timeout period in seconds
      */
     public function __construct(
-        private readonly LoginAttemptRepository $repository,
+        private readonly LoginAttemptRepositoryInterface $repository,
         private readonly int $maxAttempts,
         private readonly int $timeoutSeconds
     ) {
@@ -129,20 +129,14 @@ class DatabaseRateLimiter implements RequestRateLimiterInterface
     {
         $attempts = $this->repository->getAttempts($ipAddress, $username, $this->timeoutSeconds);
 
-        if ($attempts === []) {
+        if ([] === $attempts) {
             return null;
         }
 
-        // Get the oldest attempt within the timeout period (first in array, sorted DESC means last is oldest)
-        // Since getAttempts orders by DESC (newest first), the last element is the oldest
-        $oldestAttempt = end($attempts);
-        if (!$oldestAttempt) {
-            return null;
-        }
+        // getAttempts orders by DESC (newest first); the last element is the oldest
+        $oldestAttempt = $attempts[\array_key_last($attempts)];
+        $retryAfter = $oldestAttempt->getCreatedAt()->modify(\sprintf('+%d seconds', $this->timeoutSeconds));
 
-        // Calculate when the timeout period expires
-        $retryAfter = $oldestAttempt->getCreatedAt()->modify(sprintf('+%d seconds', $this->timeoutSeconds));
-
-        return $retryAfter;
+        return $retryAfter instanceof \DateTimeImmutable ? $retryAfter : null;
     }
 }

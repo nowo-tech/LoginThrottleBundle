@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace Nowo\LoginThrottleBundle\Service;
 
-use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepository;
+use Nowo\LoginThrottleBundle\Entity\LoginAttempt;
+use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Contracts\Service\Attribute\Required;
 
@@ -17,18 +18,20 @@ use Symfony\Contracts\Service\Attribute\Required;
  * @author Héctor Franco Aceituno <hectorfranco@nowo.tech>
  * @copyright 2025 Nowo.tech
  */
-class LoginThrottleInfoService
+final class LoginThrottleInfoService
 {
-    private ?LoginAttemptRepository $repository = null;
+    private ?LoginAttemptRepositoryInterface $repository = null;
+
+    /** @var array<string, mixed>|null */
     private ?array $firewallsConfig = null;
 
     /**
      * Set the login attempt repository (for database storage).
      *
-     * @param LoginAttemptRepository|null $repository The repository
+     * @param LoginAttemptRepositoryInterface|null $repository The repository
      */
     #[Required]
-    public function setRepository(?LoginAttemptRepository $repository): void
+    public function setRepository(?LoginAttemptRepositoryInterface $repository): void
     {
         $this->repository = $repository;
     }
@@ -36,7 +39,7 @@ class LoginThrottleInfoService
     /**
      * Set the firewalls configuration.
      *
-     * @param array|null $firewallsConfig The firewalls configuration
+     * @param array<string, mixed>|null $firewallsConfig The firewalls configuration
      */
     public function setFirewallsConfig(?array $firewallsConfig): void
     {
@@ -78,7 +81,8 @@ class LoginThrottleInfoService
         }
 
         if ('database' === $storage) {
-            if (!$this->repository instanceof LoginAttemptRepository) {
+            $repository = $this->repository;
+            if (!$repository instanceof LoginAttemptRepositoryInterface) {
                 // Repository not available, return default values
                 return [
                     'current_attempts' => 0,
@@ -90,7 +94,7 @@ class LoginThrottleInfoService
                 ];
             }
 
-            return $this->getAttemptInfoFromDatabase($ipAddress, $username, $maxAttempts, $timeout);
+            return $this->getAttemptInfoFromDatabase($repository, $ipAddress, $username, $maxAttempts, $timeout);
         }
 
         // For cache storage, try to use rate limiter if available
@@ -103,15 +107,21 @@ class LoginThrottleInfoService
     /**
      * Get attempt info from database storage.
      *
-     * @param string      $ipAddress   IP address
-     * @param string|null $username    Username
-     * @param int         $maxAttempts Maximum attempts
-     * @param int         $timeout     Timeout in seconds
+     * @param LoginAttemptRepositoryInterface $repository  Repository
+     * @param string                          $ipAddress   IP address
+     * @param string|null                     $username    Username
+     * @param int                             $maxAttempts Maximum attempts
+     * @param int                             $timeout     Timeout in seconds
      *
      * @return array{current_attempts: int, max_attempts: int, remaining_attempts: int, is_blocked: bool, retry_after: \DateTimeImmutable|null, tracking_type: string}
      */
-    private function getAttemptInfoFromDatabase(string $ipAddress, ?string $username, int $maxAttempts, int $timeout): array
-    {
+    private function getAttemptInfoFromDatabase(
+        LoginAttemptRepositoryInterface $repository,
+        string $ipAddress,
+        ?string $username,
+        int $maxAttempts,
+        int $timeout
+    ): array {
         // Determine tracking type: if username is available, track by username; otherwise by IP
         $trackingType = 'ip';
         $currentAttempts = 0;
@@ -123,36 +133,26 @@ class LoginThrottleInfoService
             $trackingType = 'username';
             // Count attempts by username (shows attempts for this email regardless of IP)
             // This matches what the user requested: show attempts by email when tracking by email
-            $currentAttempts = $this->repository->countAttemptsByUsername($username, $timeout);
+            $currentAttempts = $repository->countAttemptsByUsername($username, $timeout);
             $isBlocked = $currentAttempts >= $maxAttempts;
 
             if ($isBlocked) {
                 // Get attempts by username to calculate retry_after (pass empty string for IP to ignore it)
-                $attempts = $this->repository->getAttempts('', $username, $timeout);
-                if ($attempts !== []) {
-                    $oldestAttempt = end($attempts);
-                    if ($oldestAttempt) {
-                        $retryAfter = $oldestAttempt->getCreatedAt()->modify(sprintf('+%d seconds', $timeout));
-                    }
-                }
+                $attempts = $repository->getAttempts('', $username, $timeout);
+                $retryAfter = $this->calculateRetryAfterFromAttempts($attempts, $timeout);
             }
         } else {
             // Track by IP address
             $trackingType = 'ip';
             // Count attempts by IP only (shows attempts from this IP regardless of username)
             // This matches what the user requested: show attempts by IP when tracking by IP
-            $currentAttempts = $this->repository->countAttemptsByIp($ipAddress, $timeout);
+            $currentAttempts = $repository->countAttemptsByIp($ipAddress, $timeout);
             $isBlocked = $currentAttempts >= $maxAttempts;
 
             if ($isBlocked) {
                 // Get attempts by IP to calculate retry_after
-                $attempts = $this->repository->getAttempts($ipAddress, null, $timeout);
-                if ($attempts !== []) {
-                    $oldestAttempt = end($attempts);
-                    if ($oldestAttempt) {
-                        $retryAfter = $oldestAttempt->getCreatedAt()->modify(sprintf('+%d seconds', $timeout));
-                    }
-                }
+                $attempts = $repository->getAttempts($ipAddress, null, $timeout);
+                $retryAfter = $this->calculateRetryAfterFromAttempts($attempts, $timeout);
             }
         }
 
@@ -166,6 +166,21 @@ class LoginThrottleInfoService
             'retry_after' => $retryAfter,
             'tracking_type' => $trackingType,
         ];
+    }
+
+    /**
+     * @param list<LoginAttempt> $attempts
+     */
+    private function calculateRetryAfterFromAttempts(array $attempts, int $timeout): ?\DateTimeImmutable
+    {
+        if ([] === $attempts) {
+            return null;
+        }
+
+        $oldestAttempt = $attempts[\array_key_last($attempts)];
+        $retryAfter = $oldestAttempt->getCreatedAt()->modify(\sprintf('+%d seconds', $timeout));
+
+        return $retryAfter instanceof \DateTimeImmutable ? $retryAfter : null;
     }
 
     /**
@@ -195,7 +210,7 @@ class LoginThrottleInfoService
      *
      * @param string $firewallName The firewall name
      *
-     * @return array|null The configuration or null if not found
+     * @return array<string, mixed>|null The configuration or null if not found
      */
     private function getFirewallConfig(string $firewallName): ?array
     {
@@ -215,7 +230,9 @@ class LoginThrottleInfoService
         }
 
         // Multiple firewalls configuration
-        return $this->firewallsConfig[$firewallName] ?? null;
+        $firewallConfig = $this->firewallsConfig[$firewallName] ?? null;
+
+        return \is_array($firewallConfig) ? $firewallConfig : null;
     }
 
     /**
