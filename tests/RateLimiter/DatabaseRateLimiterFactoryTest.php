@@ -19,7 +19,7 @@ use PHPUnit\Framework\TestCase;
 final class DatabaseRateLimiterFactoryTest extends TestCase
 {
     private DatabaseRateLimiterFactory $factory;
-    private \PHPUnit\Framework\MockObject\MockObject $repository;
+    private MockObject $repository;
 
     protected function setUp(): void
     {

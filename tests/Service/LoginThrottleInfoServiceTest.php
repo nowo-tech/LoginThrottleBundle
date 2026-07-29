@@ -20,7 +20,7 @@ use Symfony\Component\HttpFoundation\Request;
 final class LoginThrottleInfoServiceTest extends TestCase
 {
     private LoginThrottleInfoService $service;
-    private \PHPUnit\Framework\MockObject\MockObject $repository;
+    private MockObject $repository;
 
     protected function setUp(): void
     {

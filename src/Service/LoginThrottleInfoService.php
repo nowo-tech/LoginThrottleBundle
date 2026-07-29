@@ -177,7 +177,7 @@ final class LoginThrottleInfoService
             return null;
         }
 
-        $oldestAttempt = $attempts[\array_key_last($attempts)];
+        $oldestAttempt = $attempts[array_key_last($attempts)];
         $retryAfter = $oldestAttempt->getCreatedAt()->modify(\sprintf('+%d seconds', $timeout));
 
         return $retryAfter instanceof \DateTimeImmutable ? $retryAfter : null;

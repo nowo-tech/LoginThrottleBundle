@@ -21,7 +21,7 @@ use Symfony\Component\RateLimiter\RateLimit;
 final class DatabaseRateLimiterTest extends TestCase
 {
     private DatabaseRateLimiter $rateLimiter;
-    private \PHPUnit\Framework\MockObject\MockObject $repository;
+    private MockObject $repository;
 
     protected function setUp(): void
     {

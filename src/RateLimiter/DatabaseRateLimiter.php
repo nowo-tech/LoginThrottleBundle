@@ -134,7 +134,7 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
         }
 
         // getAttempts orders by DESC (newest first); the last element is the oldest
-        $oldestAttempt = $attempts[\array_key_last($attempts)];
+        $oldestAttempt = $attempts[array_key_last($attempts)];
         $retryAfter = $oldestAttempt->getCreatedAt()->modify(\sprintf('+%d seconds', $this->timeoutSeconds));
 
         return $retryAfter instanceof \DateTimeImmutable ? $retryAfter : null;
