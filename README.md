@@ -2,15 +2,14 @@
 
 [![CI](https://github.com/nowo-tech/LoginThrottleBundle/actions/workflows/ci.yml/badge.svg)](https://github.com/nowo-tech/LoginThrottleBundle/actions/workflows/ci.yml) [![Packagist Version](https://img.shields.io/packagist/v/nowo-tech/login-throttle-bundle.svg?style=flat)](https://packagist.org/packages/nowo-tech/login-throttle-bundle) [![Packagist Downloads](https://img.shields.io/packagist/dt/nowo-tech/login-throttle-bundle.svg)](https://packagist.org/packages/nowo-tech/login-throttle-bundle) [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![PHP](https://img.shields.io/badge/PHP-8.2%2B-777BB4?logo=php)](https://php.net) [![Symfony](https://img.shields.io/badge/Symfony-7.0%2B%20%7C%208.0%2B-000000?logo=symfony)](https://symfony.com) [![Coverage](https://img.shields.io/badge/Coverage-100%25-brightgreen)](#tests-and-coverage)
 
-![FrankenPHP Friendly Worker Mode](docs/images/frankenphp-friendly.png)
-
-FrankenPHP worker mode: supported (PHPStan FrankenPHP rules + Symfony 8 demo with `FRANKENPHP_MODE=worker`).
-
 > ⭐ **Found this useful?** Give it a star on GitHub! It helps us maintain and improve the project.
 
 Symfony bundle for login throttling using native Symfony `login_throttling` feature with pre-configured settings.
-
 This bundle replaces deprecated bundles like `anyx/login-gate-bundle` by using Symfony's native login throttling feature introduced in Symfony 5.2.
+
+![FrankenPHP Friendly Worker Mode](docs/images/frankenphp-friendly.png)
+
+This bundle is **FrankenPHP worker mode friendly**.
 
 ## Features
 
@@ -47,6 +46,13 @@ return [
 ```
 
 > **Note**: If you're using Symfony Flex, the bundle will be registered automatically and a default configuration file will be created at `config/packages/nowo_login_throttle.yaml`.
+
+## Requirements
+
+- PHP >= 8.2, < 8.6
+- Symfony >= 7.0 || >= 8.0
+- Symfony Security Bundle
+- Symfony Rate Limiter component
 
 ## Configuration
 
@@ -99,6 +105,29 @@ See [Configuration Documentation](docs/CONFIGURATION.md#multiple-firewalls) for 
 | `rate_limiter` | `string\|null` | `null` | Custom rate limiter service ID (optional). If not provided, Symfony will use default login throttling rate limiter, or database rate limiter if `storage=database` |
 | `cache_pool` | `string` | `'cache.rate_limiter'` | Cache pool to use for storing the limiter state (only used when `storage=cache`) |
 | `lock_factory` | `string\|null` | `null` | Lock factory service ID for rate limiter (optional, only used when `storage=cache`). Set to null to disable locking |
+
+## How It Works
+
+This bundle uses Symfony's native `login_throttling` feature, which:
+
+1. **Tracks failed login attempts** per IP address and username combination
+2. **Blocks further attempts** when the maximum number of attempts is reached
+3. **Automatically resets** after the specified interval
+4. **Uses Symfony's rate limiter** component for efficient tracking
+
+The throttling is handled automatically by Symfony's security system - you don't need to add any code to your controllers or authentication logic.
+
+## Commands
+### Configure Security
+
+Automatically configures `security.yaml` with `login_throttling` settings:
+
+```bash
+php bin/console nowo:login-throttle:configure-security
+```
+
+Options:
+- `--force` or `-f`: Force update even if `login_throttling` is already configured
 
 ## Setup
 
@@ -204,39 +233,43 @@ This bundle is designed as a drop-in replacement for `anyx/login-gate-bundle`. T
 
 For detailed migration instructions, including storage migration, code changes, and troubleshooting, see the [complete migration guide](docs/MIGRATION_FROM_ANYX.md).
 
-## How It Works
+## Service Configuration Examples
 
-This bundle uses Symfony's native `login_throttling` feature, which:
+For detailed examples of service configurations for different deployment scenarios:
 
-1. **Tracks failed login attempts** per IP address and username combination
-2. **Blocks further attempts** when the maximum number of attempts is reached
-3. **Automatically resets** after the specified interval
-4. **Uses Symfony's rate limiter** component for efficient tracking
+- **Local Development**: File-based cache
+- **Docker Containers**: Redis for shared state
+- **Kubernetes**: Redis with lock factory for distributed systems
+- **Multiple Environments**: Environment-specific configurations
 
-The throttling is handled automatically by Symfony's security system - you don't need to add any code to your controllers or authentication logic.
+See [docs/SERVICES.md](docs/SERVICES.md) for complete examples.
 
-## Requirements
+## Related
 
-- PHP >= 8.2, < 8.6
-- Symfony >= 7.0 || >= 8.0
-- Symfony Security Bundle
-- Symfony Rate Limiter component
+- [Symfony Security Documentation - Limiting Login Attempts](https://symfony.com/doc/current/security.html#limiting-login-attempts)
+- [anyx/login-gate-bundle (deprecated)](https://packagist.org/packages/anyx/login-gate-bundle)
 
-## Commands
+## Demo Project
 
-### Configure Security
+A complete demo project is included in the `demo/` directory demonstrating:
 
-Automatically configures `security.yaml` with `login_throttling` settings:
+- Login throttling in action
+- Configuration examples
+- Docker setup for easy testing
+- Complete authentication system
+
+### Quick Start with Demo
 
 ```bash
-php bin/console nowo:login-throttle:configure-security
+cd demo
+make up-symfony8
 ```
 
-Options:
-- `--force` or `-f`: Force update even if `login_throttling` is already configured
+Access the demo at: http://localhost:8002
+
+See [demo/README.md](demo/README.md) for detailed instructions.
 
 ## Development
-
 ### Using Docker
 
 ```bash
@@ -272,24 +305,6 @@ composer qa
 - **PHPUnit**: Complete test suite with coverage
 - **GitHub Actions**: Automated CI/CD pipeline
 
-## Testing
-
-The bundle includes comprehensive tests with **100% code coverage requirement**. All tests are located in the `tests/` directory.
-
-### Running Tests
-
-```bash
-# Run all tests
-composer test
-
-# Run tests with coverage report
-composer test-coverage
-```
-
-### Test Coverage
-
-The bundle requires 100% code coverage. The CI/CD pipeline validates this requirement automatically.
-
 ## Code Quality
 
 The bundle uses PHP-CS-Fixer to enforce code style (PSR-12).
@@ -308,62 +323,7 @@ The GitHub Actions CI/CD pipeline automatically:
 - Validates 100% test coverage
 - Runs tests on multiple PHP and Symfony versions
 
-## Tests and coverage
-
-| Scope | Detail |
-|-------|--------|
-| **PHPUnit** | `composer test` / `make test` — suite under `tests/` (109 tests). |
-| **PHP lines** | **100%** line coverage required (CI fails below 100%). Run `composer test-coverage` / `make test-coverage`. |
-
-CI runs tests, PHPStan, and PHP-CS-Fixer on push/PR (see `.github/workflows/ci.yml`).
-- TS/JS: N/A
-- Python: N/A
-
-## License
-
-The MIT License (MIT). Please see [LICENSE](LICENSE) for more information.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## Author
-
-Created by [Héctor Franco Aceituno](https://github.com/HecFranco) at [Nowo.tech](https://nowo.tech)
-
-## Service Configuration Examples
-
-For detailed examples of service configurations for different deployment scenarios:
-
-- **Local Development**: File-based cache
-- **Docker Containers**: Redis for shared state
-- **Kubernetes**: Redis with lock factory for distributed systems
-- **Multiple Environments**: Environment-specific configurations
-
-See [docs/SERVICES.md](docs/SERVICES.md) for complete examples.
-
-## Demo Project
-
-A complete demo project is included in the `demo/` directory demonstrating:
-
-- Login throttling in action
-- Configuration examples
-- Docker setup for easy testing
-- Complete authentication system
-
-### Quick Start with Demo
-
-```bash
-cd demo
-make up-symfony8
-```
-
-Access the demo at: http://localhost:8002
-
-See [demo/README.md](demo/README.md) for detailed instructions.
-
 ## Documentation
-
 
 - [GitHub Actions CI requirements](docs/GITHUB_CI.md)
 - [Installation](docs/INSTALLATION.md)
@@ -387,8 +347,44 @@ See [demo/README.md](demo/README.md) for detailed instructions.
 - [Services](docs/SERVICES.md)
 - [Branching](docs/BRANCHING.md)
 
-## Related
+## Testing
 
-- [Symfony Security Documentation - Limiting Login Attempts](https://symfony.com/doc/current/security.html#limiting-login-attempts)
-- [anyx/login-gate-bundle (deprecated)](https://packagist.org/packages/anyx/login-gate-bundle)
+The bundle includes comprehensive tests with **100% code coverage requirement**. All tests are located in the `tests/` directory.
+
+### Running Tests
+
+```bash
+# Run all tests
+composer test
+
+# Run tests with coverage report
+composer test-coverage
+```
+
+### Test Coverage
+
+The bundle requires 100% code coverage. The CI/CD pipeline validates this requirement automatically.
+
+## Tests and coverage
+
+| Scope | Detail |
+|-------|--------|
+| **PHPUnit** | `composer test` / `make test` — suite under `tests/` (109 tests). |
+| **PHP lines** | **100%** line coverage required (CI fails below 100%). Run `composer test-coverage` / `make test-coverage`. |
+
+CI runs tests, PHPStan, and PHP-CS-Fixer on push/PR (see `.github/workflows/ci.yml`).
+- TS/JS: N/A
+- Python: N/A
+
+## License
+
+The MIT License (MIT). Please see [LICENSE](LICENSE) for more information.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## Author
+
+Created by [Héctor Franco Aceituno](https://github.com/HecFranco) at [Nowo.tech](https://nowo.tech)
 
