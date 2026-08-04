@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[3.1.1] - 2026-08-04](#311-2026-08-04)
 - [[3.1.0] - 2026-07-29](#310---2026-07-29)
   - [Added](#added)
   - [Changed](#changed)
@@ -84,6 +85,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - [Features](#features)
 
 ## [Unreleased]
+
+## [3.1.1] - 2026-08-04
+
+### Fixed
+- **CI coverage:** cover `boot()` early-return branches when container/`kernel.project_dir` are invalid; guard uninitialized `$container` with `isset()`.
+
+[3.1.1]: https://github.com/nowo-tech/LoginThrottleBundle/releases/tag/v3.1.1
 
 ## [3.1.0] - 2026-07-29
 

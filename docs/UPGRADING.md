@@ -7,6 +7,7 @@ This guide provides step-by-step instructions for upgrading the Login Throttle B
 - [General Upgrade Process](#general-upgrade-process)
 - [REQ-I18N-003 — Translation domain](#req-i18n-003--translation-domain)
 - [Upgrade Instructions by Version](#upgrade-instructions-by-version)
+  - [Upgrading to 3.1.1](#upgrading-to-311)
   - [Upgrading to 3.1.0](#upgrading-to-310)
   - [Upgrading to 3.0.0](#upgrading-to-300)
   - [Upgrading to 2.2.0](#upgrading-to-220)
@@ -54,6 +55,16 @@ The translation domain is now `NowoLoginThrottleBundle` (files: `src/Resources/t
 - DI config root / alias `nowo_login_throttle` is unchanged.
 
 ## Upgrade Instructions by Version
+
+### Upgrading to 3.1.1
+
+**Release Date**: 2026-08-04
+
+CI/coverage-only: additional unit tests for `boot()` early-return branches. **No configuration or API changes.**
+
+```bash
+composer update nowo-tech/login-throttle-bundle
+```
 
 ### Upgrading to 3.1.0
 

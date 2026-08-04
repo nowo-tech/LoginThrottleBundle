@@ -126,6 +126,52 @@ final class NowoLoginThrottleBundleBootTest extends TestCase
         $this->assertFileDoesNotExist($configPath);
     }
 
+    public function testBootSkipsWhenContainerNotSet(): void
+    {
+        $bundle = new NowoLoginThrottleBundle();
+
+        $bundle->boot();
+
+        $configPath = $this->testDir . '/config/packages/nowo_login_throttle.yaml';
+        $this->assertFileDoesNotExist($configPath);
+    }
+
+    public function testBootSkipsWhenProjectDirEmptyString(): void
+    {
+        $bundle = new NowoLoginThrottleBundle();
+        $container = $this->createMock(ContainerInterface::class);
+        $container->method('hasParameter')->with('kernel.project_dir')->willReturn(true);
+        $container->method('getParameter')->with('kernel.project_dir')->willReturn('');
+
+        $reflection = new \ReflectionClass($bundle);
+        $property = $reflection->getProperty('container');
+        $property->setAccessible(true);
+        $property->setValue($bundle, $container);
+
+        $bundle->boot();
+
+        $configPath = $this->testDir . '/config/packages/nowo_login_throttle.yaml';
+        $this->assertFileDoesNotExist($configPath);
+    }
+
+    public function testBootSkipsWhenProjectDirNotString(): void
+    {
+        $bundle = new NowoLoginThrottleBundle();
+        $container = $this->createMock(ContainerInterface::class);
+        $container->method('hasParameter')->with('kernel.project_dir')->willReturn(true);
+        $container->method('getParameter')->with('kernel.project_dir')->willReturn(123);
+
+        $reflection = new \ReflectionClass($bundle);
+        $property = $reflection->getProperty('container');
+        $property->setAccessible(true);
+        $property->setValue($bundle, $container);
+
+        $bundle->boot();
+
+        $configPath = $this->testDir . '/config/packages/nowo_login_throttle.yaml';
+        $this->assertFileDoesNotExist($configPath);
+    }
+
     public function testIsConfigurationDefinedReturnsTrueWhenConfigExists(): void
     {
         $bundle = new NowoLoginThrottleBundle();

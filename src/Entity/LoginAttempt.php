@@ -32,7 +32,7 @@ final class LoginAttempt
     private string $ipAddress;
 
     #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
-    private ?string $username = null;
+    private ?string $username;
 
     #[ORM\Column(name: 'created_at', type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;

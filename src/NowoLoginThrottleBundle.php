@@ -44,10 +44,7 @@ final class NowoLoginThrottleBundle extends Bundle
             $this->extension = new NowoLoginThrottleExtension();
         }
 
-        /** @var ExtensionInterface $extension */
-        $extension = $this->extension;
-
-        return $extension;
+        return $this->extension;
     }
 
     /**
@@ -60,7 +57,7 @@ final class NowoLoginThrottleBundle extends Bundle
     {
         parent::boot();
 
-        if (!$this->container instanceof ContainerInterface) {
+        if (!isset($this->container) || !$this->container instanceof ContainerInterface) {
             return;
         }
 
