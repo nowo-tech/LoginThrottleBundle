@@ -6,7 +6,6 @@ namespace Nowo\LoginThrottleBundle;
 
 use Nowo\LoginThrottleBundle\DependencyInjection\Configuration;
 use Nowo\LoginThrottleBundle\DependencyInjection\NowoLoginThrottleExtension;
-use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\Extension\ExtensionInterface;
 use Symfony\Component\HttpKernel\Bundle\Bundle;
 
@@ -57,7 +56,7 @@ final class NowoLoginThrottleBundle extends Bundle
     {
         parent::boot();
 
-        if (!isset($this->container) || !$this->container instanceof ContainerInterface) {
+        if (!isset($this->container)) {
             return;
         }
 
