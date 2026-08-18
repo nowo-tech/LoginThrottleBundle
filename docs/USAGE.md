@@ -36,4 +36,8 @@ Use the `firewalls` key to define independent policies for each firewall (for ex
 - `cache`: lightweight and suitable for most single-node deployments.
 - `database`: preferred when you need persistence/auditing or shared state.
 
+## Translation overrides
+
+UI strings use the `NowoLoginThrottleBundle` translation domain. To override them from the host application, add YAML files under `translations/NowoLoginThrottleBundle.<locale>.yaml`. Host translations take precedence over the catalogues shipped in this bundle.
+
 For database details, see [DATABASE_STORAGE.md](DATABASE_STORAGE.md).

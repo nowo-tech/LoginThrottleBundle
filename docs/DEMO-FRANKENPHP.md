@@ -1,5 +1,7 @@
 # Demo with FrankenPHP
 
+**REQ-DEMO-001:** FrankenPHP demos must install **Nowo Twig Inspector** and **Nowo Hot Reload** together (`nowo-tech/twig-inspector-bundle` + `nowo-tech/hot-reload-bundle` in `require-dev`). Caddyfile: Mercure + `hot_reload` (and `worker { file …; watch }` in worker mode). Do not enable Hot Reload in production.
+
 This document describes how **this** bundle’s demo (`demo/demo-symfony8`) runs under **FrankenPHP** in Docker: PHP **8.5**, Caddyfiles for classic vs worker, and how to switch modes with **`FRANKENPHP_MODE`** (REQ-DEMO-002 / REQ-DEMO-010).
 
 ## Table of contents
