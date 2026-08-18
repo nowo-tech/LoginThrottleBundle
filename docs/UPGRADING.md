@@ -56,6 +56,25 @@ The translation domain is now `NowoLoginThrottleBundle` (files: `src/Resources/t
 
 ## Upgrade Instructions by Version
 
+### Upgrading to 3.1.2
+
+**Release Date**: 2026-08-18
+
+#### What's New
+
+- No application upgrade steps. **Demos only:** Hot Reload Bundle `^1.4` (FrankenPHP Mercure/`hot_reload`, `dev`/`test`).
+
+#### Breaking Changes
+
+None for application consumers of `nowo-tech/login-throttle-bundle`.
+
+#### Migration Steps
+
+1. **Update the bundle** (if you use Composer):
+   ```bash
+   composer update nowo-tech/login-throttle-bundle
+   ```
+
 ### Upgrading to 3.1.1
 
 **Release Date**: 2026-08-04
