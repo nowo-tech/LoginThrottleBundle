@@ -56,6 +56,15 @@ The translation domain is now `NowoLoginThrottleBundle` (files: `src/Resources/t
 
 ## Upgrade Instructions by Version
 
+### Upgrading to 3.1.3
+
+No application upgrade steps.
+
+```bash
+composer update nowo-tech/login-throttle-bundle
+php bin/console cache:clear
+```
+
 ### Upgrading to 3.1.2
 
 **Release Date**: 2026-08-18
