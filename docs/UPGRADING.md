@@ -4,6 +4,8 @@ This guide provides step-by-step instructions for upgrading the Login Throttle B
 
 ## Table of contents
 
+
+- [From 3.1.3 to 3.1.4](#from-313-to-314)
 - [General Upgrade Process](#general-upgrade-process)
 - [REQ-I18N-003 — Translation domain](#req-i18n-003--translation-domain)
 - [Upgrade Instructions by Version](#upgrade-instructions-by-version)
