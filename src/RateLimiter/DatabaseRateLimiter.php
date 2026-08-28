@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nowo\LoginThrottleBundle\RateLimiter;
 
+use Nowo\LoginThrottleBundle\Entity\LoginAttempt;
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface;
 use Symfony\Component\HttpFoundation\RateLimiter\RequestRateLimiterInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -17,7 +18,7 @@ use Symfony\Component\RateLimiter\RateLimit;
  *
  * Username extraction supports flat form fields ({@code _username}, {@code username},
  * {@code email}) and AuthKit-style nested bags ({@code login_form[_username]}, etc.).
- * On successful login, {@see reset()} deletes matching {@see \Nowo\LoginThrottleBundle\Entity\LoginAttempt} rows.
+ * On successful login, {@see reset()} deletes matching {@see LoginAttempt} rows.
  *
  * @author Héctor Franco Aceituno <hectorfranco@nowo.tech>
  * @copyright 2025 Nowo.tech
