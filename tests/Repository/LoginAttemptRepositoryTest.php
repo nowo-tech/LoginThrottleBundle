@@ -297,6 +297,38 @@ final class LoginAttemptRepositoryTest extends TestCase
         $this->assertSame(7, $deleted);
     }
 
+    public function testClearAttemptsWithUsername(): void
+    {
+        $query = $this->createQueryMock();
+        $query->expects($this->once())->method('execute')->willReturn(3);
+
+        $this->queryBuilder->expects($this->once())->method('delete')->willReturnSelf();
+        $this->queryBuilder->expects($this->once())->method('where')->with('la.ipAddress = :ipAddress')->willReturnSelf();
+        $this->queryBuilder->expects($this->once())->method('andWhere')->with('la.username = :username')->willReturnSelf();
+        $this->queryBuilder->expects($this->exactly(2))->method('setParameter')->willReturnSelf();
+        $this->queryBuilder->expects($this->once())->method('getQuery')->willReturn($query);
+
+        $deleted = $this->repository->clearAttempts('192.168.1.1', 'user@example.com');
+
+        $this->assertSame(3, $deleted);
+    }
+
+    public function testClearAttemptsWithNullUsername(): void
+    {
+        $query = $this->createQueryMock();
+        $query->expects($this->once())->method('execute')->willReturn(1);
+
+        $this->queryBuilder->expects($this->once())->method('delete')->willReturnSelf();
+        $this->queryBuilder->expects($this->once())->method('where')->with('la.ipAddress = :ipAddress')->willReturnSelf();
+        $this->queryBuilder->expects($this->once())->method('andWhere')->with('la.username IS NULL')->willReturnSelf();
+        $this->queryBuilder->expects($this->once())->method('setParameter')->with('ipAddress', '10.0.0.1')->willReturnSelf();
+        $this->queryBuilder->expects($this->once())->method('getQuery')->willReturn($query);
+
+        $deleted = $this->repository->clearAttempts('10.0.0.1', null);
+
+        $this->assertSame(1, $deleted);
+    }
+
     /**
      * @return MockObject&Query
      */

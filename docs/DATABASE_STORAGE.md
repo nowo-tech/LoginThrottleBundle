@@ -161,8 +161,10 @@ When `storage: 'database'` is configured:
 1. The bundle automatically registers a `DatabaseRateLimiter` service
 2. This rate limiter stores login attempts in the `login_attempts` table
 3. Each failed login attempt is recorded with IP address, username, and timestamp
-4. The rate limiter checks the database to determine if a user/IP should be blocked
-5. After the timeout period, attempts are no longer counted
+4. Username is taken from flat form fields (`_username`, `username`, `email`) or nested AuthKit-style bags (`login_form[_username]`, etc.)
+5. The rate limiter checks the database to determine if a user/IP should be blocked
+6. On **successful** login, Symfony calls `reset()` and the limiter **deletes** matching attempt rows for that IP + username (so the next failure starts a fresh window)
+7. After the timeout period, remaining attempts are no longer counted (and old rows can be pruned with `cleanup()`)
 
 ## Manual Security Configuration
 

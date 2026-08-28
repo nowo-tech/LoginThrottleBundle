@@ -129,6 +129,33 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
     }
 
     /**
+     * Delete login attempts for a given IP and username (e.g. after successful login).
+     *
+     * When username is null or empty, only rows with a null username are removed.
+     *
+     * @param string      $ipAddress IP address
+     * @param string|null $username  Username (optional)
+     *
+     * @return int Number of deleted records
+     */
+    public function clearAttempts(string $ipAddress, ?string $username): int
+    {
+        $qb = $this->createQueryBuilder('la')
+            ->delete()
+            ->where('la.ipAddress = :ipAddress')
+            ->setParameter('ipAddress', $ipAddress);
+
+        if (null === $username || '' === $username) {
+            $qb->andWhere('la.username IS NULL');
+        } else {
+            $qb->andWhere('la.username = :username')
+                ->setParameter('username', $username);
+        }
+
+        return (int) $qb->getQuery()->execute();
+    }
+
+    /**
      * Clean up old login attempts (older than watch period).
      *
      * @param int $watchPeriodSeconds Period in seconds

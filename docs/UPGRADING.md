@@ -5,10 +5,12 @@ This guide provides step-by-step instructions for upgrading the Login Throttle B
 ## Table of contents
 
 
+- [From 3.1.4 to 3.2.0](#from-314-to-320)
 - [From 3.1.3 to 3.1.4](#from-313-to-314)
 - [General Upgrade Process](#general-upgrade-process)
 - [REQ-I18N-003 — Translation domain](#req-i18n-003--translation-domain)
 - [Upgrade Instructions by Version](#upgrade-instructions-by-version)
+  - [From 3.1.4 to 3.2.0](#from-314-to-320)
   - [Upgrading to 3.1.1](#upgrading-to-311)
   - [Upgrading to 3.1.0](#upgrading-to-310)
   - [Upgrading to 3.0.0](#upgrading-to-300)
@@ -57,6 +59,19 @@ The translation domain is now `NowoLoginThrottleBundle` (files: `src/Resources/t
 - DI config root / alias `nowo_login_throttle` is unchanged.
 
 ## Upgrade Instructions by Version
+
+### From 3.1.4 to 3.2.0
+
+```bash
+composer update nowo-tech/login-throttle-bundle
+php bin/console cache:clear
+```
+
+#### Behaviour changes (database storage)
+
+- `DatabaseRateLimiter::reset()` now **deletes** `LoginAttempt` rows for the request IP + username (was previously a no-op). Successful logins clear the ban counter immediately.
+- Username extraction also reads nested `login_form[_username|username|email]` (AuthKit-compatible). Apps that decorated the limiter only for this reason can drop that decorator after upgrading.
+- Custom implementations of `LoginAttemptRepositoryInterface` must add `clearAttempts(string $ipAddress, ?string $username): int`.
 
 ### Upgrading to 3.1.3
 

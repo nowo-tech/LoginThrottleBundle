@@ -293,6 +293,38 @@ final class LoginThrottleInfoServiceTest extends TestCase
         $this->assertSame('ip', $result['tracking_type']);
     }
 
+    public function testGetAttemptInfoWithNestedLoginFormUsername(): void
+    {
+        $config = [
+            'main' => [
+                'max_attempts' => 3,
+                'timeout' => 600,
+                'storage' => 'database',
+            ],
+        ];
+        $this->service->setFirewallsConfig($config);
+
+        $request = Request::create('/login', 'POST', [
+            'login_form' => ['_username' => 'nested@example.com'],
+        ]);
+        $request->server->set('REMOTE_ADDR', '192.168.1.1');
+
+        $this->repository
+            ->expects($this->once())
+            ->method('countAttemptsByUsername')
+            ->with('nested@example.com', 600)
+            ->willReturn(1);
+
+        $this->repository
+            ->expects($this->never())
+            ->method('getAttempts');
+
+        $result = $this->service->getAttemptInfo('main', $request);
+
+        $this->assertSame('username', $result['tracking_type']);
+        $this->assertSame(1, $result['current_attempts']);
+    }
+
     public function testGetAttemptInfoWithDifferentIntervalFormats(): void
     {
         $config = [

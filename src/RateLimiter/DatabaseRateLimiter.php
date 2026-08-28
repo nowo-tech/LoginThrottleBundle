@@ -15,11 +15,29 @@ use Symfony\Component\RateLimiter\RateLimit;
  * This rate limiter stores login attempts in the database instead of using cache.
  * It implements Symfony's RequestRateLimiterInterface to work with login_throttling.
  *
+ * Username extraction supports flat form fields ({@code _username}, {@code username},
+ * {@code email}) and AuthKit-style nested bags ({@code login_form[_username]}, etc.).
+ * On successful login, {@see reset()} deletes matching {@see \Nowo\LoginThrottleBundle\Entity\LoginAttempt} rows.
+ *
  * @author Héctor Franco Aceituno <hectorfranco@nowo.tech>
  * @copyright 2025 Nowo.tech
  */
 final class DatabaseRateLimiter implements RequestRateLimiterInterface
 {
+    /**
+     * Nested request bags checked before flat keys (AuthKit / FormType names).
+     *
+     * @var list<string>
+     */
+    private const NESTED_FORM_BAGS = ['login_form'];
+
+    /**
+     * Username parameter keys (nested bag first, then root request).
+     *
+     * @var list<string>
+     */
+    private const USERNAME_KEYS = ['_username', 'username', 'email'];
+
     /**
      * Constructor.
      *
@@ -86,22 +104,24 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
     }
 
     /**
-     * Reset the rate limiter for the given request.
+     * Reset the rate limiter for the given request (successful login).
+     *
+     * Deletes stored attempts for this IP + username so the next failure starts a fresh window.
      *
      * @param Request $request The request
      */
     public function reset(Request $request): void
     {
-        $request->getClientIp() ?? 'unknown';
-        $this->extractUsername($request);
+        $ipAddress = $request->getClientIp() ?? 'unknown';
+        $username = $this->extractUsername($request);
 
-        // Clean up old attempts for this IP/username
-        // Note: We don't delete all attempts, just let them expire naturally
-        // This allows for better auditing and analysis
+        $this->repository->clearAttempts($ipAddress, $username);
     }
 
     /**
      * Extract username from request.
+     *
+     * Checks nested bags such as {@code login_form[_username]} (AuthKit) before flat keys.
      *
      * @param Request $request The request
      *
@@ -109,12 +129,27 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
      */
     private function extractUsername(Request $request): ?string
     {
-        // Try to get username from request parameters (login form)
-        $username = $request->request->get('_username')
-            ?? $request->request->get('username')
-            ?? $request->request->get('email');
+        foreach (self::NESTED_FORM_BAGS as $bag) {
+            $nested = $request->request->all($bag);
 
-        return $username ? (string) $username : null;
+            foreach (self::USERNAME_KEYS as $key) {
+                $value = $nested[$key] ?? null;
+
+                if (\is_string($value) && '' !== $value) {
+                    return $value;
+                }
+            }
+        }
+
+        foreach (self::USERNAME_KEYS as $key) {
+            $value = $request->request->get($key);
+
+            if (\is_string($value) && '' !== $value) {
+                return $value;
+            }
+        }
+
+        return null;
     }
 
     /**

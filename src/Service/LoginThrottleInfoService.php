@@ -238,17 +238,33 @@ final class LoginThrottleInfoService
     /**
      * Extract username from request.
      *
+     * Checks nested bags such as {@code login_form[_username]} (AuthKit) before flat keys.
+     *
      * @param Request $request The request
      *
      * @return string|null The username or null
      */
     private function extractUsername(Request $request): ?string
     {
-        $username = $request->request->get('_username')
-            ?? $request->request->get('username')
-            ?? $request->request->get('email');
+        $loginForm = $request->request->all('login_form');
 
-        return $username ? (string) $username : null;
+        foreach (['_username', 'username', 'email'] as $key) {
+            $value = $loginForm[$key] ?? null;
+
+            if (\is_string($value) && '' !== $value) {
+                return $value;
+            }
+        }
+
+        foreach (['_username', 'username', 'email'] as $key) {
+            $value = $request->request->get($key);
+
+            if (\is_string($value) && '' !== $value) {
+                return $value;
+            }
+        }
+
+        return null;
     }
 
     /**

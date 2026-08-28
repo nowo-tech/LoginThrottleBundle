@@ -88,6 +88,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## [3.2.0] - 2026-08-29
+
+### Fixed
+
+- **Database rate limiter / AuthKit forms:** `DatabaseRateLimiter` now reads nested username fields (`login_form[_username]`, `login_form[username]`, `login_form[email]`) in addition to flat `_username` / `username` / `email`, so AuthKit (and similar FormType) logins are tracked per user instead of as null-username IP-only attempts.
+- **Successful login reset:** `DatabaseRateLimiter::reset()` now deletes matching `LoginAttempt` rows via `LoginAttemptRepositoryInterface::clearAttempts()` (previously a no-op that left the ban window active after a successful login).
+- **`LoginThrottleInfoService`:** same nested username extraction so Twig attempt info matches the limiter.
+
+### Added
+
+- **`LoginAttemptRepositoryInterface::clearAttempts(ip, username)`** — removes attempts for IP + username (or IP + null username).
+
+[3.2.0]: https://github.com/nowo-tech/LoginThrottleBundle/releases/tag/v3.2.0
+
 ## [3.1.4] - 2026-08-24
 
 ### Changed

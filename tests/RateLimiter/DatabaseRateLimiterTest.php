@@ -263,10 +263,135 @@ final class DatabaseRateLimiterTest extends TestCase
         $request = Request::create('/login', 'POST', ['_username' => 'test@example.com']);
         $request->server->set('REMOTE_ADDR', '192.168.1.1');
 
-        // Reset should not throw any exceptions
-        $this->rateLimiter->reset($request);
+        $this->repository
+            ->expects($this->once())
+            ->method('clearAttempts')
+            ->with('192.168.1.1', 'test@example.com')
+            ->willReturn(2);
 
-        $this->assertTrue(true); // Test passes if no exception is thrown
+        $this->rateLimiter->reset($request);
+    }
+
+    public function testResetWithNestedLoginFormUsername(): void
+    {
+        $request = Request::create('/login', 'POST', [
+            'login_form' => ['_username' => 'authkit@example.com'],
+        ]);
+        $request->server->set('REMOTE_ADDR', '192.168.1.1');
+
+        $this->repository
+            ->expects($this->once())
+            ->method('clearAttempts')
+            ->with('192.168.1.1', 'authkit@example.com')
+            ->willReturn(1);
+
+        $this->rateLimiter->reset($request);
+    }
+
+    public function testResetWithNullUsernameClearsIpOnlyRows(): void
+    {
+        $request = Request::create('/login', 'POST');
+        $request->server->set('REMOTE_ADDR', '192.168.1.1');
+
+        $this->repository
+            ->expects($this->once())
+            ->method('clearAttempts')
+            ->with('192.168.1.1', null)
+            ->willReturn(0);
+
+        $this->rateLimiter->reset($request);
+    }
+
+    public function testConsumeWithNestedLoginFormUsername(): void
+    {
+        $request = Request::create('/login', 'POST', [
+            'login_form' => ['_username' => 'nested@example.com'],
+        ]);
+        $request->server->set('REMOTE_ADDR', '192.168.1.1');
+
+        $this->repository
+            ->expects($this->once())
+            ->method('isBlocked')
+            ->with('192.168.1.1', 'nested@example.com', 3, 600)
+            ->willReturn(false);
+
+        $this->repository
+            ->expects($this->once())
+            ->method('recordAttempt')
+            ->with('192.168.1.1', 'nested@example.com')
+            ->willReturn(new LoginAttempt('192.168.1.1', 'nested@example.com'));
+
+        $this->repository
+            ->expects($this->once())
+            ->method('countAttempts')
+            ->with('192.168.1.1', 'nested@example.com', 600)
+            ->willReturn(1);
+
+        $rateLimit = $this->rateLimiter->consume($request);
+
+        $this->assertInstanceOf(RateLimit::class, $rateLimit);
+        $this->assertSame(2, $rateLimit->getRemainingTokens());
+        $this->assertTrue($rateLimit->isAccepted());
+    }
+
+    public function testConsumeWithNestedLoginFormEmail(): void
+    {
+        $request = Request::create('/login', 'POST', [
+            'login_form' => ['email' => 'form-email@example.com'],
+        ]);
+        $request->server->set('REMOTE_ADDR', '10.0.0.5');
+
+        $this->repository
+            ->expects($this->once())
+            ->method('isBlocked')
+            ->with('10.0.0.5', 'form-email@example.com', 3, 600)
+            ->willReturn(false);
+
+        $this->repository
+            ->expects($this->once())
+            ->method('recordAttempt')
+            ->with('10.0.0.5', 'form-email@example.com')
+            ->willReturn(new LoginAttempt('10.0.0.5', 'form-email@example.com'));
+
+        $this->repository
+            ->expects($this->once())
+            ->method('countAttempts')
+            ->with('10.0.0.5', 'form-email@example.com', 600)
+            ->willReturn(1);
+
+        $rateLimit = $this->rateLimiter->consume($request);
+
+        $this->assertTrue($rateLimit->isAccepted());
+        $this->assertSame(2, $rateLimit->getRemainingTokens());
+    }
+
+    public function testConsumePrefersNestedUsernameOverFlat(): void
+    {
+        $request = Request::create('/login', 'POST', [
+            '_username' => 'flat@example.com',
+            'login_form' => ['_username' => 'nested@example.com'],
+        ]);
+        $request->server->set('REMOTE_ADDR', '192.168.1.1');
+
+        $this->repository
+            ->expects($this->once())
+            ->method('isBlocked')
+            ->with('192.168.1.1', 'nested@example.com', 3, 600)
+            ->willReturn(false);
+
+        $this->repository
+            ->expects($this->once())
+            ->method('recordAttempt')
+            ->with('192.168.1.1', 'nested@example.com')
+            ->willReturn(new LoginAttempt('192.168.1.1', 'nested@example.com'));
+
+        $this->repository
+            ->expects($this->once())
+            ->method('countAttempts')
+            ->with('192.168.1.1', 'nested@example.com', 600)
+            ->willReturn(1);
+
+        $this->rateLimiter->consume($request);
     }
 
     public function testCalculateRetryAfter(): void

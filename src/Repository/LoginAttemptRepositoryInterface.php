@@ -68,6 +68,18 @@ interface LoginAttemptRepositoryInterface
     public function recordAttempt(string $ipAddress, ?string $username): LoginAttempt;
 
     /**
+     * Delete login attempts for a given IP and username (e.g. after successful login).
+     *
+     * When username is null or empty, only rows with a null username are removed.
+     *
+     * @param string      $ipAddress IP address
+     * @param string|null $username  Username (optional)
+     *
+     * @return int Number of deleted records
+     */
+    public function clearAttempts(string $ipAddress, ?string $username): int;
+
+    /**
      * Clean up old login attempts (older than watch period).
      *
      * @param int $watchPeriodSeconds Period in seconds
