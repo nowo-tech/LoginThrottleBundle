@@ -5,11 +5,13 @@ This guide provides step-by-step instructions for upgrading the Login Throttle B
 ## Table of contents
 
 
+- [From 3.2.0 to 3.2.1](#from-320-to-321)
 - [From 3.1.4 to 3.2.0](#from-314-to-320)
 - [From 3.1.3 to 3.1.4](#from-313-to-314)
 - [General Upgrade Process](#general-upgrade-process)
 - [REQ-I18N-003 — Translation domain](#req-i18n-003--translation-domain)
 - [Upgrade Instructions by Version](#upgrade-instructions-by-version)
+  - [From 3.2.0 to 3.2.1](#from-320-to-321)
   - [From 3.1.4 to 3.2.0](#from-314-to-320)
   - [Upgrading to 3.1.1](#upgrading-to-311)
   - [Upgrading to 3.1.0](#upgrading-to-310)
@@ -59,6 +61,22 @@ The translation domain is now `NowoLoginThrottleBundle` (files: `src/Resources/t
 - DI config root / alias `nowo_login_throttle` is unchanged.
 
 ## Upgrade Instructions by Version
+
+### From 3.2.0 to 3.2.1
+
+```bash
+composer update nowo-tech/login-throttle-bundle
+php bin/console cache:clear
+```
+
+No configuration changes.
+
+#### Behaviour changes (database storage, worker runtimes)
+
+- `LoginAttemptRepository::recordAttempt()` returns a **detached** `LoginAttempt` (its id is set), and `getAttempts()` returns detached entities. Code that modified these objects and relied on a later `flush()` to save the change must re-fetch them first.
+- When the EntityManager that maps `LoginAttempt` is closed, `recordAttempt()` and DQL helpers (`countAttempts*`, `clearAttempts`, `cleanup`, `getAttempts`) resolve a live manager through `ManagerRegistry` (including after `resetManager()` under Doctrine ORM 3's `ServiceEntityRepository` proxy).
+- The default `config/packages/nowo_login_throttle.yaml` is no longer generated on boot when the target directory is not writable (read-only images).
+- See [`FRANKENPHP-WORKER-AUDIT.md`](FRANKENPHP-WORKER-AUDIT.md) for the scenario B (no kernel reset) guarantee.
 
 ### From 3.1.4 to 3.2.0
 

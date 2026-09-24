@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[3.2.1] - 2026-09-24](#321---2026-09-24)
+- [[3.2.0] - 2026-08-29](#320---2026-08-29)
 - [[3.1.2] - 2026-08-18](#312-2026-08-18)
 - [[3.1.1] - 2026-08-04](#311-2026-08-04)
 - [[3.1.0] - 2026-07-29](#310---2026-07-29)
@@ -87,6 +89,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.2.1] - 2026-09-24
+
+### Fixed
+
+- **FrankenPHP worker mode (no kernel reset), database storage:** `LoginAttemptRepository::recordAttempt()` detaches the attempt after flush and `getAttempts()` detaches the loaded rows, so `LoginAttempt` entities no longer accumulate in the identity map with every login POST.
+- **FrankenPHP worker mode, database storage:** `recordAttempt()` resolves the EntityManager through `ManagerRegistry` and resets it when it is closed (before writing and after a failed flush), so one database error no longer breaks every later login on the worker.
+- **Doctrine ORM 3 / `ServiceEntityRepository` proxy:** `createQueryBuilder()` and `getEntityManager()` always use the live manager from the registry (resetting when closed), so count/clear/cleanup keep working after `resetManager()` instead of querying a closed EntityManager cached by the proxy.
+- **Bundle boot:** the default config file is only generated when the target directory is writable, and it is written with an exclusive lock (read-only images, concurrent worker boots).
+
+### Added
+
+- **Docs:** [`FRANKENPHP-WORKER-AUDIT.md`](FRANKENPHP-WORKER-AUDIT.md) — scenario B (reset kernel false) audit with remediation notes.
+- **PHPStan:** include `ruleset-worker-strict.neon` from `nowo-tech/phpstan-frankenphp`.
+- **Tests:** `LoginAttemptRepositoryWorkerModeTest` (identity map, closed-EM recovery, fresh manager after reset) and boot writable-guard coverage.
+
+[3.2.1]: https://github.com/nowo-tech/LoginThrottleBundle/releases/tag/v3.2.1
 
 ## [3.2.0] - 2026-08-29
 

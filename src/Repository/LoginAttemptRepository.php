@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace Nowo\LoginThrottleBundle\Repository;
 
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
+use Doctrine\Persistence\ObjectManager;
 use Nowo\LoginThrottleBundle\Entity\LoginAttempt;
 
 /**
@@ -18,6 +21,8 @@ use Nowo\LoginThrottleBundle\Entity\LoginAttempt;
  */
 final class LoginAttemptRepository extends ServiceEntityRepository implements LoginAttemptRepositoryInterface
 {
+    private readonly ManagerRegistry $managerRegistry;
+
     /**
      * Constructor.
      *
@@ -25,6 +30,7 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
      */
     public function __construct(ManagerRegistry $registry)
     {
+        $this->managerRegistry = $registry;
         parent::__construct($registry, LoginAttempt::class);
     }
 
@@ -114,16 +120,32 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
     /**
      * Record a failed login attempt.
      *
+     * The attempt is detached after the flush so a long-lived EntityManager (worker mode without
+     * kernel reset) does not accumulate one entity per login POST. A manager closed by a failed
+     * flush is reset before the exception is rethrown, so the next request can record again.
+     *
      * @param string      $ipAddress IP address
      * @param string|null $username  Username (optional)
      *
-     * @return LoginAttempt The created attempt
+     * @return LoginAttempt The created attempt (detached)
      */
     public function recordAttempt(string $ipAddress, ?string $username): LoginAttempt
     {
+        $entityManager = $this->resolveWritableEntityManager();
         $attempt = new LoginAttempt($ipAddress, $username);
-        $this->getEntityManager()->persist($attempt);
-        $this->getEntityManager()->flush();
+
+        try {
+            $entityManager->persist($attempt);
+            $entityManager->flush();
+        } catch (\Throwable $exception) {
+            $this->resetClosedEntityManager($entityManager);
+
+            throw $exception;
+        } finally {
+            if ($entityManager->isOpen() && $entityManager->contains($attempt)) {
+                $entityManager->detach($attempt);
+            }
+        }
 
         return $attempt;
     }
@@ -201,6 +223,63 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
         /** @var list<LoginAttempt> $result */
         $result = $qb->getQuery()->getResult();
 
+        $entityManager = $this->getEntityManager();
+        foreach ($result as $attempt) {
+            if ($entityManager->contains($attempt)) {
+                $entityManager->detach($attempt);
+            }
+        }
+
         return $result;
+    }
+
+    /**
+     * Build every DQL query through {@see getEntityManager()} so DoctrineBundle's
+     * {@see ServiceEntityRepository} proxy does not keep using an EntityRepository bound to a
+     * closed manager after {@see ManagerRegistry::resetManager()} (ORM 3 / worker mode).
+     */
+    public function createQueryBuilder(string $alias, ?string $indexBy = null): QueryBuilder
+    {
+        return $this->getEntityManager()->createQueryBuilder()
+            ->select($alias)
+            ->from(LoginAttempt::class, $alias, $indexBy);
+    }
+
+    /**
+     * Always resolve the manager from {@see ManagerRegistry} so a worker that reset a closed
+     * EntityManager does not keep using the instance cached by {@see ServiceEntityRepository}.
+     */
+    protected function getEntityManager(): EntityManagerInterface
+    {
+        $entityManager = $this->managerRegistry->getManagerForClass(LoginAttempt::class);
+        if (!$entityManager instanceof EntityManagerInterface) {
+            throw new \LogicException(\sprintf('Expected an ORM EntityManager for %s, got %s.', LoginAttempt::class, $entityManager instanceof ObjectManager ? $entityManager::class : 'null'));
+        }
+
+        return $this->resetClosedEntityManager($entityManager) ?? $entityManager;
+    }
+
+    private function resolveWritableEntityManager(): EntityManagerInterface
+    {
+        return $this->getEntityManager();
+    }
+
+    private function resetClosedEntityManager(EntityManagerInterface $entityManager): ?EntityManagerInterface
+    {
+        if ($entityManager->isOpen()) {
+            return null;
+        }
+
+        foreach (array_keys($this->managerRegistry->getManagerNames()) as $name) {
+            if ($this->managerRegistry->getManager($name) !== $entityManager) {
+                continue;
+            }
+
+            $reset = $this->managerRegistry->resetManager($name);
+
+            return $reset instanceof EntityManagerInterface ? $reset : null;
+        }
+
+        return null;
     }
 }

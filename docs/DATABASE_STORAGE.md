@@ -308,6 +308,10 @@ Use cache/Redis when:
 - ✅ You don't need to audit attempts
 - ✅ You already have Redis/Memcached infrastructure
 
+### FrankenPHP worker mode
+
+With `storage: database`, the repository detaches every `LoginAttempt` it writes or loads and recovers a closed EntityManager through `ManagerRegistry`. That keeps the limiter safe when FrankenPHP workers do **not** reset the kernel between requests. Details: [`FRANKENPHP-WORKER-AUDIT.md`](FRANKENPHP-WORKER-AUDIT.md).
+
 ## Migration from Cache to Database
 
 If you're currently using cache and want to switch to database:

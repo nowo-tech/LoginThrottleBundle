@@ -191,7 +191,8 @@ final class Configuration implements ConfigurationInterface
             mkdir($dir, 0o775, true);
         }
 
-        file_put_contents($configPath, $yaml);
+        // Several workers may boot at the same time and race on the same file
+        file_put_contents($configPath, $yaml, \LOCK_EX);
     }
 
     /**

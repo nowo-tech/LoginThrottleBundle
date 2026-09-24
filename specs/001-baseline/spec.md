@@ -37,6 +37,10 @@ Drop-in Symfony bundle wrapping native **`login_throttling`**: sensible defaults
 
 **Given** a throttled login, **When** the login form renders, **Then** `LoginThrottleInfoService` and translation files supply locale-aware user messages.
 
+### US-06 — FrankenPHP worker without kernel reset (P1)
+
+**Given** FrankenPHP worker mode with no kernel / `services_resetter` between requests and `storage: database`, **When** many failed logins (and occasional closed EntityManagers) occur on the same worker, **Then** throttling stays correct per IP/username, memory does not grow via managed `LoginAttempt` entities, and the next request can still read/write attempts.
+
 ---
 
 ## Requirements
@@ -46,6 +50,7 @@ Drop-in Symfony bundle wrapping native **`login_throttling`**: sensible defaults
 - **FR-BUNDLE-001**: `NowoLoginThrottleBundle` alias `nowo_login_throttle`.
 - **FR-CFG-001**: `Configuration` — simple single-firewall keys and advanced `firewalls` tree; `enabled`, `max_count_attempts`, `timeout`, `watch_period`, `storage`, `cache_pool`, `rate_limiter`, `lock_factory`.
 - **FR-CFG-002**: `NowoLoginThrottleExtension` — generates default YAML, registers limiters and Doctrine mapping when storage is database.
+- **FR-CFG-003**: Default config generation on boot is skipped when the target directory is not writable; writes use `LOCK_EX`.
 
 ### DI
 
@@ -59,15 +64,22 @@ Drop-in Symfony bundle wrapping native **`login_throttling`**: sensible defaults
 
 - **FR-ORM-001**: `LoginAttempt` entity for stored attempts.
 - **FR-ORM-002**: `LoginAttemptRepository` — queries and expired-attempt cleanup.
+- **FR-ORM-003**: Under long-lived workers, `LoginAttemptRepository` detaches written/loaded attempts, resets a closed EntityManager via `ManagerRegistry`, and builds DQL through a live manager (ORM 3 `ServiceEntityRepository` proxy safe).
 
 ### Rate limiting
 
 - **FR-LIMIT-001**: `DatabaseRateLimiter`, `DatabaseRateLimiterFactory` — Symfony RateLimiter integration backed by Doctrine.
+- **FR-LIMIT-002**: Limiter and factory hold no per-request mutable state (safe under FrankenPHP scenario B).
 
 ### Services & i18n
 
 - **FR-SVC-001**: `LoginThrottleInfoService` — remaining attempts / lockout info for UI.
 - **FR-I18N-001**: 24 locale files for throttle error messages.
+
+### Worker / static analysis
+
+- **FR-WORKER-001**: Bundle is viable under FrankenPHP worker with kernel not reset between requests (see [`docs/FRANKENPHP-WORKER-AUDIT.md`](../../docs/FRANKENPHP-WORKER-AUDIT.md)).
+- **FR-WORKER-002**: PHPStan includes `nowo-tech/phpstan-frankenphp` classic, worker, and worker-strict rulesets.
 
 ---
 

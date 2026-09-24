@@ -126,6 +126,24 @@ final class NowoLoginThrottleBundleBootTest extends TestCase
         $this->assertFileDoesNotExist($configPath);
     }
 
+    public function testBootSkipsWhenTargetDirectoryIsNotWritable(): void
+    {
+        $missingProjectDir = $this->testDir . '/missing-project';
+
+        $bundle = new NowoLoginThrottleBundle();
+        $container = $this->createMock(ContainerInterface::class);
+        $container->method('hasParameter')->with('kernel.project_dir')->willReturn(true);
+        $container->method('getParameter')->with('kernel.project_dir')->willReturn($missingProjectDir);
+
+        $reflection = new \ReflectionClass($bundle);
+        $property = $reflection->getProperty('container');
+        $property->setValue($bundle, $container);
+
+        $bundle->boot();
+
+        $this->assertDirectoryDoesNotExist($missingProjectDir);
+    }
+
     public function testBootSkipsWhenContainerNotSet(): void
     {
         $bundle = new NowoLoginThrottleBundle();

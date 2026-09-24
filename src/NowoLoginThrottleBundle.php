@@ -78,6 +78,11 @@ final class NowoLoginThrottleBundle extends Bundle
             return;
         }
 
+        // Read-only images (e.g. production containers) must not fail kernel boot on the write
+        if (!is_writable(is_dir($configDir) ? $configDir : $projectDir)) {
+            return;
+        }
+
         // If it doesn't exist, create the configuration file
         if (!file_exists($configPath)) {
             $configuration = new Configuration();

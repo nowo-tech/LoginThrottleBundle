@@ -11,4 +11,4 @@ includes:
   - vendor/phpstan/phpstan-phpunit/extension.neon
   - vendor/nowo-tech/phpstan-frankenphp/extension.neon
   - vendor/nowo-tech/phpstan-frankenphp/ruleset-classic.neon
-  - vendor/nowo-tech/phpstan-frankenphp/ruleset-worker.neon
+  - vendor/nowo-tech/phpstan-frankenphp/ruleset-worker-strict.neon

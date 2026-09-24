@@ -9,7 +9,7 @@ This bundle replaces deprecated bundles like `anyx/login-gate-bundle` by using S
 
 ![FrankenPHP Friendly Worker Mode](docs/images/frankenphp-friendly.png)
 
-This bundle is **FrankenPHP worker mode friendly**.
+This bundle is **FrankenPHP worker mode friendly**, including worker mode **without** kernel / services reset between requests (scenario B). See [FrankenPHP worker audit](docs/FRANKENPHP-WORKER-AUDIT.md).
 
 ## Features
 
@@ -342,6 +342,7 @@ The GitHub Actions CI/CD pipeline automatically:
 ### Additional documentation
 
 - [Demo with FrankenPHP](docs/DEMO-FRANKENPHP.md)
+- [FrankenPHP worker audit](docs/FRANKENPHP-WORKER-AUDIT.md)
 - [Database storage](docs/DATABASE_STORAGE.md)
 - [Migration from Anyx](docs/MIGRATION_FROM_ANYX.md)
 - [Translations](docs/TRANSLATIONS.md)
