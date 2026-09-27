@@ -10,7 +10,6 @@ use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 use Doctrine\Persistence\ObjectManager;
 use Nowo\LoginThrottleBundle\Entity\LoginAttempt;
-use SortDirection;
 
 /**
  * Repository for LoginAttempt entity.
@@ -209,7 +208,7 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
         $qb = $this->createQueryBuilder('la')
             ->where('la.createdAt >= :since')
             ->setParameter('since', new \DateTimeImmutable(\sprintf('-%d seconds', $seconds)))
-            ->orderBy('la.createdAt', SortDirection::Descending);
+            ->orderBy('la.createdAt', \SortDirection::Descending);
 
         if ('' !== $ipAddress) {
             $qb->andWhere('la.ipAddress = :ipAddress')
