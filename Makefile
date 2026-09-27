@@ -93,6 +93,10 @@ composer-sync: ensure-up
 	@$(COMPOSE) exec -T $(SERVICE_PHP) composer validate --strict
 	@$(COMPOSE) exec -T $(SERVICE_PHP) composer update --lock --no-interaction
 
+
+# Run Igor worker-state audit (REQ-CS-008)
+igor: ensure-up
+	$(COMPOSE) exec -T php composer igor
 release-check: check-no-cursor-coauthor
 	@$(MAKE) ensure-up
 	@$(MAKE) composer-sync

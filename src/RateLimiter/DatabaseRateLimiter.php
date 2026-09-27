@@ -116,6 +116,7 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
         $ipAddress = $request->getClientIp() ?? 'unknown';
         $username = $this->extractUsername($request);
 
+        // @igor-ignore - Mutates attached request-scoped or value object; not worker singleton cache
         $this->repository->clearAttempts($ipAddress, $username);
     }
 

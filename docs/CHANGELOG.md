@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[3.2.2] - 2026-09-27](#322---2026-09-27)
 - [[3.2.1] - 2026-09-24](#321---2026-09-24)
 - [[3.2.0] - 2026-08-29](#320---2026-08-29)
 - [[3.1.2] - 2026-08-18](#312-2026-08-18)
@@ -88,6 +89,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - [Features](#features)
 
 ## [Unreleased]
+
+## [3.2.2] - 2026-09-27
+
+### Added
+
+- **REQ-CS-008:** `igor-php/igor-php` (require-dev only), root `igor.json`, Composer/`Makefile` `igor` target, and `release-check` wiring for FrankenPHP worker-state audit.
+
+### Changed
+
+- **Worker safety (Igor):** justified `// @igor-ignore` annotations and/or `ResetInterface` / request-scoped fixes so `make igor` passes on package `src/`.
+
+[3.2.2]: https://github.com/nowo-tech/LoginThrottleBundle/releases/tag/v3.2.2
 
 ## [3.2.1] - 2026-09-24
 

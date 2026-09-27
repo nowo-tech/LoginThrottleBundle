@@ -110,6 +110,7 @@ final class LoginAttempt
      */
     public function setBlocked(bool $blocked): self
     {
+        // @igor-ignore - Doctrine entity instance state; not a FrankenPHP shared service
         $this->blocked = $blocked;
 
         return $this;

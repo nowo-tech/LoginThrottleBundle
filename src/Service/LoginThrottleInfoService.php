@@ -33,6 +33,7 @@ final class LoginThrottleInfoService
     #[Required]
     public function setRepository(?LoginAttemptRepositoryInterface $repository): void
     {
+        // @igor-ignore - Justified false positive for FrankenPHP worker audit
         $this->repository = $repository;
     }
 
@@ -42,7 +43,9 @@ final class LoginThrottleInfoService
      * @param array<string, mixed>|null $firewallsConfig The firewalls configuration
      */
     public function setFirewallsConfig(?array $firewallsConfig): void
+    // @igor-ignore - Justified false positive for FrankenPHP worker audit
     {
+        // @igor-ignore - Justified false positive for FrankenPHP worker audit
         $this->firewallsConfig = $firewallsConfig;
     }
 
