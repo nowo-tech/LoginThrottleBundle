@@ -151,7 +151,7 @@ final class LoginAttemptRepositoryTest extends TestCase
         $this->queryBuilder
             ->expects($this->once())
             ->method('orderBy')
-            ->with('la.createdAt', SortDirection::DescendingDESC
+            ->with('la.createdAt', SortDirection::Descending)
             ->willReturnSelf();
 
         $this->queryBuilder
@@ -191,7 +191,7 @@ final class LoginAttemptRepositoryTest extends TestCase
         $this->queryBuilder
             ->expects($this->once())
             ->method('orderBy')
-            ->with('la.createdAt', SortDirection::DescendingDESC
+            ->with('la.createdAt', SortDirection::Descending)
             ->willReturnSelf();
 
         $this->queryBuilder
