@@ -13,7 +13,6 @@ use Nowo\LoginThrottleBundle\Entity\LoginAttempt;
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepository;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
-use SortDirection;
 
 /**
  * Tests for LoginAttemptRepository.
@@ -151,7 +150,7 @@ final class LoginAttemptRepositoryTest extends TestCase
         $this->queryBuilder
             ->expects($this->once())
             ->method('orderBy')
-            ->with('la.createdAt', SortDirection::Descending)
+            ->with('la.createdAt', \SortDirection::Descending)
             ->willReturnSelf();
 
         $this->queryBuilder
@@ -191,7 +190,7 @@ final class LoginAttemptRepositoryTest extends TestCase
         $this->queryBuilder
             ->expects($this->once())
             ->method('orderBy')
-            ->with('la.createdAt', SortDirection::Descending)
+            ->with('la.createdAt', \SortDirection::Descending)
             ->willReturnSelf();
 
         $this->queryBuilder
