@@ -41,10 +41,16 @@ final class NowoLoginThrottleExtension extends Extension
 
         // Store configuration as container parameters
         $container->setParameter('nowo_login_throttle.config', $config);
+        $container->setParameter('nowo_login_throttle.watch_period', (int) ($config['watch_period'] ?? 3600));
 
         // Check if using multiple firewalls configuration
         // Only use multiple firewalls if firewalls array is not empty
         if (isset($config['firewalls']) && \is_array($config['firewalls']) && [] !== $config['firewalls']) {
+            // Prefer the first firewall's watch_period when present
+            $first = reset($config['firewalls']);
+            if (\is_array($first) && isset($first['watch_period'])) {
+                $container->setParameter('nowo_login_throttle.watch_period', (int) $first['watch_period']);
+            }
             // Multiple firewalls configuration
             $this->processMultipleFirewalls($container, $config['firewalls']);
         } else {

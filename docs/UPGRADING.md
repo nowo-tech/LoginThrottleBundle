@@ -3,6 +3,18 @@
 
 ## Unreleased
 
+## To 3.3.0
+
+From **3.2.2** — cleanup command; Doctrine `SortDirection`.
+
+```bash
+composer update nowo-tech/login-throttle-bundle
+php bin/console cache:clear
+```
+
+- Optional: schedule `nowo:login-throttle:cleanup` (try `--dry-run` first).
+- Ensure `doctrine/orm` is `^3.7` (SortDirection).
+
 ## To 3.2.2
 
 From **3.2.1** — REQ-CS-008 Igor FrankenPHP worker audit (igor-php require-dev, igor.json, make igor).

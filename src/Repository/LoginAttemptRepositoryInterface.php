@@ -89,6 +89,15 @@ interface LoginAttemptRepositoryInterface
     public function cleanup(int $watchPeriodSeconds): int;
 
     /**
+     * Count login attempts older than the watch period (same filter as {@see cleanup()}).
+     *
+     * @param int $watchPeriodSeconds Period in seconds
+     *
+     * @return int Number of matching records
+     */
+    public function countOlderThan(int $watchPeriodSeconds): int;
+
+    /**
      * Get all attempts for a given IP and username.
      *
      * @param string      $ipAddress IP address (empty string to ignore IP filter)

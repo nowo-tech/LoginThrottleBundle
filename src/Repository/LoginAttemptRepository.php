@@ -195,6 +195,23 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
     }
 
     /**
+     * Count login attempts older than the watch period (same filter as {@see cleanup()}).
+     *
+     * @param int $watchPeriodSeconds Period in seconds
+     *
+     * @return int Number of matching records
+     */
+    public function countOlderThan(int $watchPeriodSeconds): int
+    {
+        $qb = $this->createQueryBuilder('la')
+            ->select('COUNT(la.id)')
+            ->where('la.createdAt < :before')
+            ->setParameter('before', new \DateTimeImmutable(\sprintf('-%d seconds', $watchPeriodSeconds)));
+
+        return (int) $qb->getQuery()->getSingleScalarResult();
+    }
+
+    /**
      * Get all attempts for a given IP and username.
      *
      * @param string      $ipAddress IP address (empty string to ignore IP filter)

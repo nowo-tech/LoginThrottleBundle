@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[3.3.0] - 2026-09-28](#330---2026-09-28)
 - [[3.2.2] - 2026-09-27](#322---2026-09-27)
 - [[3.2.1] - 2026-09-24](#321---2026-09-24)
 - [[3.2.0] - 2026-08-29](#320---2026-08-29)
@@ -90,10 +91,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.0] - 2026-09-28
+
+### Security
+
+- New `nowo:login-throttle:cleanup` command; `--dry-run` uses `countOlderThan()` so ops can preview deletions without writing.
+
+### Added
+
+- Console command `nowo:login-throttle:cleanup` to purge old throttle records (`--dry-run` supported).
+
 ### Changed
 
 - **Doctrine ORM SortDirection:** replace string `'ASC'`/`'DESC'` in `#[ORM\OrderBy]` and QueryBuilder `orderBy`/`addOrderBy` with `SortDirection::Ascending`/`Descending` (doctrine/orm deprecation, https://github.com/doctrine/orm/issues/11313); require `doctrine/orm` `^3.7` where applicable.
-
 
 ## [3.2.2] - 2026-09-27
 
@@ -105,6 +115,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Worker safety (Igor):** justified `// @igor-ignore` annotations and/or `ResetInterface` / request-scoped fixes so `make igor` passes on package `src/`.
 
+[3.3.0]: https://github.com/nowo-tech/LoginThrottleBundle/releases/tag/v3.3.0
 [3.2.2]: https://github.com/nowo-tech/LoginThrottleBundle/releases/tag/v3.2.2
 
 ## [3.2.1] - 2026-09-24

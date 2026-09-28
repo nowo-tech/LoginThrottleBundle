@@ -297,6 +297,20 @@ final class LoginAttemptRepositoryTest extends TestCase
         $this->assertSame(7, $deleted);
     }
 
+    public function testCountOlderThan(): void
+    {
+        $query = $this->createQueryMock();
+        $query->expects($this->once())->method('getSingleScalarResult')->willReturn('4');
+
+        $this->queryBuilder->expects($this->once())->method('where')->with('la.createdAt < :before')->willReturnSelf();
+        $this->queryBuilder->expects($this->once())->method('setParameter')->willReturnSelf();
+        $this->queryBuilder->expects($this->once())->method('getQuery')->willReturn($query);
+
+        $count = $this->repository->countOlderThan(3600);
+
+        $this->assertSame(4, $count);
+    }
+
     public function testClearAttemptsWithUsername(): void
     {
         $query = $this->createQueryMock();

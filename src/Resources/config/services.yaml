@@ -16,6 +16,13 @@ services:
     tags:
       - { name: 'console.command' }
 
+  Nowo\LoginThrottleBundle\Command\CleanupLoginAttemptsCommand:
+    arguments:
+      $repository: '@?Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface'
+      $defaultWatchPeriod: '%nowo_login_throttle.watch_period%'
+    tags:
+      - { name: 'console.command' }
+
   # Repository for LoginAttempt entity (optional, only if Doctrine is installed)
   Nowo\LoginThrottleBundle\Repository\LoginAttemptRepository:
     arguments:
