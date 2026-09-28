@@ -51,7 +51,7 @@ final class CleanupLoginAttemptsCommand extends Command
         }
 
         $watchPeriod = $input->getOption('watch-period');
-        $seconds     = is_numeric($watchPeriod) ? (int) $watchPeriod : $this->defaultWatchPeriod;
+        $seconds = is_numeric($watchPeriod) ? (int) $watchPeriod : $this->defaultWatchPeriod;
         if ($seconds < 1) {
             $io->error('watch-period must be a positive integer.');
 
@@ -60,7 +60,7 @@ final class CleanupLoginAttemptsCommand extends Command
 
         if ($input->getOption('dry-run')) {
             $count = $this->repository->countOlderThan($seconds);
-            $io->note(sprintf(
+            $io->note(\sprintf(
                 'Dry-run: would delete %d LoginAttempt row(s) older than %d seconds (use without --dry-run to apply).',
                 $count,
                 $seconds,
@@ -70,7 +70,7 @@ final class CleanupLoginAttemptsCommand extends Command
         }
 
         $deleted = $this->repository->cleanup($seconds);
-        $io->success(sprintf('Deleted %d login attempt row(s) older than %d seconds.', $deleted, $seconds));
+        $io->success(\sprintf('Deleted %d login attempt row(s) older than %d seconds.', $deleted, $seconds));
 
         return self::SUCCESS;
     }

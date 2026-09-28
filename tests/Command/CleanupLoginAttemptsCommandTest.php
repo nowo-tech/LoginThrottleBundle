@@ -49,8 +49,8 @@ final class CleanupLoginAttemptsCommandTest extends TestCase
     public function testRejectsInvalidWatchPeriod(): void
     {
         $repository = $this->createMock(LoginAttemptRepositoryInterface::class);
-        $tester     = new CommandTester(new CleanupLoginAttemptsCommand($repository, 3600));
-        $status     = $tester->execute(['--watch-period' => '0']);
+        $tester = new CommandTester(new CleanupLoginAttemptsCommand($repository, 3600));
+        $status = $tester->execute(['--watch-period' => '0']);
 
         self::assertSame(1, $status);
     }
