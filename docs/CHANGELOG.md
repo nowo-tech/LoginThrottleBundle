@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[3.3.1] - 2026-10-09](#331---2026-10-09)
 - [[3.3.0] - 2026-09-28](#330---2026-09-28)
 - [[3.2.2] - 2026-09-27](#322---2026-09-27)
 - [[3.2.1] - 2026-09-24](#321---2026-09-24)
@@ -90,6 +91,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - [Features](#features)
 
 ## [Unreleased]
+
+## [3.3.1] - 2026-10-09
+
+### Changed
+
+- Code style only: PHP CS Fixer pass on `CleanupLoginAttemptsCommand` and its test (`\sprintf`, alignment).
+
+### Dependencies
+
+- Dev: `igor-php/igor-php` constraint `^0.10.0` (Dependabot #11; resolves v0.10.1).
+- Demo (Symfony 8): `doctrine/orm` 3.7.4, `doctrine/dbal` 4.5.0, `doctrine/migrations` 3.9.8, Symfony v8.1.8, `twig/twig` v3.30.0, `twig/extra-bundle` v3.29.0, `nowo-tech/hot-reload-bundle` v1.5.5, `nowo-tech/twig-inspector-bundle` v1.1.7.
+
+[3.3.1]: https://github.com/nowo-tech/LoginThrottleBundle/releases/tag/v3.3.1
 
 ## [3.3.0] - 2026-09-28
 

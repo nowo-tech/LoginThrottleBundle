@@ -3,6 +3,16 @@
 
 ## Unreleased
 
+## To 3.3.1
+
+From **3.3.0** — dependency updates.
+
+```bash
+composer update nowo-tech/login-throttle-bundle
+```
+
+No breaking changes. No application upgrade steps.
+
 ## To 3.3.0
 
 From **3.2.2** — cleanup command; Doctrine `SortDirection`.
@@ -31,6 +41,7 @@ This guide provides step-by-step instructions for upgrading the Login Throttle B
 ## Table of contents
 
 
+- [To 3.3.1](#to-331)
 - [From 3.2.0 to 3.2.1](#from-320-to-321)
 - [From 3.1.4 to 3.2.0](#from-314-to-320)
 - [From 3.1.3 to 3.1.4](#from-313-to-314)
