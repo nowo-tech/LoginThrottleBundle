@@ -6,6 +6,7 @@ namespace Nowo\LoginThrottleBundle\Tests\RateLimiter;
 
 use Nowo\LoginThrottleBundle\Entity\LoginAttempt;
 use Nowo\LoginThrottleBundle\RateLimiter\DatabaseRateLimiter;
+use Nowo\LoginThrottleBundle\RateLimiter\DatabaseRateLimiterFactory;
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -449,5 +450,192 @@ final class DatabaseRateLimiterTest extends TestCase
         $this->assertInstanceOf(RateLimit::class, $rateLimit);
         $this->assertNotNull($rateLimit->getRetryAfter());
         $this->assertInstanceOf(\DateTimeImmutable::class, $rateLimit->getRetryAfter());
+    }
+
+    public function testConsumeNormalizesUsernameCaseAndWhitespace(): void
+    {
+        $request = Request::create('/login', 'POST', ['_username' => '  Admin@Example.COM ']);
+        $request->server->set('REMOTE_ADDR', '192.168.1.1');
+
+        $this->repository
+            ->expects($this->once())
+            ->method('isBlocked')
+            ->with('192.168.1.1', 'admin@example.com', 3, 600)
+            ->willReturn(false);
+        $this->repository
+            ->expects($this->once())
+            ->method('recordAttempt')
+            ->with('192.168.1.1', 'admin@example.com')
+            ->willReturn(new LoginAttempt('192.168.1.1', 'admin@example.com'));
+        $this->repository
+            ->expects($this->once())
+            ->method('countAttempts')
+            ->with('192.168.1.1', 'admin@example.com', 600)
+            ->willReturn(1);
+
+        $this->assertTrue($this->rateLimiter->consume($request)->isAccepted());
+    }
+
+    public function testConsumeTreatsWhitespaceOnlyUsernameAsMissing(): void
+    {
+        $request = Request::create('/login', 'POST', ['_username' => '   ']);
+        $request->server->set('REMOTE_ADDR', '192.168.1.1');
+
+        $this->repository
+            ->expects($this->once())
+            ->method('isBlocked')
+            ->with('192.168.1.1', null, 3, 600)
+            ->willReturn(false);
+        $this->repository
+            ->expects($this->once())
+            ->method('recordAttempt')
+            ->with('192.168.1.1', null)
+            ->willReturn(new LoginAttempt('192.168.1.1', null));
+
+        $this->rateLimiter->consume($request);
+    }
+
+    public function testResetNormalizesUsername(): void
+    {
+        $request = Request::create('/login', 'POST', ['_username' => 'ADMIN']);
+        $request->server->set('REMOTE_ADDR', '192.168.1.1');
+
+        $this->repository
+            ->expects($this->once())
+            ->method('clearAttempts')
+            ->with('192.168.1.1', 'admin');
+
+        $this->rateLimiter->reset($request);
+    }
+
+    public function testCaseVariantsShareOneBucket(): void
+    {
+        $repository = new InMemoryLoginAttemptRepository();
+        $limiter = new DatabaseRateLimiter($repository, 3, 600);
+
+        $accepted = [];
+        foreach (['admin', 'Admin', 'ADMIN', 'aDmIn'] as $username) {
+            $request = Request::create('/login', 'POST', ['_username' => $username]);
+            $request->server->set('REMOTE_ADDR', '10.0.0.1');
+            $accepted[] = $limiter->consume($request)->isAccepted();
+        }
+
+        $this->assertSame([true, true, false, false], $accepted);
+    }
+
+    public function testRotatingUsernamesAreBlockedByDefaultPerIpCap(): void
+    {
+        $repository = new InMemoryLoginAttemptRepository();
+        // maxAttempts 3 -> default IP cap 15
+        $limiter = new DatabaseRateLimiter($repository, 3, 600);
+
+        $acceptedCount = 0;
+        $lastLimit = null;
+        for ($i = 0; $i < 20; ++$i) {
+            $request = Request::create('/login', 'POST', ['_username' => \sprintf('user%d', $i)]);
+            $request->server->set('REMOTE_ADDR', '10.0.0.2');
+            $lastLimit = $limiter->consume($request);
+            if ($lastLimit->isAccepted()) {
+                ++$acceptedCount;
+            }
+        }
+
+        $this->assertSame(14, $acceptedCount);
+        $this->assertNotNull($lastLimit);
+        $this->assertFalse($lastLimit->isAccepted());
+        $this->assertSame(0, $lastLimit->getRemainingTokens());
+        $this->assertGreaterThan(new \DateTimeImmutable(), $lastLimit->getRetryAfter());
+        // once blocked, further attempts are not recorded
+        $this->assertSame(15, $repository->countAttemptsByIp('10.0.0.2', 600));
+
+        // another IP is not affected
+        $request = Request::create('/login', 'POST', ['_username' => 'user0']);
+        $request->server->set('REMOTE_ADDR', '10.0.0.3');
+        $this->assertTrue($limiter->consume($request)->isAccepted());
+    }
+
+    public function testCustomPerIpCapAndRemainingTokensUseTheTighterLimit(): void
+    {
+        $repository = new InMemoryLoginAttemptRepository();
+        $limiter = new DatabaseRateLimiter($repository, 3, 600, 4);
+
+        $results = [];
+        foreach (['a', 'b', 'c', 'd', 'e'] as $username) {
+            $request = Request::create('/login', 'POST', ['_username' => $username]);
+            $request->server->set('REMOTE_ADDR', '10.0.0.4');
+            $limit = $limiter->consume($request);
+            $results[] = [$limit->isAccepted(), $limit->getRemainingTokens()];
+        }
+
+        $this->assertSame([[true, 2], [true, 2], [true, 1], [false, 0], [false, 0]], $results);
+    }
+
+    public function testFactoryPassesPerIpCap(): void
+    {
+        $repository = new InMemoryLoginAttemptRepository();
+        $limiter = (new DatabaseRateLimiterFactory($repository, 3, 600, 1))->create();
+
+        $request = Request::create('/login', 'POST', ['_username' => 'a']);
+        $request->server->set('REMOTE_ADDR', '10.0.0.5');
+
+        $this->assertFalse($limiter->consume($request)->isAccepted());
+    }
+}
+
+/**
+ * Minimal in-memory repository used to exercise DatabaseRateLimiter end to end.
+ */
+final class InMemoryLoginAttemptRepository implements LoginAttemptRepositoryInterface
+{
+    /** @var list<LoginAttempt> */
+    private array $attempts = [];
+
+    public function countAttempts(string $ipAddress, ?string $username, int $seconds): int
+    {
+        return \count($this->getAttempts($ipAddress, $username, $seconds));
+    }
+
+    public function countAttemptsByIp(string $ipAddress, int $seconds): int
+    {
+        return \count($this->getAttempts($ipAddress, null, $seconds));
+    }
+
+    public function countAttemptsByUsername(string $username, int $seconds): int
+    {
+        return \count($this->getAttempts('', $username, $seconds));
+    }
+
+    public function isBlocked(string $ipAddress, ?string $username, int $maxAttempts, int $timeoutSeconds): bool
+    {
+        return $this->countAttempts($ipAddress, $username, $timeoutSeconds) >= $maxAttempts;
+    }
+
+    public function recordAttempt(string $ipAddress, ?string $username): LoginAttempt
+    {
+        return $this->attempts[] = new LoginAttempt($ipAddress, $username);
+    }
+
+    public function clearAttempts(string $ipAddress, ?string $username): int
+    {
+        return 0;
+    }
+
+    public function cleanup(int $watchPeriodSeconds): int
+    {
+        return 0;
+    }
+
+    public function countOlderThan(int $watchPeriodSeconds): int
+    {
+        return 0;
+    }
+
+    public function getAttempts(string $ipAddress, ?string $username, int $seconds): array
+    {
+        return array_values(array_reverse(array_filter(
+            $this->attempts,
+            static fn (LoginAttempt $attempt): bool => ('' === $ipAddress || $attempt->getIpAddress() === $ipAddress)
+                && (null === $username || $attempt->getUsername() === $username)
+        )));
     }
 }

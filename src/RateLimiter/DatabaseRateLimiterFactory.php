@@ -20,14 +20,16 @@ final class DatabaseRateLimiterFactory
     /**
      * Constructor.
      *
-     * @param LoginAttemptRepositoryInterface $repository     The login attempt repository
-     * @param int                             $maxAttempts    Maximum number of attempts
-     * @param int                             $timeoutSeconds Timeout period in seconds
+     * @param LoginAttemptRepositoryInterface $repository       The login attempt repository
+     * @param int                             $maxAttempts      Maximum number of attempts per IP + username
+     * @param int                             $timeoutSeconds   Timeout period in seconds
+     * @param int|null                        $maxAttemptsPerIp Maximum number of attempts per IP (null: 5 × maxAttempts)
      */
     public function __construct(
         private readonly LoginAttemptRepositoryInterface $repository,
         private readonly int $maxAttempts,
-        private readonly int $timeoutSeconds
+        private readonly int $timeoutSeconds,
+        private readonly ?int $maxAttemptsPerIp = null
     ) {
     }
 
@@ -41,7 +43,8 @@ final class DatabaseRateLimiterFactory
         return new DatabaseRateLimiter(
             $this->repository,
             $this->maxAttempts,
-            $this->timeoutSeconds
+            $this->timeoutSeconds,
+            $this->maxAttemptsPerIp
         );
     }
 }

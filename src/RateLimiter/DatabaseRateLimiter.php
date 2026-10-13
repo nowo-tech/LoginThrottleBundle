@@ -18,7 +18,11 @@ use Symfony\Component\RateLimiter\RateLimit;
  *
  * Username extraction supports flat form fields ({@code _username}, {@code username},
  * {@code email}) and AuthKit-style nested bags ({@code login_form[_username]}, etc.).
- * On successful login, {@see reset()} deletes matching {@see LoginAttempt} rows.
+ * Usernames are normalized (trimmed and lower-cased) so case variants such as {@code Admin} and
+ * {@code admin} share one bucket. A second, IP-only cap (default: 5 × {@code maxAttempts}, like
+ * Symfony's {@code DefaultLoginRateLimiter}) blocks an IP that rotates usernames.
+ * On successful login, {@see reset()} deletes matching {@see LoginAttempt} rows for that IP +
+ * username only; the IP-wide counter keeps decaying with the timeout window.
  *
  * @author Héctor Franco Aceituno <hectorfranco@nowo.tech>
  * @copyright 2025 Nowo.tech
@@ -40,17 +44,30 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
     private const USERNAME_KEYS = ['_username', 'username', 'email'];
 
     /**
+     * Default multiplier applied to {@code maxAttempts} for the IP-only cap.
+     */
+    public const DEFAULT_IP_ATTEMPTS_MULTIPLIER = 5;
+
+    /**
+     * Maximum number of attempts per IP address, whatever the username.
+     */
+    private readonly int $maxAttemptsPerIp;
+
+    /**
      * Constructor.
      *
-     * @param LoginAttemptRepositoryInterface $repository     The login attempt repository
-     * @param int                             $maxAttempts    Maximum number of attempts
-     * @param int                             $timeoutSeconds Timeout period in seconds
+     * @param LoginAttemptRepositoryInterface $repository       The login attempt repository
+     * @param int                             $maxAttempts      Maximum number of attempts per IP + username
+     * @param int                             $timeoutSeconds   Timeout period in seconds
+     * @param int|null                        $maxAttemptsPerIp Maximum number of attempts per IP (null: 5 × maxAttempts)
      */
     public function __construct(
         private readonly LoginAttemptRepositoryInterface $repository,
         private readonly int $maxAttempts,
-        private readonly int $timeoutSeconds
+        private readonly int $timeoutSeconds,
+        ?int $maxAttemptsPerIp = null
     ) {
+        $this->maxAttemptsPerIp = max(1, $maxAttemptsPerIp ?? $maxAttempts * self::DEFAULT_IP_ATTEMPTS_MULTIPLIER);
     }
 
     /**
@@ -65,12 +82,13 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
         $ipAddress = $request->getClientIp() ?? 'unknown';
         $username = $this->extractUsername($request);
 
-        // Check if already blocked
+        // Check if already blocked (IP + username first, then the IP-only cap)
         $isBlocked = $this->repository->isBlocked($ipAddress, $username, $this->maxAttempts, $this->timeoutSeconds);
+        $isIpBlocked = !$isBlocked && $this->repository->countAttemptsByIp($ipAddress, $this->timeoutSeconds) >= $this->maxAttemptsPerIp;
 
-        if ($isBlocked) {
+        if ($isBlocked || $isIpBlocked) {
             $remaining = 0;
-            $retryAfter = $this->calculateRetryAfter($ipAddress, $username);
+            $retryAfter = $this->calculateRetryAfter($ipAddress, $isBlocked ? $username : null);
             $accepted = false;
         } else {
             // Record the attempt
@@ -78,11 +96,15 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
 
             // Count current attempts
             $count = $this->repository->countAttempts($ipAddress, $username, $this->timeoutSeconds);
-            $remaining = max(0, $this->maxAttempts - $count);
+            $ipCount = $this->repository->countAttemptsByIp($ipAddress, $this->timeoutSeconds);
+            $remaining = max(0, min($this->maxAttempts - $count, $this->maxAttemptsPerIp - $ipCount));
 
-            // Check if this attempt exceeded the limit
+            // Check if this attempt exceeded either limit
             if ($count >= $this->maxAttempts) {
                 $retryAfter = $this->calculateRetryAfter($ipAddress, $username);
+                $accepted = false;
+            } elseif ($ipCount >= $this->maxAttemptsPerIp) {
+                $retryAfter = $this->calculateRetryAfter($ipAddress, null);
                 $accepted = false;
             } else {
                 // Not blocked, retry after is now (immediate retry allowed)
@@ -124,6 +146,7 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
      * Extract username from request.
      *
      * Checks nested bags such as {@code login_form[_username]} (AuthKit) before flat keys.
+     * The value is trimmed and lower-cased so case or whitespace variants share one bucket.
      *
      * @param Request $request The request
      *
@@ -137,21 +160,41 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
             foreach (self::USERNAME_KEYS as $key) {
                 $value = $nested[$key] ?? null;
 
-                if (\is_string($value) && '' !== $value) {
-                    return $value;
+                $normalized = $this->normalizeUsername($value);
+
+                if (null !== $normalized) {
+                    return $normalized;
                 }
             }
         }
 
         foreach (self::USERNAME_KEYS as $key) {
-            $value = $request->request->get($key);
+            $normalized = $this->normalizeUsername($request->request->get($key));
 
-            if (\is_string($value) && '' !== $value) {
-                return $value;
+            if (null !== $normalized) {
+                return $normalized;
             }
         }
 
         return null;
+    }
+
+    /**
+     * Normalize a submitted username (trim + lower-case); non-string or blank values yield null.
+     *
+     * @param mixed $value Raw request value
+     *
+     * @return string|null The normalized username or null
+     */
+    private function normalizeUsername(mixed $value): ?string
+    {
+        if (!\is_string($value)) {
+            return null;
+        }
+
+        $normalized = mb_strtolower(trim($value));
+
+        return '' === $normalized ? null : $normalized;
     }
 
     /**

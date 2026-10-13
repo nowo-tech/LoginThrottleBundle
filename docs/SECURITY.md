@@ -28,7 +28,7 @@ This Symfony bundle provides **login attempt throttling** (rate limiting), typic
 
 | Threat | Mitigation |
 |--------|------------|
-| **Brute-force / credential stuffing** | Core purpose: throttle failed logins; configure limits and intervals per deployment risk. |
+| **Brute-force / credential stuffing** | Core purpose: throttle failed logins; configure limits and intervals per deployment risk. With database storage, usernames are normalized (trim + lower-case) and an IP-only cap (`max_count_attempts_per_ip`, default 5 × `max_count_attempts`) stops username rotation from one IP. |
 | **User enumeration** | Ensure responses and logging do not leak whether an account exists beyond what your product policy allows. |
 | **Denial of service** | Cap resource usage (DB rows, request body size) at the application and infrastructure level; tune throttle storage cleanup. |
 | **SQL injection** | Use parameterized queries / ORM only (bundle code should not concatenate raw user input into SQL). |
