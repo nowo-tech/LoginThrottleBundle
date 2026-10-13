@@ -1,5 +1,49 @@
 # Upgrade Guide
 
+## Table of contents
+
+- [Unreleased](#unreleased)
+- [To 3.5.0](#to-350)
+- [To 3.4.0](#to-340)
+- [To 3.3.1](#to-331)
+- [To 3.3.0](#to-330)
+- [To 3.2.2](#to-322)
+- [General Upgrade Process](#general-upgrade-process)
+- [REQ-I18N-003 — Translation domain](#req-i18n-003--translation-domain)
+- [Upgrade Instructions by Version](#upgrade-instructions-by-version)
+  - [From 3.2.0 to 3.2.1](#from-320-to-321)
+  - [From 3.1.4 to 3.2.0](#from-314-to-320)
+  - [Upgrading to 3.1.3](#upgrading-to-313)
+  - [Upgrading to 3.1.2](#upgrading-to-312)
+  - [Upgrading to 3.1.1](#upgrading-to-311)
+  - [Upgrading to 3.1.0](#upgrading-to-310)
+  - [Upgrading to 3.0.0](#upgrading-to-300)
+  - [Upgrading to 2.2.0](#upgrading-to-220)
+  - [Upgrading to 2.1.0](#upgrading-to-210)
+  - [Upgrading to 2.0.0](#upgrading-to-200)
+  - [Upgrading to 1.0.0](#upgrading-to-100)
+  - [Upgrading to 0.0.15](#upgrading-to-0015)
+  - [Upgrading to 0.0.14](#upgrading-to-0014)
+  - [Upgrading to 0.0.13](#upgrading-to-0013)
+  - [Upgrading to 0.0.12](#upgrading-to-0012)
+  - [Upgrading to 0.0.11](#upgrading-to-0011)
+  - [Upgrading to 0.0.10](#upgrading-to-0010)
+  - [Upgrading to 0.0.9](#upgrading-to-009)
+  - [Upgrading to 0.0.8](#upgrading-to-008)
+  - [Upgrading to 0.0.7](#upgrading-to-007)
+  - [Upgrading to 0.0.6](#upgrading-to-006)
+  - [Upgrading to 0.0.5](#upgrading-to-005)
+  - [Upgrading to 0.0.4](#upgrading-to-004)
+  - [Upgrading to 0.0.3](#upgrading-to-003)
+  - [Upgrading to 0.0.2](#upgrading-to-002)
+  - [Upgrading to 0.0.1 (Initial Release)](#upgrading-to-001-initial-release)
+- [Troubleshooting Upgrades](#troubleshooting-upgrades)
+  - [Common Issues](#common-issues)
+  - [Getting Help](#getting-help)
+- [Version Compatibility](#version-compatibility)
+- [Additional Resources](#additional-resources)
+- [Notes](#notes)
+
 ## Unreleased
 
 ## To 3.5.0
@@ -59,48 +103,6 @@ php bin/console cache:clear
 - No application upgrade steps for require-dev Igor tooling (REQ-CS-008). Consumers do not pull `igor-php/igor-php` transitively.
 
 This guide provides step-by-step instructions for upgrading the Login Throttle Bundle between versions.
-
-## Table of contents
-
-- [To 3.5.0](#to-350)
-- [To 3.4.0](#to-340)
-- [To 3.3.1](#to-331)
-- [From 3.2.0 to 3.2.1](#from-320-to-321)
-- [From 3.1.4 to 3.2.0](#from-314-to-320)
-- [From 3.1.3 to 3.1.4](#from-313-to-314)
-- [General Upgrade Process](#general-upgrade-process)
-- [REQ-I18N-003 — Translation domain](#req-i18n-003--translation-domain)
-- [Upgrade Instructions by Version](#upgrade-instructions-by-version)
-  - [From 3.2.0 to 3.2.1](#from-320-to-321)
-  - [From 3.1.4 to 3.2.0](#from-314-to-320)
-  - [Upgrading to 3.1.1](#upgrading-to-311)
-  - [Upgrading to 3.1.0](#upgrading-to-310)
-  - [Upgrading to 3.0.0](#upgrading-to-300)
-  - [Upgrading to 2.2.0](#upgrading-to-220)
-  - [Upgrading to 2.1.0](#upgrading-to-210)
-  - [Upgrading to 2.0.0](#upgrading-to-200)
-  - [Upgrading to 1.0.0](#upgrading-to-100)
-  - [Upgrading to 0.0.15](#upgrading-to-0015)
-  - [Upgrading to 0.0.14](#upgrading-to-0014)
-  - [Upgrading to 0.0.13](#upgrading-to-0013)
-  - [Upgrading to 0.0.12](#upgrading-to-0012)
-  - [Upgrading to 0.0.11](#upgrading-to-0011)
-  - [Upgrading to 0.0.10](#upgrading-to-0010)
-  - [Upgrading to 0.0.9](#upgrading-to-009)
-  - [Upgrading to 0.0.8](#upgrading-to-008)
-  - [Upgrading to 0.0.7](#upgrading-to-007)
-  - [Upgrading to 0.0.6](#upgrading-to-006)
-  - [Upgrading to 0.0.5](#upgrading-to-005)
-  - [Upgrading to 0.0.4](#upgrading-to-004)
-  - [Upgrading to 0.0.3](#upgrading-to-003)
-  - [Upgrading to 0.0.2](#upgrading-to-002)
-  - [Upgrading to 0.0.1 (Initial Release)](#upgrading-to-001-initial-release)
-- [Troubleshooting Upgrades](#troubleshooting-upgrades)
-  - [Common Issues](#common-issues)
-  - [Getting Help](#getting-help)
-- [Version Compatibility](#version-compatibility)
-- [Additional Resources](#additional-resources)
-- [Notes](#notes)
 
 ## General Upgrade Process
 
