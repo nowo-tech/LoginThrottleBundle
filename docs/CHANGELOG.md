@@ -93,6 +93,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `NowoLoginThrottleBundle::boot()` no longer globs/reads every `config/packages/*.y?ml` (and possibly writes `nowo_login_throttle.yaml`) on every kernel boot: the default-config generation now only runs in the `dev` environment from the CLI. Production, HTTP (FPM) and FrankenPHP worker boots do no filesystem scan or write.
+
+### Changed
+
+- Minimum Symfony version raised from 7.0 to **7.4** (`^7.4 || ^8.0`), matching the lowest version tested in CI; the Symfony 7.0 CI cell was removed.
+
 ## [3.4.0] - 2026-10-13
 
 ### Security

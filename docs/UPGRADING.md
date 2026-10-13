@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Symfony 7.4+ required** (was 7.0+). Symfony 8.x remains supported. Upgrade `symfony/*` to 7.4 before updating the bundle.
+- The default `config/packages/nowo_login_throttle.yaml` is now only generated when the kernel boots from the CLI in the `dev` environment (e.g. `bin/console cache:clear`). Commit the file (or let the Flex recipe create it); it is no longer created on web/worker boots or in `prod`/`test`.
+
 ## To 3.4.0
 
 From **3.3.1** — security - case-insensitive usernames, per-IP cap, correct limiter id for non-main firewalls.

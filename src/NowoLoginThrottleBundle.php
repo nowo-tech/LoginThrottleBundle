@@ -19,15 +19,23 @@ use Symfony\Component\HttpKernel\Bundle\Bundle;
  * Features:
  * - Native Symfony login_throttling integration
  * - Pre-configured settings with sensible defaults
- * - Default `nowo_login_throttle.yaml` generated on boot when missing
+ * - Default `nowo_login_throttle.yaml` generated on boot when missing (dev environment + CLI only)
  * - Console command to sync `login_throttling` into `security.yaml` (`nowo:login-throttle:configure-security`)
- * - Compatible with Symfony 7.0 and 8.0
+ * - Compatible with Symfony 7.4 and 8.x
  *
  * @author Héctor Franco Aceituno <hectorfranco@nowo.tech>
  * @copyright 2025 Nowo.tech
  */
 final class NowoLoginThrottleBundle extends Bundle
 {
+    /**
+     * @param string $sapi PHP SAPI name; only meant to be overridden in tests (defaults to PHP_SAPI)
+     */
+    public function __construct(
+        private readonly string $sapi = \PHP_SAPI,
+    ) {
+    }
+
     /**
      * Overridden to allow for the custom extension alias.
      *
@@ -50,14 +58,26 @@ final class NowoLoginThrottleBundle extends Bundle
     /**
      * Generates the configuration file if it doesn't exist.
      *
-     * This method is called during the kernel boot process. It checks if the
-     * bundle configuration file exists, and if not, generates a default one.
+     * This method is called during the kernel boot process. To keep production and
+     * HTTP/worker boots free of filesystem work, the scan of config/packages and the
+     * optional write only happen in the "dev" environment when running from the CLI
+     * (e.g. `cache:clear` / Composer auto-scripts after install). In any other case
+     * boot() does not touch the filesystem.
      */
     public function boot(): void
     {
         parent::boot();
 
         if (!isset($this->container)) {
+            return;
+        }
+
+        if (!$this->isCli()) {
+            return;
+        }
+
+        if (!$this->container->hasParameter('kernel.environment')
+            || 'dev' !== $this->container->getParameter('kernel.environment')) {
             return;
         }
 
@@ -89,6 +109,14 @@ final class NowoLoginThrottleBundle extends Bundle
             $configuration = new Configuration();
             $configuration->generateConfigFile($configPath);
         }
+    }
+
+    /**
+     * Whether the current process runs from the command line.
+     */
+    private function isCli(): bool
+    {
+        return 'cli' === $this->sapi || 'phpdbg' === $this->sapi;
     }
 
     /**

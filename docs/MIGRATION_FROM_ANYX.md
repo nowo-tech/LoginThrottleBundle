@@ -61,7 +61,7 @@ The `anyx/login-gate-bundle` is deprecated because Symfony 5.2+ includes native 
 1. **Deprecated Package**: `anyx/login-gate-bundle` is no longer maintained
 2. **Native Support**: Symfony's native implementation is more efficient and better integrated
 3. **Better Performance**: Uses Symfony's rate limiter component with optimized caching
-4. **Future-Proof**: Compatible with Symfony 7.0 and 8.0
+4. **Future-Proof**: Compatible with Symfony 7.4 and 8.x
 5. **Active Maintenance**: Regular updates and security patches
 
 ## Prerequisites
@@ -69,7 +69,7 @@ The `anyx/login-gate-bundle` is deprecated because Symfony 5.2+ includes native 
 Before starting the migration, ensure you have:
 
 - PHP >= 8.2
-- Symfony >= 7.0
+- Symfony >= 7.4
 - Composer installed
 - Backup of your current configuration
 
@@ -440,7 +440,7 @@ DROP TABLE IF EXISTS login_gate;
 
 ### Q: Is this bundle compatible with Symfony 5.x?
 
-**A:** The bundle requires Symfony 7.0+ and PHP 8.2+. For Symfony 6 or PHP 8.1, use bundle `1.0.x`. Symfony 5.2+ has native login throttling; if you're on Symfony 5.x, you can configure it manually without this bundle.
+**A:** The bundle requires Symfony 7.4+ and PHP 8.2+. For Symfony 6 or PHP 8.1, use bundle `1.0.x`. Symfony 5.2+ has native login throttling; if you're on Symfony 5.x, you can configure it manually without this bundle.
 
 ### Q: What happens to existing login attempts in the database?
 

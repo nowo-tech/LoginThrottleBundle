@@ -35,12 +35,87 @@ final class NowoLoginThrottleBundleBootTest extends TestCase
         $this->filesystem->remove($this->testDir);
     }
 
+    /**
+     * @param array<string, mixed> $parameters
+     */
+    private function createContainer(array $parameters): ContainerInterface
+    {
+        $container = $this->createStub(ContainerInterface::class);
+        $container->method('hasParameter')->willReturnCallback(
+            static fn (string $name): bool => \array_key_exists($name, $parameters),
+        );
+        $container->method('getParameter')->willReturnCallback(
+            static fn (string $name): mixed => $parameters[$name] ?? null,
+        );
+
+        return $container;
+    }
+
+    private function bootWith(ContainerInterface $container, string $sapi = \PHP_SAPI): void
+    {
+        $bundle = new NowoLoginThrottleBundle($sapi);
+        $property = new \ReflectionProperty($bundle, 'container');
+        $property->setValue($bundle, $container);
+        $bundle->boot();
+    }
+
+    public function testBootInProdDoesNotTouchFilesystem(): void
+    {
+        $container = $this->createMock(ContainerInterface::class);
+        $container->method('hasParameter')->willReturnCallback(static fn (string $name): bool => 'kernel.environment' === $name);
+        $container->method('getParameter')->willReturnCallback(
+            static fn (string $name): mixed => 'kernel.environment' === $name ? 'prod' : throw new \LogicException('project_dir must not be read in prod: ' . $name),
+        );
+
+        $this->bootWith($container);
+
+        $this->assertFileDoesNotExist($this->testDir . '/config/packages/nowo_login_throttle.yaml');
+    }
+
+    public function testBootOutsideCliDoesNotTouchFilesystemEvenInDev(): void
+    {
+        $container = $this->createMock(ContainerInterface::class);
+        // No parameter (and thus no project dir / filesystem scan) may be looked up outside the CLI
+        $container->expects($this->never())->method('hasParameter');
+        $container->expects($this->never())->method('getParameter');
+
+        $this->bootWith($container, 'fpm-fcgi');
+
+        $this->assertFileDoesNotExist($this->testDir . '/config/packages/nowo_login_throttle.yaml');
+    }
+
+    public function testBootUnderFrankenPhpWorkerDoesNotWrite(): void
+    {
+        $this->bootWith($this->createContainer(['kernel.environment' => 'dev', 'kernel.project_dir' => $this->testDir]), 'frankenphp');
+
+        $this->assertFileDoesNotExist($this->testDir . '/config/packages/nowo_login_throttle.yaml');
+    }
+
+    public function testBootSkipsWhenEnvironmentParameterMissing(): void
+    {
+        $this->bootWith($this->createContainer(['kernel.project_dir' => $this->testDir]));
+
+        $this->assertFileDoesNotExist($this->testDir . '/config/packages/nowo_login_throttle.yaml');
+    }
+
+    public function testBootInTestEnvironmentDoesNotWrite(): void
+    {
+        $this->bootWith($this->createContainer(['kernel.environment' => 'test', 'kernel.project_dir' => $this->testDir]));
+
+        $this->assertFileDoesNotExist($this->testDir . '/config/packages/nowo_login_throttle.yaml');
+    }
+
+    public function testBootGeneratesConfigUnderPhpdbgInDev(): void
+    {
+        $this->bootWith($this->createContainer(['kernel.environment' => 'dev', 'kernel.project_dir' => $this->testDir]), 'phpdbg');
+
+        $this->assertFileExists($this->testDir . '/config/packages/nowo_login_throttle.yaml');
+    }
+
     public function testBootGeneratesConfigFileWhenNotExists(): void
     {
         $bundle = new NowoLoginThrottleBundle();
-        $container = $this->createMock(ContainerInterface::class);
-        $container->method('hasParameter')->with('kernel.project_dir')->willReturn(true);
-        $container->method('getParameter')->with('kernel.project_dir')->willReturn($this->testDir);
+        $container = $this->createContainer(['kernel.environment' => 'dev', 'kernel.project_dir' => $this->testDir]);
 
         $reflection = new \ReflectionClass($bundle);
         $property = $reflection->getProperty('container');
@@ -61,9 +136,7 @@ final class NowoLoginThrottleBundleBootTest extends TestCase
     public function testBootSkipsWhenConfigAlreadyExists(): void
     {
         $bundle = new NowoLoginThrottleBundle();
-        $container = $this->createMock(ContainerInterface::class);
-        $container->method('hasParameter')->with('kernel.project_dir')->willReturn(true);
-        $container->method('getParameter')->with('kernel.project_dir')->willReturn($this->testDir);
+        $container = $this->createContainer(['kernel.environment' => 'dev', 'kernel.project_dir' => $this->testDir]);
 
         // Create existing config file
         $this->filesystem->dumpFile(
@@ -86,9 +159,7 @@ final class NowoLoginThrottleBundleBootTest extends TestCase
     public function testBootSkipsWhenConfigDefinedInOtherFile(): void
     {
         $bundle = new NowoLoginThrottleBundle();
-        $container = $this->createMock(ContainerInterface::class);
-        $container->method('hasParameter')->with('kernel.project_dir')->willReturn(true);
-        $container->method('getParameter')->with('kernel.project_dir')->willReturn($this->testDir);
+        $container = $this->createContainer(['kernel.environment' => 'dev', 'kernel.project_dir' => $this->testDir]);
 
         // Create config in another file
         $this->filesystem->dumpFile(
@@ -111,8 +182,7 @@ final class NowoLoginThrottleBundleBootTest extends TestCase
     public function testBootSkipsWhenNoProjectDir(): void
     {
         $bundle = new NowoLoginThrottleBundle();
-        $container = $this->createMock(ContainerInterface::class);
-        $container->method('hasParameter')->with('kernel.project_dir')->willReturn(false);
+        $container = $this->createContainer(['kernel.environment' => 'dev']);
 
         $reflection = new \ReflectionClass($bundle);
         $property = $reflection->getProperty('container');
@@ -131,9 +201,7 @@ final class NowoLoginThrottleBundleBootTest extends TestCase
         $missingProjectDir = $this->testDir . '/missing-project';
 
         $bundle = new NowoLoginThrottleBundle();
-        $container = $this->createMock(ContainerInterface::class);
-        $container->method('hasParameter')->with('kernel.project_dir')->willReturn(true);
-        $container->method('getParameter')->with('kernel.project_dir')->willReturn($missingProjectDir);
+        $container = $this->createContainer(['kernel.environment' => 'dev', 'kernel.project_dir' => $missingProjectDir]);
 
         $reflection = new \ReflectionClass($bundle);
         $property = $reflection->getProperty('container');
@@ -157,9 +225,7 @@ final class NowoLoginThrottleBundleBootTest extends TestCase
     public function testBootSkipsWhenProjectDirEmptyString(): void
     {
         $bundle = new NowoLoginThrottleBundle();
-        $container = $this->createMock(ContainerInterface::class);
-        $container->method('hasParameter')->with('kernel.project_dir')->willReturn(true);
-        $container->method('getParameter')->with('kernel.project_dir')->willReturn('');
+        $container = $this->createContainer(['kernel.environment' => 'dev', 'kernel.project_dir' => '']);
 
         $reflection = new \ReflectionClass($bundle);
         $property = $reflection->getProperty('container');
@@ -175,9 +241,7 @@ final class NowoLoginThrottleBundleBootTest extends TestCase
     public function testBootSkipsWhenProjectDirNotString(): void
     {
         $bundle = new NowoLoginThrottleBundle();
-        $container = $this->createMock(ContainerInterface::class);
-        $container->method('hasParameter')->with('kernel.project_dir')->willReturn(true);
-        $container->method('getParameter')->with('kernel.project_dir')->willReturn(123);
+        $container = $this->createContainer(['kernel.environment' => 'dev', 'kernel.project_dir' => 123]);
 
         $reflection = new \ReflectionClass($bundle);
         $property = $reflection->getProperty('container');
@@ -252,9 +316,7 @@ final class NowoLoginThrottleBundleBootTest extends TestCase
     public function testBootCreatesConfigDirectoryIfNotExists(): void
     {
         $bundle = new NowoLoginThrottleBundle();
-        $container = $this->createMock(ContainerInterface::class);
-        $container->method('hasParameter')->with('kernel.project_dir')->willReturn(true);
-        $container->method('getParameter')->with('kernel.project_dir')->willReturn($this->testDir);
+        $container = $this->createContainer(['kernel.environment' => 'dev', 'kernel.project_dir' => $this->testDir]);
 
         // Remove config/packages directory
         $this->filesystem->remove($this->testDir . '/config/packages');

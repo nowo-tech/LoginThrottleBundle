@@ -37,7 +37,7 @@ when@test:
         resource: '@NowoLoginThrottleBundle/Resources/config/routes.yaml'
 ```
 
-3. Configure the bundle using `config/packages/nowo_login_throttle.yaml`.
+3. Configure the bundle using `config/packages/nowo_login_throttle.yaml`. If the file is missing, the bundle writes a default one the first time the kernel boots from the CLI in the `dev` environment (e.g. `php bin/console cache:clear`); in any other environment or SAPI it does not touch `config/packages`.
 
 ## Verify
 

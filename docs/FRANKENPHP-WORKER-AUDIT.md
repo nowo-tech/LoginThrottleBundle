@@ -29,7 +29,7 @@ A bundle that is safe under **B** is safe under **A** and under classic mode / P
 | Superglobals, `$_ENV`, `putenv`, `ini_set`, `setlocale`, timezone | ✅ | None used |
 | Doctrine / EntityManager | ✅ | All writes and DQL go through `getEntityManager()` / overridden `createQueryBuilder()` (registry resolve + closed-EM reset); `recordAttempt()` / `getAttempts()` detach entities (W-01). Clearing application entities between requests stays the application's responsibility |
 | Output, headers, `exit`, shutdown functions | ✅ | None |
-| Resources (files, sockets, cURL) held open | ✅ | None; `Bundle::boot()` reads/writes config files once per kernel boot without keeping handles |
+| Resources (files, sockets, cURL) held open | ✅ | None; `Bundle::boot()` only reads/writes config files in `dev` + CLI, never in worker mode |
 | Memory growth across requests | ✅ | `LoginAttempt` entities are detached after write/read (W-01) |
 | Blocking I/O and timeouts | ✅ | Only database queries on the login path; no HTTP or process calls |
 | Third-party static state | ✅ | Only Symfony Security / RateLimiter contracts and Doctrine ORM |
@@ -68,7 +68,7 @@ Worker demo: `demo/demo-symfony8/docker/frankenphp/Caddyfile` declares a `worker
 - **Where:** `src/NowoLoginThrottleBundle.php` (`glob()` + `file_get_contents()` over every `config/packages/*.yaml|*.yml` in `isConfigurationDefined()`) and `src/DependencyInjection/Configuration.php` (`mkdir()` / `file_put_contents()` of `nowo_login_throttle.yaml`).
 - **Worker impact:** in worker mode `boot()` runs once per worker boot instead of once per request, so the cost is lower than under PHP-FPM. However, several workers booting at the same time can race to write the same file, and on a read-only production image `file_put_contents()` fails with a PHP warning, which Symfony's debug error handler turns into an exception during kernel boot. The generated file has no effect until the container is rebuilt. No state leaks between requests.
 - **Recommendation:** ship `config/packages/nowo_login_throttle.yaml` in the application (or via a Flex recipe) so the write path is never reached in production, and consider limiting the generation to `PHP_SAPI === 'cli'` / `kernel.debug`.
-- **Status:** Resolved — `boot()` skips the generation when the target directory (or the project dir if `config/packages` is missing) is not writable, and `Configuration::generateConfigFile()` writes with `LOCK_EX`. Shipping the config file remains the recommended setup.
+- **Status:** Resolved — `boot()` skips the generation when the target directory (or the project dir if `config/packages` is missing) is not writable, and `Configuration::generateConfigFile()` writes with `LOCK_EX`. Since the next release after 3.4.0, `boot()` only scans/writes in the `dev` environment from the CLI; worker (`frankenphp` SAPI), FPM and `prod` boots do no filesystem access at all. Shipping the config file remains the recommended setup.
 
 ### Info
 

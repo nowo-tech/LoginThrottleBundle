@@ -1,6 +1,6 @@
 # Login Throttle Bundle
 
-[![CI](https://github.com/nowo-tech/LoginThrottleBundle/actions/workflows/ci.yml/badge.svg)](https://github.com/nowo-tech/LoginThrottleBundle/actions/workflows/ci.yml) [![Packagist Version](https://img.shields.io/packagist/v/nowo-tech/login-throttle-bundle.svg?style=flat)](https://packagist.org/packages/nowo-tech/login-throttle-bundle) [![Packagist Downloads](https://img.shields.io/packagist/dt/nowo-tech/login-throttle-bundle.svg)](https://packagist.org/packages/nowo-tech/login-throttle-bundle) [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![PHP](https://img.shields.io/badge/PHP-8.2%2B-777BB4?logo=php)](https://php.net) [![Symfony](https://img.shields.io/badge/Symfony-7.0%2B%20%7C%208.0%2B-000000?logo=symfony)](https://symfony.com) [![Coverage](https://img.shields.io/badge/Coverage-100%25-brightgreen)](#tests-and-coverage)
+[![CI](https://github.com/nowo-tech/LoginThrottleBundle/actions/workflows/ci.yml/badge.svg)](https://github.com/nowo-tech/LoginThrottleBundle/actions/workflows/ci.yml) [![Packagist Version](https://img.shields.io/packagist/v/nowo-tech/login-throttle-bundle.svg?style=flat)](https://packagist.org/packages/nowo-tech/login-throttle-bundle) [![Packagist Downloads](https://img.shields.io/packagist/dt/nowo-tech/login-throttle-bundle.svg)](https://packagist.org/packages/nowo-tech/login-throttle-bundle) [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![PHP](https://img.shields.io/badge/PHP-8.2%2B-777BB4?logo=php)](https://php.net) [![Symfony](https://img.shields.io/badge/Symfony-7.4%2B%20%7C%208.0%2B-000000?logo=symfony)](https://symfony.com) [![Coverage](https://img.shields.io/badge/Coverage-100%25-brightgreen)](#tests-and-coverage)
 
 > ⭐ **Found this useful?** Give it a star on GitHub! It helps us maintain and improve the project.
 
@@ -20,7 +20,7 @@ This bundle is **FrankenPHP worker mode friendly**, including worker mode **with
 - ✅ **Multiple firewalls support** - Configure independent throttling for each firewall
 - ✅ **Database storage support** - Store login attempts in database for auditing
 - ✅ Custom rate limiter support
-- ✅ Compatible with Symfony 7.0 and 8.0
+- ✅ Compatible with Symfony 7.4 and 8.x
 - ✅ Easy migration from `anyx/login-gate-bundle`
 - ✅ Same configuration options as the deprecated bundle
 - ✅ Complete test suite with 100% coverage requirement
@@ -50,13 +50,13 @@ return [
 ## Requirements
 
 - PHP >= 8.2, < 8.6
-- Symfony >= 7.0 || >= 8.0
+- Symfony >= 7.4 || >= 8.0
 - Symfony Security Bundle
 - Symfony Rate Limiter component
 
 ## Configuration
 
-When installed, a default configuration file is automatically created at `config/packages/nowo_login_throttle.yaml` (if not using Flex, it will be created on first bundle boot).
+When installed, a default configuration file is automatically created at `config/packages/nowo_login_throttle.yaml` (if not using Flex, it is created the first time the kernel boots from the CLI in the `dev` environment, e.g. `bin/console cache:clear`; it is never scanned for or written on HTTP/worker boots or in other environments).
 
 You can configure the login throttling settings:
 
