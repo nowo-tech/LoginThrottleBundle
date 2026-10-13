@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[3.5.0] - 2026-10-13](#350---2026-10-13)
 - [[3.4.0] - 2026-10-13](#340---2026-10-13)
 - [[3.3.1] - 2026-10-09](#331---2026-10-09)
 - [[3.3.0] - 2026-09-28](#330---2026-09-28)
@@ -93,6 +94,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.5.0] - 2026-10-13
+
 ### Fixed
 
 - `NowoLoginThrottleBundle::boot()` no longer globs/reads every `config/packages/*.y?ml` (and possibly writes `nowo_login_throttle.yaml`) on every kernel boot: the default-config generation now only runs in the `dev` environment from the CLI. Production, HTTP (FPM) and FrankenPHP worker boots do no filesystem scan or write.
@@ -100,6 +103,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Minimum Symfony version raised from 7.0 to **7.4** (`^7.4 || ^8.0`), matching the lowest version tested in CI; the Symfony 7.0 CI cell was removed.
+
+[3.5.0]: https://github.com/nowo-tech/LoginThrottleBundle/releases/tag/v3.5.0
 
 ## [3.4.0] - 2026-10-13
 

@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## To 3.5.0
+
+From **3.4.0** — boot() config generation restricted to dev CLI; Symfony >=7.4.
+
+```bash
+composer update nowo-tech/login-throttle-bundle
+```
+
 - **Symfony 7.4+ required** (was 7.0+). Symfony 8.x remains supported. Upgrade `symfony/*` to 7.4 before updating the bundle.
 - The default `config/packages/nowo_login_throttle.yaml` is now only generated when the kernel boots from the CLI in the `dev` environment (e.g. `bin/console cache:clear`). Commit the file (or let the Flex recipe create it); it is no longer created on web/worker boots or in `prod`/`test`.
 
@@ -54,6 +62,7 @@ This guide provides step-by-step instructions for upgrading the Login Throttle B
 
 ## Table of contents
 
+- [To 3.5.0](#to-350)
 - [To 3.4.0](#to-340)
 - [To 3.3.1](#to-331)
 - [From 3.2.0 to 3.2.1](#from-320-to-321)
