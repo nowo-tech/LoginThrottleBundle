@@ -1,7 +1,18 @@
 # Upgrade Guide
 
-
 ## Unreleased
+
+## To 3.4.0
+
+From **3.3.1** — security - case-insensitive usernames, per-IP cap, correct limiter id for non-main firewalls.
+
+```bash
+composer update nowo-tech/login-throttle-bundle
+```
+
+- With `storage: database`, usernames are compared case-insensitively (trimmed + lower-cased).
+- An IP that fails more than `5 × max_count_attempts` times within `timeout`, across any usernames, is now blocked. Shared-NAT setups may need to raise the new `max_count_attempts_per_ip` option.
+- Single-firewall database storage on a non-`main` firewall now resolves to `nowo_login_throttle.database_rate_limiter.<fw>` (that setup used to break the container). If you hand-edited security.yaml with the base id, re-run the configure command.
 
 ## To 3.3.1
 
@@ -40,7 +51,7 @@ This guide provides step-by-step instructions for upgrading the Login Throttle B
 
 ## Table of contents
 
-
+- [To 3.4.0](#to-340)
 - [To 3.3.1](#to-331)
 - [From 3.2.0 to 3.2.1](#from-320-to-321)
 - [From 3.1.4 to 3.2.0](#from-314-to-320)

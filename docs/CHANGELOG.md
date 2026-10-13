@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[3.4.0] - 2026-10-13](#340---2026-10-13)
 - [[3.3.1] - 2026-10-09](#331---2026-10-09)
 - [[3.3.0] - 2026-09-28](#330---2026-09-28)
 - [[3.2.2] - 2026-09-27](#322---2026-09-27)
@@ -92,6 +93,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.4.0] - 2026-10-13
+
 ### Security
 
 - Database storage: usernames are now normalized (trimmed + lower-cased) before counting, so `Admin` / `admin` / ` admin ` share one bucket.
@@ -100,6 +103,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Single-firewall `storage: database` on a firewall other than `main`/`default`: `security_config.limiter` and `nowo:login-throttle:configure-security` now reference the registered `nowo_login_throttle.database_rate_limiter.<firewall>` service instead of the nonexistent `nowo_login_throttle.database_rate_limiter` (container failed to compile).
+
+[3.4.0]: https://github.com/nowo-tech/LoginThrottleBundle/releases/tag/v3.4.0
 
 ## [3.3.1] - 2026-10-09
 
