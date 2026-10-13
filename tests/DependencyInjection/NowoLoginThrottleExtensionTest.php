@@ -257,10 +257,62 @@ final class NowoLoginThrottleExtensionTest extends TestCase
         $this->extension->load($configs, $this->container);
 
         $this->assertTrue($this->container->hasDefinition('nowo_login_throttle.database_rate_limiter.api'));
+        $this->assertFalse($this->container->hasDefinition('nowo_login_throttle.database_rate_limiter'));
+
+        // security_config must reference the service that was actually registered
+        $securityConfig = $this->container->getParameter('nowo_login_throttle.security_config');
+        $this->assertSame('nowo_login_throttle.database_rate_limiter.api', $securityConfig['limiter']);
+        $this->assertTrue($this->container->hasDefinition($securityConfig['limiter']));
+        $this->assertSame('api', $securityConfig['firewall']);
+    }
+
+    public function testLoadWithSingleFirewallDatabaseDisabledStillReportsFirewallServiceId(): void
+    {
+        $this->extension->load([[
+            'enabled' => false,
+            'storage' => 'database',
+            'firewall' => 'api',
+        ]], $this->container);
 
         $securityConfig = $this->container->getParameter('nowo_login_throttle.security_config');
-        $this->assertSame('nowo_login_throttle.database_rate_limiter', $securityConfig['limiter']);
-        $this->assertSame('api', $securityConfig['firewall']);
+        $this->assertSame('nowo_login_throttle.database_rate_limiter.api', $securityConfig['limiter']);
+    }
+
+    public function testDatabaseRateLimiterServiceIdHelpers(): void
+    {
+        $this->assertSame('nowo_login_throttle.database_rate_limiter', NowoLoginThrottleExtension::databaseRateLimiterServiceId('main'));
+        $this->assertSame('nowo_login_throttle.database_rate_limiter', NowoLoginThrottleExtension::databaseRateLimiterServiceId('default'));
+        $this->assertSame('nowo_login_throttle.database_rate_limiter.admin', NowoLoginThrottleExtension::databaseRateLimiterServiceId('admin'));
+        $this->assertSame('nowo_login_throttle.database_rate_limiter.shared_5_300s_3600s', NowoLoginThrottleExtension::sharedDatabaseRateLimiterServiceId(5, 300, 3600));
+        $this->assertSame('nowo_login_throttle.database_rate_limiter.shared_5_300s_3600s_ip50', NowoLoginThrottleExtension::sharedDatabaseRateLimiterServiceId(5, 300, 3600, 50));
+    }
+
+    public function testLoadPassesMaxAttemptsPerIpToDatabaseLimiter(): void
+    {
+        $this->extension->load([[
+            'storage' => 'database',
+            'max_count_attempts' => 4,
+            'max_count_attempts_per_ip' => 40,
+        ]], $this->container);
+
+        $definition = $this->container->getDefinition('nowo_login_throttle.database_rate_limiter');
+        $this->assertSame(40, $definition->getArgument(3));
+    }
+
+    public function testLoadWithMultipleFirewallsSeparatesLimitersByMaxAttemptsPerIp(): void
+    {
+        $this->extension->load([[
+            'firewalls' => [
+                'main' => ['storage' => 'database', 'max_count_attempts' => 5, 'timeout' => 600],
+                'api' => ['storage' => 'database', 'max_count_attempts' => 5, 'timeout' => 600, 'max_count_attempts_per_ip' => 50],
+            ],
+        ]], $this->container);
+
+        $firewalls = $this->container->getParameter('nowo_login_throttle.firewalls');
+        $this->assertSame('nowo_login_throttle.database_rate_limiter.shared_5_600s_3600s', $firewalls['main']['limiter']);
+        $this->assertSame('nowo_login_throttle.database_rate_limiter.shared_5_600s_3600s_ip50', $firewalls['api']['limiter']);
+        $this->assertNull($this->container->getDefinition($firewalls['main']['limiter'])->getArgument(3));
+        $this->assertSame(50, $this->container->getDefinition($firewalls['api']['limiter'])->getArgument(3));
     }
 
     public function testRegisterDatabaseRateLimiterReturnsExistingDefinition(): void

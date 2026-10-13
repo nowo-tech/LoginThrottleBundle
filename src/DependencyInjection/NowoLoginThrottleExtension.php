@@ -25,6 +25,57 @@ use Symfony\Component\DependencyInjection\Reference;
 final class NowoLoginThrottleExtension extends Extension
 {
     /**
+     * Base service ID of the database rate limiter registered for the single-firewall configuration.
+     */
+    public const DATABASE_RATE_LIMITER_SERVICE_ID = 'nowo_login_throttle.database_rate_limiter';
+
+    /**
+     * Returns the database rate limiter service ID registered for a single-firewall configuration.
+     *
+     * {@code main} and {@code default} use {@see self::DATABASE_RATE_LIMITER_SERVICE_ID}; any other
+     * firewall gets a {@code .<firewall>} suffix. The extension and {@code nowo:login-throttle:configure-security}
+     * both use this helper so security.yaml always references the service that actually exists.
+     *
+     * @param string $firewallName The firewall name
+     *
+     * @return string The service ID
+     */
+    public static function databaseRateLimiterServiceId(string $firewallName): string
+    {
+        if ('default' === $firewallName || 'main' === $firewallName) {
+            return self::DATABASE_RATE_LIMITER_SERVICE_ID;
+        }
+
+        return \sprintf('%s.%s', self::DATABASE_RATE_LIMITER_SERVICE_ID, $firewallName);
+    }
+
+    /**
+     * Returns the shared database rate limiter service ID for a multiple-firewalls configuration tuple.
+     *
+     * Format: {@code nowo_login_throttle.database_rate_limiter.shared_{max}_{timeout}s_{watch}s}, with an
+     * {@code _ip{n}} suffix only when {@code max_count_attempts_per_ip} is set explicitly.
+     *
+     * @param int      $maxAttempts      Maximum attempts
+     * @param int      $timeout          Timeout in seconds
+     * @param int      $watchPeriod      Watch period in seconds
+     * @param int|null $maxAttemptsPerIp Explicit per-IP maximum (null: default multiplier)
+     *
+     * @return string The shared service ID
+     */
+    public static function sharedDatabaseRateLimiterServiceId(int $maxAttempts, int $timeout, int $watchPeriod, ?int $maxAttemptsPerIp = null): string
+    {
+        $serviceId = \sprintf(
+            '%s.shared_%d_%ds_%ds',
+            self::DATABASE_RATE_LIMITER_SERVICE_ID,
+            $maxAttempts,
+            $timeout,
+            $watchPeriod
+        );
+
+        return null === $maxAttemptsPerIp ? $serviceId : \sprintf('%s_ip%d', $serviceId, $maxAttemptsPerIp);
+    }
+
+    /**
      * Loads the services configuration and processes the bundle configuration.
      *
      * Loads the services.yaml file from the bundle's Resources/config directory
@@ -65,16 +116,18 @@ final class NowoLoginThrottleExtension extends Extension
             $container->setParameter('nowo_login_throttle.lock_factory', $config['lock_factory']);
 
             // Register database rate limiter service if storage is database
+            $databaseLimiterServiceId = null;
             if ('database' === $config['storage'] && $config['enabled']) {
-                $this->registerDatabaseRateLimiter($container, [
+                $databaseLimiterServiceId = $this->registerDatabaseRateLimiter($container, [
                     'max_count_attempts' => $config['max_count_attempts'],
                     'timeout' => $config['timeout'],
                     'watch_period' => $config['watch_period'] ?? 3600,
+                    'max_count_attempts_per_ip' => $config['max_count_attempts_per_ip'] ?? null,
                 ], $config['firewall']);
             }
 
             // Store security config for single firewall (always set, even if disabled)
-            $this->configureSecurityThrottling($container, $config);
+            $this->configureSecurityThrottling($container, $config, $databaseLimiterServiceId);
 
             // Store firewalls config for LoginThrottleInfoService (single firewall mode)
             $container->setParameter('nowo_login_throttle.firewalls', [
@@ -99,10 +152,11 @@ final class NowoLoginThrottleExtension extends Extension
      * Sets up parameters that can be used to configure security.yaml.
      * The actual security.yaml configuration should be done manually or via a recipe.
      *
-     * @param ContainerBuilder     $container The container builder
-     * @param array<string, mixed> $config    The processed configuration
+     * @param ContainerBuilder     $container                The container builder
+     * @param array<string, mixed> $config                   The processed configuration
+     * @param string|null          $databaseLimiterServiceId Service ID returned by {@see registerDatabaseRateLimiter()} (null when not registered)
      */
-    private function configureSecurityThrottling(ContainerBuilder $container, array $config): void
+    private function configureSecurityThrottling(ContainerBuilder $container, array $config, ?string $databaseLimiterServiceId): void
     {
         $maxAttempts = $config['max_count_attempts'];
         $interval = Configuration::secondsToInterval($config['timeout']);
@@ -114,8 +168,8 @@ final class NowoLoginThrottleExtension extends Extension
         // Determine the rate limiter to use
         $limiterService = $rateLimiter;
         if ('database' === $config['storage'] && null === $rateLimiter) {
-            // Use the database rate limiter service
-            $limiterService = 'nowo_login_throttle.database_rate_limiter';
+            // Use the database rate limiter service actually registered for this firewall
+            $limiterService = $databaseLimiterServiceId ?? self::databaseRateLimiterServiceId($firewall);
         }
 
         // Store these for potential use in compiler passes or documentation
@@ -164,7 +218,8 @@ final class NowoLoginThrottleExtension extends Extension
                     $sharedLimiters,
                     $firewallConfig['max_count_attempts'],
                     $firewallConfig['timeout'],
-                    $firewallConfig['watch_period'] ?? 3600
+                    $firewallConfig['watch_period'] ?? 3600,
+                    $firewallConfig['max_count_attempts_per_ip'] ?? null
                 );
             }
         }
@@ -182,12 +237,14 @@ final class NowoLoginThrottleExtension extends Extension
                 $maxAttempts = $firewallConfig['max_count_attempts'];
                 $timeout = $firewallConfig['timeout'];
                 $watchPeriod = $firewallConfig['watch_period'] ?? 3600;
+                $maxAttemptsPerIp = $firewallConfig['max_count_attempts_per_ip'] ?? null;
 
                 $sharedServiceId = $this->resolveSharedLimiterServiceId(
                     $sharedLimiters,
                     $maxAttempts,
                     $timeout,
-                    $watchPeriod
+                    $watchPeriod,
+                    $maxAttemptsPerIp
                 );
 
                 // Register the limiter only once (multiple firewalls with same config share the same service)
@@ -197,6 +254,7 @@ final class NowoLoginThrottleExtension extends Extension
                         'max_count_attempts' => $maxAttempts,
                         'timeout' => $timeout,
                         'watch_period' => $watchPeriod,
+                        'max_count_attempts_per_ip' => $maxAttemptsPerIp,
                     ]);
                     $registeredLimiters[$sharedServiceId] = true;
                 }
@@ -230,11 +288,8 @@ final class NowoLoginThrottleExtension extends Extension
      */
     private function registerDatabaseRateLimiter(ContainerBuilder $container, array $config, string $firewallName = 'default'): string
     {
-        // For single firewall (main/default), use default service ID. For multiple firewalls, use unique IDs
-        $serviceId = 'nowo_login_throttle.database_rate_limiter';
-        if ('default' !== $firewallName && 'main' !== $firewallName) {
-            $serviceId = \sprintf('nowo_login_throttle.database_rate_limiter.%s', $firewallName);
-        }
+        // For single firewall (main/default), use default service ID. Other firewalls get a suffixed ID
+        $serviceId = self::databaseRateLimiterServiceId($firewallName);
 
         // Check if service already exists (for shared limiters)
         if ($container->hasDefinition($serviceId)) {
@@ -251,7 +306,7 @@ final class NowoLoginThrottleExtension extends Extension
      *
      * @param ContainerBuilder     $container The container builder
      * @param string               $serviceId The service ID to use
-     * @param array<string, mixed> $config    The processed configuration (must contain max_count_attempts, timeout, watch_period)
+     * @param array<string, mixed> $config    The processed configuration (must contain max_count_attempts, timeout, watch_period; optional max_count_attempts_per_ip)
      */
     private function registerDatabaseRateLimiterByServiceId(ContainerBuilder $container, string $serviceId, array $config): void
     {
@@ -266,6 +321,7 @@ final class NowoLoginThrottleExtension extends Extension
                 new Reference(LoginAttemptRepository::class),
                 $config['max_count_attempts'],
                 $config['timeout'],
+                $config['max_count_attempts_per_ip'] ?? null,
             ])
             ->setPublic(true); // Must be public to be used as a rate limiter service
     }
@@ -273,24 +329,20 @@ final class NowoLoginThrottleExtension extends Extension
     /**
      * Resolves or creates a shared database rate limiter service ID for a configuration tuple.
      *
-     * @param array<string, string> $sharedLimiters Shared limiter registry keyed by config hash
-     * @param int                   $maxAttempts    Maximum attempts
-     * @param int                   $timeout        Timeout in seconds
-     * @param int                   $watchPeriod    Watch period in seconds
+     * @param array<string, string> $sharedLimiters   Shared limiter registry keyed by config hash
+     * @param int                   $maxAttempts      Maximum attempts
+     * @param int                   $timeout          Timeout in seconds
+     * @param int                   $watchPeriod      Watch period in seconds
+     * @param int|null              $maxAttemptsPerIp Explicit per-IP maximum (null: default multiplier)
      *
      * @return string The shared service ID
      */
-    private function resolveSharedLimiterServiceId(array &$sharedLimiters, int $maxAttempts, int $timeout, int $watchPeriod): string
+    private function resolveSharedLimiterServiceId(array &$sharedLimiters, int $maxAttempts, int $timeout, int $watchPeriod, ?int $maxAttemptsPerIp = null): string
     {
-        $limiterKey = \sprintf('db-%d-%d-%d', $maxAttempts, $timeout, $watchPeriod);
+        $limiterKey = \sprintf('db-%d-%d-%d-%s', $maxAttempts, $timeout, $watchPeriod, $maxAttemptsPerIp ?? 'default');
 
         if (!isset($sharedLimiters[$limiterKey])) {
-            $sharedLimiters[$limiterKey] = \sprintf(
-                'nowo_login_throttle.database_rate_limiter.shared_%d_%ds_%ds',
-                $maxAttempts,
-                $timeout,
-                $watchPeriod
-            );
+            $sharedLimiters[$limiterKey] = self::sharedDatabaseRateLimiterServiceId($maxAttempts, $timeout, $watchPeriod, $maxAttemptsPerIp);
         }
 
         return $sharedLimiters[$limiterKey];

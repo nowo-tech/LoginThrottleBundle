@@ -474,6 +474,52 @@ final class ConfigureSecurityCommandTest extends TestCase
         );
     }
 
+    public function testCommandUsesFirewallSpecificDatabaseLimiterForNonMainFirewall(): void
+    {
+        $command = new ConfigureSecurityCommand($this->testDir);
+        $commandTester = new CommandTester($command);
+
+        $this->filesystem->dumpFile(
+            $this->testDir . '/config/packages/nowo_login_throttle.yaml',
+            "nowo_login_throttle:\n    enabled: true\n    storage: 'database'\n    firewall: 'admin'\n"
+        );
+        $this->filesystem->dumpFile(
+            $this->testDir . '/config/packages/security.yaml',
+            "security:\n    firewalls:\n        admin: {}\n"
+        );
+
+        $exitCode = $commandTester->execute([]);
+
+        $this->assertSame(0, $exitCode);
+        $securityConfig = Yaml::parseFile($this->testDir . '/config/packages/security.yaml');
+        $this->assertSame(
+            'nowo_login_throttle.database_rate_limiter.admin',
+            $securityConfig['security']['firewalls']['admin']['login_throttling']['limiter']
+        );
+    }
+
+    public function testCommandMultipleFirewallsIncludesMaxAttemptsPerIpInSharedLimiterId(): void
+    {
+        $command = new ConfigureSecurityCommand($this->testDir);
+        $commandTester = new CommandTester($command);
+
+        $this->filesystem->dumpFile(
+            $this->testDir . '/config/packages/nowo_login_throttle.yaml',
+            "nowo_login_throttle:\n    firewalls:\n        main:\n            storage: 'database'\n            max_count_attempts: 5\n            timeout: 300\n            max_count_attempts_per_ip: 50\n"
+        );
+        $this->filesystem->dumpFile(
+            $this->testDir . '/config/packages/security.yaml',
+            "security:\n    firewalls:\n        main: {}\n"
+        );
+
+        $this->assertSame(0, $commandTester->execute([]));
+        $securityConfig = Yaml::parseFile($this->testDir . '/config/packages/security.yaml');
+        $this->assertSame(
+            'nowo_login_throttle.database_rate_limiter.shared_5_300s_3600s_ip50',
+            $securityConfig['security']['firewalls']['main']['login_throttling']['limiter']
+        );
+    }
+
     public function testCommandConfiguresMultipleFirewalls(): void
     {
         $command = new ConfigureSecurityCommand($this->testDir);

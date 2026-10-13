@@ -44,6 +44,7 @@ nowo_login_throttle:
     enabled: true
     max_count_attempts: 3
     timeout: 600          # Ban period in seconds (600 = 10 minutes)
+    max_count_attempts_per_ip: null  # Database: attempts per IP whatever the username (null = 5 × max_count_attempts)
     watch_period: 3600    # Database: part of shared limiter ID; use with repository cleanup — counting uses `timeout`
     firewall: 'main'      # Firewall name where login_throttling should be applied
     storage: 'cache'      # Storage backend: 'cache' (default) or 'database'
@@ -59,6 +60,7 @@ nowo_login_throttle:
 | `enabled` | `bool` | `true` | Enable or disable login throttling |
 | `max_count_attempts` | `int` | `3` | Maximum number of login attempts before throttling (maps to `max_attempts` in Symfony `login_throttling`) |
 | `timeout` | `int` | `600` | Ban period in seconds (maps to `interval` in Symfony `login_throttling`, e.g., 600 = 10 minutes) |
+| `max_count_attempts_per_ip` | `int\|null` | `null` | With **`storage: database`**, maximum attempts per IP address across all usernames within `timeout` (`null` = `5 × max_count_attempts`, like Symfony's default login limiter). Usernames are trimmed and lower-cased before counting. |
 | `watch_period` | `int` | `3600` | With **`storage: database`**, part of the **generated rate limiter service ID** and **shared-limiter grouping** for multiple firewalls; use as the age threshold (seconds) when calling **`LoginAttemptRepository::cleanup()`** from your own task. Attempt counting uses **`timeout`**, not `watch_period`. |
 | `firewall` | `string` | `'main'` | Firewall name where `login_throttling` should be applied |
 | `storage` | `string` | `'cache'` | Storage backend: `'cache'` (uses Symfony cache) or `'database'` (stores in database via Doctrine ORM). See [DATABASE_STORAGE.md](DATABASE_STORAGE.md) for details. |
@@ -218,7 +220,7 @@ nowo_login_throttle:
 
 When using database storage, firewalls with the same configuration (same `max_count_attempts`, `timeout`, `watch_period`) automatically share the same rate limiter service. The bundle generates human-readable service IDs based on the configuration values:
 
-- **Service ID Format**: `nowo_login_throttle.database_rate_limiter.shared_{max_attempts}_{timeout}s_{watch_period}s`
+- **Service ID Format**: `nowo_login_throttle.database_rate_limiter.shared_{max_attempts}_{timeout}s_{watch_period}s` (suffixed with `_ip{n}` when `max_count_attempts_per_ip` is set explicitly)
 - **Example**: `nowo_login_throttle.database_rate_limiter.shared_5_300s_3600s` (5 attempts, 300 seconds timeout, 3600 seconds watch period)
 
 This naming convention makes it easy to identify the configuration by looking at the service name, and ensures that firewalls with identical settings share the same rate limiter to optimize resource usage.

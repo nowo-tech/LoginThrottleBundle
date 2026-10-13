@@ -92,6 +92,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- Database storage: usernames are now normalized (trimmed + lower-cased) before counting, so `Admin` / `admin` / ` admin ` share one bucket.
+- Database storage: new IP-only cap (`max_count_attempts_per_ip`, default `5 × max_count_attempts`, like Symfony's `DefaultLoginRateLimiter`) blocks an IP that rotates usernames.
+
+### Fixed
+
+- Single-firewall `storage: database` on a firewall other than `main`/`default`: `security_config.limiter` and `nowo:login-throttle:configure-security` now reference the registered `nowo_login_throttle.database_rate_limiter.<firewall>` service instead of the nonexistent `nowo_login_throttle.database_rate_limiter` (container failed to compile).
+
 ## [3.3.1] - 2026-10-09
 
 ### Changed

@@ -147,6 +147,7 @@ nowo_login_throttle:
     storage: 'database'           # Required: set to 'database'
     max_count_attempts: 3         # Maximum attempts before blocking
     timeout: 600                  # Block period in seconds
+    max_count_attempts_per_ip: null  # Per-IP cap across usernames (null = 5 × max_count_attempts)
     watch_period: 3600            # Used in generated limiter ID; pass same value to cleanup() when pruning old rows
     firewall: 'main'              # Firewall name
     rate_limiter: null            # Will use database rate limiter automatically
@@ -162,9 +163,10 @@ When `storage: 'database'` is configured:
 2. This rate limiter stores login attempts in the `login_attempts` table
 3. Each failed login attempt is recorded with IP address, username, and timestamp
 4. Username is taken from flat form fields (`_username`, `username`, `email`) or nested AuthKit-style bags (`login_form[_username]`, etc.)
-5. The rate limiter checks the database to determine if a user/IP should be blocked
-6. On **successful** login, Symfony calls `reset()` and the limiter **deletes** matching attempt rows for that IP + username (so the next failure starts a fresh window)
-7. After the timeout period, remaining attempts are no longer counted (and old rows can be pruned with `cleanup()`)
+5. The username is trimmed and lower-cased, so `Admin` and `admin` share one counter
+6. The rate limiter blocks when either the IP + username count reaches `max_count_attempts` **or** the IP-only count (all usernames) reaches `max_count_attempts_per_ip` (default `5 × max_count_attempts`)
+7. On **successful** login, Symfony calls `reset()` and the limiter **deletes** matching attempt rows for that IP + username (so the next failure starts a fresh window); the IP-only counter is not reset and decays with `timeout`
+8. After the timeout period, remaining attempts are no longer counted (and old rows can be pruned with `cleanup()`)
 
 ## Manual Security Configuration
 
@@ -179,6 +181,8 @@ security:
             login_throttling:
                 limiter: 'nowo_login_throttle.database_rate_limiter'
 ```
+
+The single-firewall service ID is `nowo_login_throttle.database_rate_limiter` for the `main` / `default` firewall and `nowo_login_throttle.database_rate_limiter.<firewall>` for any other firewall.
 
 The `max_attempts` and `interval` options in `login_throttling` are ignored when using a custom rate limiter - the values are taken from the bundle configuration.
 
