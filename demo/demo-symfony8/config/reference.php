@@ -1261,6 +1261,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     enabled?: bool|Param, // Enable or disable login throttling (for simple single-firewall configuration) // Default: true
  *     max_count_attempts?: int|Param, // Maximum number of login attempts before throttling (for simple single-firewall configuration) // Default: 3
  *     timeout?: int|Param, // Ban period in seconds (for simple single-firewall configuration) // Default: 600
+ *     max_count_attempts_per_ip?: int|Param, // With storage=database: maximum attempts per IP address whatever the username (null = 5 × max_count_attempts) // Default: null
  *     watch_period?: int|Param, // With storage=database: part of generated limiter service ID and optional cleanup(); attempt window uses timeout (single-firewall mode). // Default: 3600
  *     firewall?: scalar|Param|null, // Firewall name where login_throttling should be applied (for simple single-firewall configuration) // Default: "main"
  *     storage?: "cache"|"database"|Param, // Storage backend for login attempts (for simple single-firewall configuration) // Default: "cache"
@@ -1271,6 +1272,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         enabled?: bool|Param, // Enable or disable login throttling for this firewall // Default: true
  *         max_count_attempts?: int|Param, // Maximum number of login attempts before throttling // Default: 3
  *         timeout?: int|Param, // Ban period in seconds // Default: 600
+ *         max_count_attempts_per_ip?: int|Param, // With storage=database: maximum attempts per IP address whatever the username (null = 5 × max_count_attempts) // Default: null
  *         watch_period?: int|Param, // With storage=database: part of generated limiter service ID and shared-limiter grouping; attempt window uses timeout. // Default: 3600
  *         storage?: "cache"|"database"|Param, // Storage backend for login attempts // Default: "cache"
  *         rate_limiter?: scalar|Param|null, // Custom rate limiter service ID (optional). If not provided, Symfony will use default login throttling rate limiter or database rate limiter if storage=database. Use same service ID to share rate limiter across firewalls. // Default: null
