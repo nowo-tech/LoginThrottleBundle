@@ -21,6 +21,9 @@ use Nowo\LoginThrottleBundle\Entity\LoginAttempt;
  */
 final class LoginAttemptRepository extends ServiceEntityRepository implements LoginAttemptRepositoryInterface
 {
+    /** Rows per DELETE statement in {@see cleanup()}. */
+    public const CLEANUP_BATCH_SIZE = 1000;
+
     private readonly ManagerRegistry $managerRegistry;
 
     /**
@@ -180,18 +183,45 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
     /**
      * Clean up old login attempts (older than watch period).
      *
+     * Deletes in keyset batches (`id > :last ORDER BY id LIMIT n`, one short `DELETE … WHERE id IN (…)`
+     * per batch) instead of one unbounded DELETE that locks the table on busy instances.
+     *
      * @param int $watchPeriodSeconds Period in seconds
+     * @param int $batchSize          Rows per DELETE statement
      *
      * @return int Number of deleted records
      */
-    public function cleanup(int $watchPeriodSeconds): int
+    public function cleanup(int $watchPeriodSeconds, int $batchSize = self::CLEANUP_BATCH_SIZE): int
     {
-        $qb = $this->createQueryBuilder('la')
-            ->delete()
-            ->where('la.createdAt < :before')
-            ->setParameter('before', new \DateTimeImmutable(\sprintf('-%d seconds', $watchPeriodSeconds)));
+        $before = new \DateTimeImmutable(\sprintf('-%d seconds', $watchPeriodSeconds));
+        $batchSize = max(1, $batchSize);
+        $deleted = 0;
+        $last = 0;
+        do {
+            /** @var list<int|string> $ids */
+            $ids = $this->createQueryBuilder('la')
+                ->select('la.id')
+                ->where('la.createdAt < :before')
+                ->andWhere('la.id > :last')
+                ->setParameter('before', $before)
+                ->setParameter('last', $last)
+                ->orderBy('la.id', 'ASC')
+                ->setMaxResults($batchSize)
+                ->getQuery()
+                ->getSingleColumnResult();
+            if ([] === $ids) {
+                break;
+            }
+            $deleted += (int) $this->createQueryBuilder('la')
+                ->delete()
+                ->where('la.id IN (:ids)')
+                ->setParameter('ids', $ids)
+                ->getQuery()
+                ->execute();
+            $last = (int) $ids[\count($ids) - 1];
+        } while (\count($ids) === $batchSize);
 
-        return $qb->getQuery()->execute();
+        return $deleted;
     }
 
     /**

@@ -43,6 +43,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Batched cleanup.** `LoginAttemptRepository::cleanup(int $watchPeriodSeconds, int $batchSize = 1000)` deletes old attempts in keyset batches (`id > :last ORDER BY id LIMIT n`, one short `DELETE … WHERE id IN (…)` per batch) instead of one unbounded `DELETE` (Nowo REQ-MESSENGER-007). Same return value; `LoginAttemptRepositoryInterface::cleanup()` is unchanged.
+
 ## [3.5.0] - 2026-10-13
 
 ### Fixed

@@ -282,19 +282,36 @@ final class LoginAttemptRepositoryTest extends TestCase
         $this->assertSame('demo@example.com', $attempt->getUsername());
     }
 
-    public function testCleanupExecutesDeleteQuery(): void
+    public function testCleanupDeletesInKeysetBatchesUntilAShortBatch(): void
     {
         $query = $this->createQueryMock();
-        $query->expects($this->once())->method('execute')->willReturn(7);
+        // Batch size 2: a full batch, then a short one ends the loop (no third SELECT).
+        $query->expects($this->exactly(2))->method('getSingleColumnResult')->willReturn([1, 2], [5]);
+        $query->expects($this->exactly(2))->method('execute')->willReturn(2, 1);
+        $this->queryBuilder->method('where')->willReturnSelf();
+        $this->queryBuilder->method('andWhere')->willReturnSelf();
+        $this->queryBuilder->method('setParameter')->willReturnSelf();
+        $this->queryBuilder->method('orderBy')->willReturnSelf();
+        $this->queryBuilder->method('setMaxResults')->willReturnSelf();
+        $this->queryBuilder->method('delete')->willReturnSelf();
+        $this->queryBuilder->method('getQuery')->willReturn($query);
 
-        $this->queryBuilder->expects($this->once())->method('delete')->willReturnSelf();
-        $this->queryBuilder->expects($this->once())->method('where')->with('la.createdAt < :before')->willReturnSelf();
-        $this->queryBuilder->expects($this->once())->method('setParameter')->willReturnSelf();
-        $this->queryBuilder->expects($this->once())->method('getQuery')->willReturn($query);
+        $this->assertSame(3, $this->repository->cleanup(3600, 2));
+    }
 
-        $deleted = $this->repository->cleanup(3600);
+    public function testCleanupStopsWhenNothingIsOld(): void
+    {
+        $query = $this->createQueryMock();
+        $query->method('getSingleColumnResult')->willReturn([]);
+        $query->expects($this->never())->method('execute');
+        $this->queryBuilder->method('where')->willReturnSelf();
+        $this->queryBuilder->method('andWhere')->willReturnSelf();
+        $this->queryBuilder->method('setParameter')->willReturnSelf();
+        $this->queryBuilder->method('orderBy')->willReturnSelf();
+        $this->queryBuilder->method('setMaxResults')->willReturnSelf();
+        $this->queryBuilder->method('getQuery')->willReturn($query);
 
-        $this->assertSame(7, $deleted);
+        $this->assertSame(0, $this->repository->cleanup(3600));
     }
 
     public function testCountOlderThan(): void

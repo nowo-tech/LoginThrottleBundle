@@ -490,7 +490,7 @@ final class DatabaseRateLimiterTest extends TestCase
             ->expects($this->once())
             ->method('recordAttempt')
             ->with('192.168.1.1', null)
-            ->willReturn(new LoginAttempt('192.168.1.1', null));
+            ->willReturn(new LoginAttempt('192.168.1.1'));
 
         $this->rateLimiter->consume($request);
     }
