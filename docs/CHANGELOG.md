@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[3.5.1] - 2026-10-15](#351---2026-10-15)
 - [[3.5.0] - 2026-10-13](#350---2026-10-13)
 - [[3.4.0] - 2026-10-13](#340---2026-10-13)
 - [[3.3.1] - 2026-10-09](#331---2026-10-09)
@@ -43,9 +44,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.5.1] - 2026-10-15
+
 ### Changed
 
 - **Batched cleanup.** `LoginAttemptRepository::cleanup(int $watchPeriodSeconds, int $batchSize = 1000)` deletes old attempts in keyset batches (`id > :last ORDER BY id LIMIT n`, one short `DELETE … WHERE id IN (…)` per batch) instead of one unbounded `DELETE` (Nowo REQ-MESSENGER-007). Same return value; `LoginAttemptRepositoryInterface::cleanup()` is unchanged.
+
+[3.5.1]: https://github.com/nowo-tech/LoginThrottleBundle/releases/tag/v3.5.1
 
 ## [3.5.0] - 2026-10-13
 

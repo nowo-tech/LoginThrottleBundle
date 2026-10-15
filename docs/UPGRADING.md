@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 3.5.1](#to-351)
 - [To 3.5.0](#to-350)
 - [To 3.4.0](#to-340)
 - [To 3.3.1](#to-331)
@@ -45,6 +46,10 @@
 - [Notes](#notes)
 
 ## Unreleased
+
+## To 3.5.1
+
+No action. `cleanup()` (and the cleanup command) now deletes in batches of 1000; custom `LoginAttemptRepositoryInterface` implementations are unaffected.
 
 ## To 3.5.0
 
