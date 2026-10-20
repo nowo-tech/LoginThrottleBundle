@@ -24,6 +24,7 @@ This guide explains how to configure the Login Throttle Bundle to store login at
   - [Indexes](#indexes)
   - [Database Load](#database-load)
   - [When to Use Database Storage](#when-to-use-database-storage)
+  - [FrankenPHP worker mode](#frankenphp-worker-mode)
 - [Migration from Cache to Database](#migration-from-cache-to-database)
 - [Troubleshooting](#troubleshooting)
   - [Issue: "Table login_attempts does not exist"](#issue-table-login_attempts-does-not-exist)

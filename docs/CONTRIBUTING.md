@@ -13,6 +13,9 @@ Thank you for your interest in contributing to Login Throttle Bundle! This docum
 - [Branching Policy](#branching-policy)
 - [Questions](#questions)
 - [Acknowledgments](#acknowledgments)
+- [Igor worker audit (REQ-CS-008)](#igor-worker-audit-req-cs-008)
+- [AI co-author trailers](#ai-co-author-trailers)
+- [Cursor Agent (REQ-IDE-006)](#cursor-agent-req-ide-006)
 
 ## Code of Conduct
 
@@ -193,3 +196,18 @@ Run `make igor` (or `composer igor`) before release. Igor audits package `src/` 
 ## AI co-author trailers
 
 Do **not** add AI co-author trailers to commit messages: neither `Co-authored-by: Cursor` / `cursoragent@cursor.com` nor `Co-Authored-By: Claude …` / `noreply@anthropic.com` (REQ-GIT-001). Run `make setup-hooks` so the `commit-msg` hook strips them.
+
+## Cursor Agent (REQ-IDE-006)
+
+Contributors using Cursor Agent on this repository should:
+
+1. **Submit with Ctrl+Enter** (macOS: **⌘+Enter**). **Enter** inserts a newline; **Ctrl+Enter** / **⌘+Enter** submits the prompt. UI: **Cursor Settings → Agents / Chat → Submit with Ctrl + Enter**.
+2. **Queue follow-ups** while the agent is running. In user `settings.json` (not a repo file):
+
+```json
+{
+  "cursor.composer.queueMessageDefaultBehavior": "queue"
+}
+```
+
+Do **not** use `"steer"` as the org default: steer interrupts the running agent as soon as a follow-up is sent.

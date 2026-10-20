@@ -8,10 +8,10 @@ assignees: ''
 ---
 
 <!--
-- Please do not report an issue for a version of `LoginThrottleBundle` that is no longer supported. Currently supported versions are listed here: https://github.com/nowo-tech/LoginThrottleBundle#version-information
+- Please do not report an issue for a version of `login-throttle-bundle` that is no longer supported. Currently supported versions are listed here: https://github.com/nowo-tech/LoginThrottleBundle#version-information
 - Please fill in this template according to your issue.
 - Please keep the table shown below at the top of your issue.
-- You can retrieve `LoginThrottleBundle` version by running `composer info | grep "LoginThrottleBundle"`.
+- You can retrieve `login-throttle-bundle` version by running `composer info | grep "login-throttle-bundle"`.
 - You can retrieve PHP version by running `php -v`.
 - Please post code as text (using proper markup). Do not post screenshots of code.
 - Please remove this comment before submitting your issue.
@@ -19,7 +19,7 @@ assignees: ''
 
 | Q                           | A
 | ----------------------------| -----------------------
-| `LoginThrottleBundle` version    | x.y.z
+| `LoginThrottleBundle` version        | x.y.z
 | PHP version                 | x.y.z
 | Database                    | MySQL / PostgreSQL / SQLite / Other
 

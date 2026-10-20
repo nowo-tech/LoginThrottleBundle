@@ -44,6 +44,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Documentation: wave-1 REQ compliance — README documentation list order, canonical issue templates, CONTRIBUTING Cursor Agent settings (REQ-IDE-006), tables of contents in long docs, Spec Kit inventory refresh (36/36, `CleanupLoginAttemptsCommand` mapped).
+
 ## [3.5.1] - 2026-10-15
 
 ### Changed

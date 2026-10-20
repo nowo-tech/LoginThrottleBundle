@@ -9,6 +9,18 @@
 | **Verdict** | ✅ **Viable under scenario B (100%)** — rate-limit decisions are stateless and read from the database on every call (no cross-user leak); the database storage detaches every `LoginAttempt` it writes or loads, resets a closed EntityManager through `ManagerRegistry`, and never reuses DoctrineBundle's ORM-3 repository proxy bound to a closed manager |
 | Remediation | W-01 resolved in `LoginAttemptRepository` (detach + closed-EM reset + live `createQueryBuilder`); W-02 resolved in `NowoLoginThrottleBundle::boot()` / `Configuration::generateConfigFile()`. Regression tests: `tests/Repository/LoginAttemptRepositoryWorkerModeTest.php`, `tests/NowoLoginThrottleBundleBootTest.php` |
 
+## Table of contents
+
+- [Execution model assumed](#execution-model-assumed)
+- [Summary](#summary)
+- [Services reviewed](#services-reviewed)
+- [Findings](#findings)
+  - [W-01 — Login attempts go through the shared EntityManager and are never detached (Medium, scenario B only)](#w-01--login-attempts-go-through-the-shared-entitymanager-and-are-never-detached-medium-scenario-b-only)
+  - [W-02 — `Bundle::boot()` scans and may write `config/packages` at runtime (Low)](#w-02--bundleboot-scans-and-may-write-configpackages-at-runtime-low)
+  - [Info](#info)
+- [Usage recommendations in worker mode](#usage-recommendations-in-worker-mode)
+- [Re-audit triggers](#re-audit-triggers)
+
 ## Execution model assumed
 
 FrankenPHP worker mode boots the Symfony kernel once per worker and serves many requests with the same container. This audit assumes the **strict** variant: the kernel is **not** rebooted between requests (`reset_kernel` / services resetter off), so every shared service, static property and PHP global survives from one request to the next. Two scenarios are evaluated:

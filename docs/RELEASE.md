@@ -2,6 +2,12 @@
 
 This checklist helps maintainers prepare and publish a release safely.
 
+## Table of contents
+
+- [Pre-release](#pre-release)
+- [Tag and publish](#tag-and-publish)
+- [Post-release checks](#post-release-checks)
+
 ## Pre-release
 
 Run the full release pipeline:

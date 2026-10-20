@@ -59,6 +59,7 @@ Drop-in Symfony bundle wrapping native **`login_throttling`**: sensible defaults
 ### CLI
 
 - **FR-CLI-001**: `ConfigureSecurityCommand` outputs firewall recipe.
+- **FR-CLI-002**: `CleanupLoginAttemptsCommand` (`nowo:login-throttle:cleanup`) deletes stored login attempts older than the configured watch period when storage is `database`.
 
 ### Persistence
 
@@ -85,7 +86,7 @@ Drop-in Symfony bundle wrapping native **`login_throttling`**: sensible defaults
 
 ## Success Criteria
 
-- **SC-001**: **34/34** files mapped in inventory.
+- **SC-001**: **36/36** production files under `src/` mapped in [`code-inventory.md`](code-inventory.md) (audited 2026-10-20; `git ls-files src | wc -l`).
 - **SC-002**: Config keys match [`docs/CONFIGURATION.md`](../../docs/CONFIGURATION.md).
 - **SC-003**: 100% PHPUnit line coverage on `src/` (project standard).
 

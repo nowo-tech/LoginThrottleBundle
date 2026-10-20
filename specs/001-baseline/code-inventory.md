@@ -2,7 +2,7 @@
 
 **Baseline spec**: [`spec.md`](spec.md)  
 **Package**: `nowo-tech/login-throttle-bundle`  
-**Last audited**: 2026-07-07
+**Last audited**: 2026-10-20
 
 ## Symfony config
 
@@ -23,6 +23,7 @@
 | Source file | Spec section | Requirement IDs |
 | --- | --- | --- |
 | `Command/ConfigureSecurityCommand.php` | Security YAML scaffold | FR-CLI-001 |
+| `Command/CleanupLoginAttemptsCommand.php` | `nowo:login-throttle:cleanup` — prunes `LoginAttempt` rows older than the watch period (database storage) | FR-CLI-002, FR-ORM-002 |
 
 ## Persistence
 
@@ -80,9 +81,11 @@
 | --- | ---: | ---: |
 | Symfony config | 1 | 1 |
 | Bundle & DI | 3 | 3 |
-| CLI | 1 | 1 |
-| Persistence | 2 | 2 |
+| CLI | 2 | 2 |
+| Persistence | 3 | 3 |
 | Rate limiting | 2 | 2 |
 | Services | 1 | 1 |
 | Translations | 24 | 24 |
-| **Total production sources** | **34** | **34** |
+| **Total production sources** | **36** | **36** |
+
+Audit command (production count): `git ls-files src | wc -l` → **36** (2026-10-20).

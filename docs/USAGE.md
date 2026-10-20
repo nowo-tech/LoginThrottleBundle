@@ -8,6 +8,7 @@ This document describes common usage patterns for `nowo-tech/login-throttle-bund
 - [Typical workflow](#typical-workflow)
 - [Multi-firewall usage](#multi-firewall-usage)
 - [Storage selection](#storage-selection)
+- [Translation overrides](#translation-overrides)
 
 ## Basic usage
 

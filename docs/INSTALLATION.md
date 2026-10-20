@@ -2,6 +2,12 @@
 
 This guide covers installing `LoginThrottleBundle` in a Symfony application.
 
+## Table of contents
+
+- [With Symfony Flex](#with-symfony-flex)
+- [Without Flex (manual)](#without-flex-manual)
+- [Verify](#verify)
+
 ## With Symfony Flex
 
 If you use [Symfony Flex](https://symfony.com/doc/current/setup/flex.html) and the bundle is installed from a package registry, the Flex recipe will:
