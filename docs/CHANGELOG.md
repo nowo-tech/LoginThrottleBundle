@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[3.6.0] - 2026-10-21](#360---2026-10-21)
 - [[3.5.1] - 2026-10-15](#351---2026-10-15)
 - [[3.5.0] - 2026-10-13](#350---2026-10-13)
 - [[3.4.0] - 2026-10-13](#340---2026-10-13)
@@ -44,6 +45,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.6.0] - 2026-10-21
+
+Wave-2 REQ compliance: configurable table prefix, injectable clock, demo moved to demo/symfony8 with form-type logins, full release-check chain. See [UPGRADING](UPGRADING.md#to-360).
+
 ### Added
 
 - `doctrine.table_prefix` config and `Doctrine\TablePrefixListener`: prefixes `login_attempts` and its index names, never host entities (REQ-ORM-002).
@@ -58,6 +63,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rector targets PHP 8.2 (package floor) with at most 2 workers (REQ-CS-003); Igor skips `.scripts/`; `.scripts/check-no-cursor-coauthor.sh` accepts git worktrees (REQ-GIT-001).
 - Dependencies refreshed (Composer and pnpm/npm lock files of the bundle and its demos, campaign 2026-10-19).
 - Documentation: wave-1 REQ compliance — README documentation list order, canonical issue templates, CONTRIBUTING Cursor Agent settings (REQ-IDE-006), tables of contents in long docs, Spec Kit inventory refresh (36/36, `CleanupLoginAttemptsCommand` mapped).
+
+[3.6.0]: https://github.com/nowo-tech/LoginThrottleBundle/releases/tag/v3.6.0
 
 ## [3.5.1] - 2026-10-15
 

@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 3.6.0](#to-360)
 - [To 3.5.1](#to-351)
 - [To 3.5.0](#to-350)
 - [To 3.4.0](#to-340)
@@ -46,6 +47,14 @@
 - [Notes](#notes)
 
 ## Unreleased
+
+## To 3.6.0
+
+From **3.5.1**:
+
+```bash
+composer update nowo-tech/login-throttle-bundle
+```
 
 No action required.
 
