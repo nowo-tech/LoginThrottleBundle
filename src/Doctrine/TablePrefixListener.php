@@ -23,7 +23,7 @@ final readonly class TablePrefixListener
     public function loadClassMetadata(LoadClassMetadataEventArgs $event): void
     {
         $metadata = $event->getClassMetadata();
-        if ('' === $this->tablePrefix || !\str_starts_with($metadata->getName(), self::ENTITY_NAMESPACE)) {
+        if ('' === $this->tablePrefix || !str_starts_with($metadata->getName(), self::ENTITY_NAMESPACE)) {
             return;
         }
 
