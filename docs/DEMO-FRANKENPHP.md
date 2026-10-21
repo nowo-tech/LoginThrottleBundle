@@ -2,7 +2,7 @@
 
 **REQ-DEMO-001:** FrankenPHP demos must install **Nowo Twig Inspector** and **Nowo Hot Reload** together (`nowo-tech/twig-inspector-bundle` + `nowo-tech/hot-reload-bundle` in `require-dev`). Caddyfile: Mercure + `hot_reload` (and `worker { file …; watch }` in worker mode). Do not enable Hot Reload in production.
 
-This document describes how **this** bundle’s demo (`demo/demo-symfony8`) runs under **FrankenPHP** in Docker: PHP **8.5**, Caddyfiles for classic vs worker, and how to switch modes with **`FRANKENPHP_MODE`** (REQ-DEMO-002 / REQ-DEMO-010).
+This document describes how **this** bundle’s demo (`demo/symfony8`) runs under **FrankenPHP** in Docker: PHP **8.5**, Caddyfiles for classic vs worker, and how to switch modes with **`FRANKENPHP_MODE`** (REQ-DEMO-002 / REQ-DEMO-010).
 
 ## Table of contents
 
@@ -28,17 +28,17 @@ The Symfony **8** demo uses:
 - An **entrypoint** that selects classic vs worker from **`FRANKENPHP_MODE`** (`classic` \| `worker`, default **`worker`** in `.env.example`). The mode is **not** a Dockerfile `ENV`; change `.env` and recreate the container (no image rebuild).
 - **MySQL** for users and database-backed login attempts (optional **phpMyAdmin** on a separate host port).
 
-Default app URL: **http://localhost:8002** (`PORT` in `demo/demo-symfony8/.env` / `.env.example`).
+Default app URL: **http://localhost:8002** (`PORT` in `demo/symfony8/.env` / `.env.example`).
 
 ## Layout
 
 | Path | Purpose |
 |------|---------|
-| `demo/demo-symfony8/` | Symfony **8** demo (FrankenPHP, default port **8002**) |
-| `demo/demo-symfony8/Caddyfile` | Worker mode: `php_server { worker /app/public/index.php 2 }` |
-| `demo/demo-symfony8/Caddyfile.dev` | Classic mode: plain `php_server` (easier hot-reload) |
-| `demo/demo-symfony8/docker/entrypoint.sh` | Selects Caddyfile from `FRANKENPHP_MODE` |
-| `demo/demo-symfony8/docker/php-dev.ini` | Dev OPcache revalidation (`opcache.revalidate_freq=0`) |
+| `demo/symfony8/` | Symfony **8** demo (FrankenPHP, default port **8002**) |
+| `demo/symfony8/Caddyfile` | Worker mode: `php_server { worker /app/public/index.php 2 }` |
+| `demo/symfony8/Caddyfile.dev` | Classic mode: plain `php_server` (easier hot-reload) |
+| `demo/symfony8/docker/entrypoint.sh` | Selects Caddyfile from `FRANKENPHP_MODE` |
+| `demo/symfony8/docker/php-dev.ini` | Dev OPcache revalidation (`opcache.revalidate_freq=0`) |
 | `demo/Makefile` | `make up-symfony8`, `down-symfony8`, database helpers, etc. |
 
 The repository root is mounted at `/var/login-throttle-bundle` inside the PHP container (Composer path repository).
@@ -59,7 +59,7 @@ What this does:
 2. Builds the FrankenPHP image and starts Compose (app + MySQL + phpMyAdmin).
 3. Runs `composer install`, Doctrine migrate/fixtures, and prints the URL.
 
-Or from `demo/demo-symfony8/` directly:
+Or from `demo/symfony8/` directly:
 
 ```bash
 cp -n .env.example .env
@@ -107,7 +107,7 @@ Keep `APP_ENV=dev` and `APP_DEBUG=1` for the Web Profiler / debug toolbar while 
 For a production-style run (worker + Symfony prod):
 
 ```bash
-cd demo/demo-symfony8
+cd demo/symfony8
 # .env: APP_ENV=prod, APP_DEBUG=0, FRANKENPHP_MODE=worker
 docker compose down
 docker compose up -d --build

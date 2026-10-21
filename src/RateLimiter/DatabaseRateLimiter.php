@@ -6,6 +6,7 @@ namespace Nowo\LoginThrottleBundle\RateLimiter;
 
 use Nowo\LoginThrottleBundle\Entity\LoginAttempt;
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\HttpFoundation\RateLimiter\RequestRateLimiterInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\RateLimiter\RateLimit;
@@ -60,12 +61,14 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
      * @param int                             $maxAttempts      Maximum number of attempts per IP + username
      * @param int                             $timeoutSeconds   Timeout period in seconds
      * @param int|null                        $maxAttemptsPerIp Maximum number of attempts per IP (null: 5 × maxAttempts)
+     * @param ClockInterface|null             $clock            Time source (system time when null; REQ-DI-001)
      */
     public function __construct(
         private readonly LoginAttemptRepositoryInterface $repository,
         private readonly int $maxAttempts,
         private readonly int $timeoutSeconds,
-        ?int $maxAttemptsPerIp = null
+        ?int $maxAttemptsPerIp = null,
+        private readonly ?ClockInterface $clock = null,
     ) {
         $this->maxAttemptsPerIp = max(1, $maxAttemptsPerIp ?? $maxAttempts * self::DEFAULT_IP_ATTEMPTS_MULTIPLIER);
     }
@@ -108,14 +111,14 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
                 $accepted = false;
             } else {
                 // Not blocked, retry after is now (immediate retry allowed)
-                $retryAfter = new \DateTimeImmutable();
+                $retryAfter = $this->clock?->now() ?? new \DateTimeImmutable();
                 $accepted = true;
             }
         }
 
         // Ensure retryAfter is never null
         if (!$retryAfter instanceof \DateTimeImmutable) {
-            $retryAfter = new \DateTimeImmutable();
+            $retryAfter = $this->clock?->now() ?? new \DateTimeImmutable();
         }
 
         return new RateLimit(

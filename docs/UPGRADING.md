@@ -47,6 +47,13 @@
 
 ## Unreleased
 
+No action required.
+
+- New runtime dependency `psr/clock` (interface only). If you build `LoginAttemptRepository` or `DatabaseRateLimiter`
+  by hand, the new last constructor argument (`?ClockInterface $clock = null`) is optional.
+- Optional `nowo_login_throttle.doctrine.table_prefix`: setting it on an existing database renames `login_attempts`
+  (and its indexes) — ship a migration that renames the table.
+
 ## To 3.5.1
 
 No action. `cleanup()` (and the cleanup command) now deletes in batches of 1000; custom `LoginAttemptRepositoryInterface` implementations are unaffected.

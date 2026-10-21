@@ -10,21 +10,6 @@ security:
     dev:
       pattern: ^/(_(profiler|wdt)|css|images|js)/
       security: false
-    main:
-      lazy: true
-      provider: app_user_provider
-      form_login:
-        login_path: login
-        check_path: login
-        default_target_path: demo_home
-        enable_csrf: true
-      logout:
-        path: logout
-        target: login
-      login_throttling:
-        max_attempts: 3
-        interval: '10 minutes'
-        limiter: nowo_login_throttle.database_rate_limiter.shared_3_600s_3600s
     api:
       pattern: ^/api
       lazy: true
@@ -55,6 +40,22 @@ security:
         max_attempts: 3
         interval: '30 minutes'
         limiter: nowo_login_throttle.database_rate_limiter.shared_3_1800s_3600s
+    # Catch-all firewall last: api / admin (pattern-scoped) must be matched first.
+    main:
+      lazy: true
+      provider: app_user_provider
+      form_login:
+        login_path: login
+        check_path: login
+        default_target_path: demo_home
+        enable_csrf: true
+      logout:
+        path: logout
+        target: login
+      login_throttling:
+        max_attempts: 3
+        interval: '10 minutes'
+        limiter: nowo_login_throttle.database_rate_limiter.shared_3_600s_3600s
   access_control:
     -
       path: ^/$

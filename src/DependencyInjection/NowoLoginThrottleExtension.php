@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace Nowo\LoginThrottleBundle\DependencyInjection;
 
+use Nowo\LoginThrottleBundle\Doctrine\TablePrefixListener;
 use Nowo\LoginThrottleBundle\RateLimiter\DatabaseRateLimiter;
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepository;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\Config\Definition\Processor;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\Extension\Extension;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 use Symfony\Component\DependencyInjection\Reference;
@@ -144,6 +147,13 @@ final class NowoLoginThrottleExtension extends Extension
         // Load services.yaml after parameters are set (needed for parameter references)
         $loader = new YamlFileLoader($container, new FileLocator(__DIR__ . '/../Resources/config'));
         $loader->load('services.yaml');
+
+        // REQ-ORM-002: the table prefix listener only exists when a prefix is configured.
+        $tablePrefix = (string) $config['doctrine']['table_prefix'];
+        $container->setParameter('nowo_login_throttle.doctrine.table_prefix', $tablePrefix);
+        if ('' === $tablePrefix) {
+            $container->removeDefinition(TablePrefixListener::class);
+        }
     }
 
     /**
@@ -322,6 +332,7 @@ final class NowoLoginThrottleExtension extends Extension
                 $config['max_count_attempts'],
                 $config['timeout'],
                 $config['max_count_attempts_per_ip'] ?? null,
+                new Reference(ClockInterface::class, ContainerInterface::NULL_ON_INVALID_REFERENCE),
             ])
             ->setPublic(true); // Must be public to be used as a rate limiter service
     }

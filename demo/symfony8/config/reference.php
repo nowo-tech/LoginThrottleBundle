@@ -1268,6 +1268,9 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     rate_limiter?: scalar|Param|null, // Custom rate limiter service ID (for simple single-firewall configuration) // Default: null
  *     cache_pool?: scalar|Param|null, // Cache pool to use for storing the limiter state (for simple single-firewall configuration, only used when storage=cache) // Default: "cache.rate_limiter"
  *     lock_factory?: scalar|Param|null, // Lock factory service ID for rate limiter (for simple single-firewall configuration, only used when storage=cache) // Default: null
+ *     doctrine?: array{ // Doctrine mapping of the bundle-owned table (storage=database).
+ *         table_prefix?: scalar|Param|null, // Prefix prepended to the login_attempts table and its index names (e.g. "app_" yields app_login_attempts). Empty: unprefixed. // Default: ""
+ *     },
  *     firewalls?: array<string, array{ // Default: []
  *         enabled?: bool|Param, // Enable or disable login throttling for this firewall // Default: true
  *         max_count_attempts?: int|Param, // Maximum number of login attempts before throttling // Default: 3

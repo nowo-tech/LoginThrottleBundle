@@ -5,8 +5,13 @@ declare(strict_types=1);
 namespace Nowo\LoginThrottleBundle\Tests\DependencyInjection;
 
 use Nowo\LoginThrottleBundle\DependencyInjection\NowoLoginThrottleExtension;
+use Nowo\LoginThrottleBundle\Doctrine\TablePrefixListener;
 use PHPUnit\Framework\TestCase;
+use Psr\Clock\ClockInterface;
+use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\DependencyInjection\Reference;
 
 /**
  * Tests for NowoLoginThrottleExtension.
@@ -52,6 +57,43 @@ final class NowoLoginThrottleExtensionTest extends TestCase
         $this->assertNull($this->container->getParameter('nowo_login_throttle.rate_limiter'));
         $this->assertSame('cache.rate_limiter', $this->container->getParameter('nowo_login_throttle.cache_pool'));
         $this->assertNull($this->container->getParameter('nowo_login_throttle.lock_factory'));
+    }
+
+    public function testTablePrefixListenerIsRemovedWithoutPrefix(): void
+    {
+        $this->extension->load([[]], $this->container);
+
+        $this->assertSame('', $this->container->getParameter('nowo_login_throttle.doctrine.table_prefix'));
+        $this->assertFalse($this->container->hasDefinition(TablePrefixListener::class));
+    }
+
+    public function testTablePrefixListenerIsRegisteredWithPrefix(): void
+    {
+        $this->extension->load([['doctrine' => ['table_prefix' => 'app_']]], $this->container);
+
+        $this->assertSame('app_', $this->container->getParameter('nowo_login_throttle.doctrine.table_prefix'));
+        $definition = $this->container->getDefinition(TablePrefixListener::class);
+        $this->assertSame('%nowo_login_throttle.doctrine.table_prefix%', $definition->getArgument('$tablePrefix'));
+        $this->assertSame([['event' => 'loadClassMetadata']], $definition->getTag('doctrine.event_listener'));
+    }
+
+    public function testTablePrefixRejectsInvalidCharacters(): void
+    {
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessage('letters, digits and underscores only');
+
+        $this->extension->load([['doctrine' => ['table_prefix' => 'app-']]], $this->container);
+    }
+
+    public function testDatabaseLimiterReceivesTheOptionalClock(): void
+    {
+        $this->extension->load([['storage' => 'database']], $this->container);
+
+        $definition = $this->container->getDefinition(NowoLoginThrottleExtension::databaseRateLimiterServiceId('main'));
+        $clock = $definition->getArgument(4);
+        $this->assertInstanceOf(Reference::class, $clock);
+        $this->assertSame(ClockInterface::class, (string) $clock);
+        $this->assertSame(ContainerInterface::NULL_ON_INVALID_REFERENCE, $clock->getInvalidBehavior());
     }
 
     public function testLoadWithCustomConfiguration(): void

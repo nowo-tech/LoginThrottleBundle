@@ -146,21 +146,15 @@
         </div>
 
         <div class="login-form">
-            <form method="post">
-                <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
-
-                <div class="form-group">
-                    <label for="inputEmail">Email</label>
-                    <input type="email" value="{{ last_username }}" name="_username" id="inputEmail" class="form-control" autocomplete="email" required autofocus>
-                </div>
-
-                <div class="form-group">
-                    <label for="inputPassword">Password</label>
-                    <input type="password" name="_password" id="inputPassword" class="form-control" autocomplete="current-password" required>
-                </div>
+            {{ form_start(login_form) }}
+                {% for child in login_form %}
+                    {% if not child.rendered %}
+                        {{ form_row(child) }}
+                    {% endif %}
+                {% endfor %}
 
                 <button type="submit" class="btn login-button" style="background: #ffc107; color: #856404; font-weight: bold;">Admin Login</button>
-            </form>
+            {{ form_end(login_form) }}
         </div>
 
         <div class="admin-info">

@@ -10,6 +10,7 @@ use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 use Doctrine\Persistence\ObjectManager;
 use Nowo\LoginThrottleBundle\Entity\LoginAttempt;
+use Psr\Clock\ClockInterface;
 
 /**
  * Repository for LoginAttempt entity.
@@ -29,9 +30,10 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
     /**
      * Constructor.
      *
-     * @param ManagerRegistry $registry The manager registry
+     * @param ManagerRegistry     $registry The manager registry
+     * @param ClockInterface|null $clock    Time source for the attempt windows (system time when null; REQ-DI-001)
      */
-    public function __construct(ManagerRegistry $registry)
+    public function __construct(ManagerRegistry $registry, private readonly ?ClockInterface $clock = null)
     {
         $this->managerRegistry = $registry;
         parent::__construct($registry, LoginAttempt::class);
@@ -53,7 +55,7 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
             ->where('la.ipAddress = :ipAddress')
             ->andWhere('la.createdAt >= :since')
             ->setParameter('ipAddress', $ipAddress)
-            ->setParameter('since', new \DateTimeImmutable(\sprintf('-%d seconds', $seconds)));
+            ->setParameter('since', $this->secondsAgo($seconds));
 
         if (null !== $username) {
             $qb->andWhere('la.username = :username')
@@ -78,7 +80,7 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
             ->where('la.ipAddress = :ipAddress')
             ->andWhere('la.createdAt >= :since')
             ->setParameter('ipAddress', $ipAddress)
-            ->setParameter('since', new \DateTimeImmutable(\sprintf('-%d seconds', $seconds)));
+            ->setParameter('since', $this->secondsAgo($seconds));
 
         return (int) $qb->getQuery()->getSingleScalarResult();
     }
@@ -98,7 +100,7 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
             ->where('la.username = :username')
             ->andWhere('la.createdAt >= :since')
             ->setParameter('username', $username)
-            ->setParameter('since', new \DateTimeImmutable(\sprintf('-%d seconds', $seconds)));
+            ->setParameter('since', $this->secondsAgo($seconds));
 
         return (int) $qb->getQuery()->getSingleScalarResult();
     }
@@ -193,7 +195,7 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
      */
     public function cleanup(int $watchPeriodSeconds, int $batchSize = self::CLEANUP_BATCH_SIZE): int
     {
-        $before = new \DateTimeImmutable(\sprintf('-%d seconds', $watchPeriodSeconds));
+        $before = $this->secondsAgo($watchPeriodSeconds);
         $batchSize = max(1, $batchSize);
         $deleted = 0;
         $last = 0;
@@ -236,7 +238,7 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
         $qb = $this->createQueryBuilder('la')
             ->select('COUNT(la.id)')
             ->where('la.createdAt < :before')
-            ->setParameter('before', new \DateTimeImmutable(\sprintf('-%d seconds', $watchPeriodSeconds)));
+            ->setParameter('before', $this->secondsAgo($watchPeriodSeconds));
 
         return (int) $qb->getQuery()->getSingleScalarResult();
     }
@@ -254,7 +256,7 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
     {
         $qb = $this->createQueryBuilder('la')
             ->where('la.createdAt >= :since')
-            ->setParameter('since', new \DateTimeImmutable(\sprintf('-%d seconds', $seconds)))
+            ->setParameter('since', $this->secondsAgo($seconds))
             ->orderBy('la.createdAt', \SortDirection::Descending);
 
         if ('' !== $ipAddress) {
@@ -328,5 +330,13 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
         }
 
         return null;
+    }
+
+    /**
+     * Point in time $seconds before now, on the injected clock (system time when none is injected).
+     */
+    private function secondsAgo(int $seconds): \DateTimeImmutable
+    {
+        return ($this->clock?->now() ?? new \DateTimeImmutable())->sub(new \DateInterval(\sprintf('PT%dS', $seconds)));
     }
 }

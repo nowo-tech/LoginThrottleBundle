@@ -10,6 +10,7 @@ use Nowo\LoginThrottleBundle\RateLimiter\DatabaseRateLimiterFactory;
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\RateLimiter\RateLimit;
 
@@ -62,6 +63,27 @@ final class DatabaseRateLimiterTest extends TestCase
         $this->assertInstanceOf(RateLimit::class, $rateLimit);
         $this->assertSame(2, $rateLimit->getRemainingTokens());
         $this->assertTrue($rateLimit->isAccepted());
+    }
+
+    public function testAcceptedAttemptRetryAfterComesFromTheInjectedClock(): void
+    {
+        $clock = new class implements ClockInterface {
+            public function now(): \DateTimeImmutable
+            {
+                return new \DateTimeImmutable('2026-10-20 12:00:00');
+            }
+        };
+        $limiter = new DatabaseRateLimiter($this->repository, 3, 600, null, $clock);
+        $request = Request::create('/login', 'POST', ['_username' => 'test@example.com']);
+        $request->server->set('REMOTE_ADDR', '192.168.1.1');
+        $this->repository->method('isBlocked')->willReturn(false);
+        $this->repository->method('recordAttempt')->willReturn(new LoginAttempt('192.168.1.1', 'test@example.com'));
+        $this->repository->method('countAttempts')->willReturn(1);
+
+        $rateLimit = $limiter->consume($request);
+
+        $this->assertTrue($rateLimit->isAccepted());
+        $this->assertSame('2026-10-20 12:00:00', $rateLimit->getRetryAfter()->format('Y-m-d H:i:s'));
     }
 
     public function testConsumeWhenBlocked(): void

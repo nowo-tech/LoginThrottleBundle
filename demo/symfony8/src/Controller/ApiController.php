@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Form\ApiLoginFormType;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -49,9 +50,14 @@ class ApiController extends AbstractController
     #[Route('/api/login', name: 'api_login')]
     public function login(): JsonResponse
     {
-        // This route is handled by json_login authenticator
-        // It should not be reached directly
-        return new JsonResponse(['error' => 'Unauthorized'], 401);
+        // json_login authenticates the request and lets it reach this action on success (no success_handler);
+        // failures are answered by the authenticator itself.
+        $user = $this->getUser();
+        if (null === $user) {
+            return new JsonResponse(['error' => 'Unauthorized'], 401);
+        }
+
+        return new JsonResponse(['user' => $user->getUserIdentifier()]);
     }
 
     /**
@@ -70,6 +76,7 @@ class ApiController extends AbstractController
         }
 
         return $this->render('security/api_login.html.twig', [
+            'login_form' => $this->createForm(ApiLoginFormType::class),
             'title' => 'API Login',
         ]);
     }

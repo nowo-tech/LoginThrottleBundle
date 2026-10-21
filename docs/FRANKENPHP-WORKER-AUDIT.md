@@ -47,7 +47,7 @@ A bundle that is safe under **B** is safe under **A** and under classic mode / P
 | Third-party static state | ✅ | Only Symfony Security / RateLimiter contracts and Doctrine ORM |
 | PHPStan FrankenPHP rulesets | ✅ | `extension.neon`, `ruleset-classic.neon`, `ruleset-worker.neon` and `ruleset-worker-strict.neon` included in `phpstan.neon.dist` |
 
-Worker demo: `demo/demo-symfony8/docker/frankenphp/Caddyfile` declares a `worker` block inside `php_server` (line 15). `Caddyfile.dev` runs in classic mode.
+Worker demo: `demo/symfony8/docker/frankenphp/Caddyfile` declares a `worker` block inside `php_server` (line 15). `Caddyfile.dev` runs in classic mode.
 
 ## Services reviewed
 

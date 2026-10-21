@@ -22,6 +22,7 @@ For service configuration examples for different deployment scenarios (local dev
 - [Storage Backends](#storage-backends)
   - [Cache Storage (Default)](#cache-storage-default)
   - [Database Storage](#database-storage)
+  - [Table prefix (database storage)](#table-prefix-database-storage)
 - [Migration from anyx/login-gate-bundle](#migration-from-anyxlogin-gate-bundle)
   - [Before (anyx/login-gate-bundle)](#before-anyxlogin-gate-bundle)
   - [After (nowo-tech/login-throttle-bundle)](#after-nowo-techlogin-throttle-bundle)
@@ -334,6 +335,26 @@ nowo_login_throttle:
 - Better for compliance/auditing requirements
 
 For detailed information on database storage, see [DATABASE_STORAGE.md](DATABASE_STORAGE.md).
+
+### Table prefix (database storage)
+
+Since 3.6 (REQ-ORM-002). Namespace the bundle-owned table when several applications share one database:
+
+```yaml
+nowo_login_throttle:
+    storage: 'database'
+    doctrine:
+        table_prefix: 'app_'   # default '' (no prefix); letters, digits and underscores only
+```
+
+| Default | With `table_prefix: 'app_'` |
+|---------|-----------------------------|
+| table `login_attempts` | `app_login_attempts` |
+| indexes `idx_ip_username`, `idx_created_at` | `app_idx_ip_username`, `app_idx_created_at` |
+
+`Nowo\LoginThrottleBundle\Doctrine\TablePrefixListener` (Doctrine `loadClassMetadata`, registered only when the prefix is not empty) rewrites the `LoginAttempt` mapping only; host entities are never touched. Setting a prefix on an existing install renames the table: generate a migration (`doctrine:migrations:diff`) and rename instead of dropping.
+
+The attempt windows (`countAttempts()`, `cleanup()`, retry-after of accepted attempts) use the injected `Psr\Clock\ClockInterface` when the container has one (Symfony Clock), so tests can freeze time.
 
 ## Migration from anyx/login-gate-bundle
 

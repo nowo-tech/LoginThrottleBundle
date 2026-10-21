@@ -2,7 +2,7 @@
 
 **Baseline spec**: [`spec.md`](spec.md)  
 **Package**: `nowo-tech/login-throttle-bundle`  
-**Last audited**: 2026-10-20
+**Last audited**: 2026-10-21
 
 ## Symfony config
 
@@ -32,6 +32,7 @@
 | `Entity/LoginAttempt.php` | Login attempt entity | FR-ORM-001 |
 | `Repository/LoginAttemptRepository.php` | Attempt queries/cleanup | FR-ORM-002 |
 | `Repository/LoginAttemptRepositoryInterface.php` | Repository contract for DI / tests | FR-ORM-002 |
+| `Doctrine/TablePrefixListener.php` | `doctrine.table_prefix` metadata listener | FR-ORM-004 |
 
 ## Rate limiting
 
@@ -82,10 +83,10 @@
 | Symfony config | 1 | 1 |
 | Bundle & DI | 3 | 3 |
 | CLI | 2 | 2 |
-| Persistence | 3 | 3 |
+| Persistence | 4 | 4 |
 | Rate limiting | 2 | 2 |
 | Services | 1 | 1 |
 | Translations | 24 | 24 |
-| **Total production sources** | **36** | **36** |
+| **Total production sources** | **37** | **37** |
 
-Audit command (production count): `git ls-files src | wc -l` → **36** (2026-10-20).
+Audit command (production count): `git ls-files src | wc -l` → **37** (2026-10-21).

@@ -14,7 +14,9 @@ return RectorConfig::configure()
         __DIR__ . '/demo',
         __DIR__ . '/vendor',
     ])
-    ->withPhpVersion(PhpVersion::PHP_81)
+    // Machine-wide cap: at most 2 worker processes; generous timeout for slow (WSL2 / CI) hosts.
+    ->withParallel(300, 2, 10)
+    ->withPhpVersion(PhpVersion::PHP_82)
     ->withPreparedSets(
         deadCode: true,
         codeQuality: true,

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Form\LoginFormType;
 use Nowo\LoginThrottleBundle\Service\LoginThrottleInfoService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -58,7 +59,12 @@ class SecurityController extends AbstractController
             ]);
         }
 
+        $loginForm = $this->createForm(LoginFormType::class, ['_username' => $lastUsername], [
+            'action' => $this->generateUrl('login'),
+        ]);
+
         return $this->render('security/login.html.twig', [
+            'login_form' => $loginForm,
             'last_username' => $lastUsername,
             'error' => $error,
             'attempt_info' => $attemptInfo,

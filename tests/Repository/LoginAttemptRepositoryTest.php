@@ -13,6 +13,7 @@ use Nowo\LoginThrottleBundle\Entity\LoginAttempt;
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepository;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
+use Psr\Clock\ClockInterface;
 
 /**
  * Tests for LoginAttemptRepository.
@@ -53,6 +54,38 @@ final class LoginAttemptRepositoryTest extends TestCase
         $this->queryBuilder->method('from')->willReturnSelf();
 
         $this->repository = new LoginAttemptRepository($this->registry);
+    }
+
+    public function testAttemptWindowIsMeasuredOnTheInjectedClock(): void
+    {
+        $clock = new class implements ClockInterface {
+            public function now(): \DateTimeImmutable
+            {
+                return new \DateTimeImmutable('2026-10-20 12:00:00');
+            }
+        };
+        $repository = new LoginAttemptRepository($this->registry, $clock);
+
+        $query = $this->createQueryMock();
+        $query->method('getSingleScalarResult')->willReturn('0');
+        $this->queryBuilder->method('getQuery')->willReturn($query);
+        $this->queryBuilder->method('where')->willReturnSelf();
+        $this->queryBuilder->method('andWhere')->willReturnSelf();
+        $since = null;
+        $this->queryBuilder->method('setParameter')->willReturnCallback(
+            function (string $key, mixed $value) use (&$since): QueryBuilder {
+                if ('since' === $key) {
+                    $since = $value;
+                }
+
+                return $this->queryBuilder;
+            },
+        );
+
+        $repository->countAttempts('10.0.0.1', null, 600);
+
+        $this->assertInstanceOf(\DateTimeImmutable::class, $since);
+        $this->assertSame('2026-10-20 11:50:00', $since->format('Y-m-d H:i:s'));
     }
 
     public function testCountAttemptsByIp(): void

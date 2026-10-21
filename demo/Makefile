@@ -28,7 +28,7 @@ help:
 up up-symfony8:
 	@set -e; \
 	echo "Starting Symfony 8 FrankenPHP demo..."; \
-	cd demo-symfony8; \
+	cd symfony8; \
 	if [ ! -f .env ]; then \
 		cp .env.example .env && echo "Created .env from .env.example"; \
 	fi; \
@@ -56,56 +56,56 @@ up up-symfony8:
 	echo "Demo started at: http://localhost:$$PORT"
 
 down down-symfony8:
-	cd demo-symfony8 && $(COMPOSE) down
+	cd symfony8 && $(COMPOSE) down
 
 # REQ-TEST-011
 demo-smoke:
 	@set -e; \
-	PORT_EXAMPLE=$$(grep "^PORT=" demo-symfony8/.env.example 2>/dev/null | cut -d= -f2 | tr -d '\r'); \
+	PORT_EXAMPLE=$$(grep "^PORT=" symfony8/.env.example 2>/dev/null | cut -d= -f2 | tr -d '\r'); \
 	[ -z "$$PORT_EXAMPLE" ] && PORT_EXAMPLE=8002; \
-	echo "Demo smoke: demo-symfony8 (expect http://127.0.0.1:$$PORT_EXAMPLE)"; \
+	echo "Demo smoke: symfony8 (expect http://127.0.0.1:$$PORT_EXAMPLE)"; \
 	$(MAKE) up-symfony8; \
-	PORT=$$(grep "^PORT=" demo-symfony8/.env 2>/dev/null | cut -d= -f2 | tr -d '\r'); \
+	PORT=$$(grep "^PORT=" symfony8/.env 2>/dev/null | cut -d= -f2 | tr -d '\r'); \
 	[ -z "$$PORT" ] && PORT=$$PORT_EXAMPLE; \
 	sleep 8; \
 	code=$$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:$$PORT/" 2>/dev/null || echo "000"); \
 	$(MAKE) down-symfony8 2>/dev/null || true; \
 	if [ "$$code" != "200" ] && [ "$$code" != "302" ]; then echo "demo failed with HTTP $$code (port $$PORT)"; exit 1; fi; \
-	echo "demo-symfony8 OK (HTTP $$code)"
+	echo "symfony8 OK (HTTP $$code)"
 
 release-verify: demo-smoke
 
 install-symfony8:
-	cd demo-symfony8 && $(COMPOSE) exec -T php composer install
+	cd symfony8 && $(COMPOSE) exec -T php composer install
 
 database-symfony8:
-	cd demo-symfony8 && $(COMPOSE) exec -T php composer database
+	cd symfony8 && $(COMPOSE) exec -T php composer database
 
 shell-symfony8:
-	cd demo-symfony8 && $(COMPOSE) exec php sh
+	cd symfony8 && $(COMPOSE) exec php sh
 
 logs-symfony8:
-	cd demo-symfony8 && $(COMPOSE) logs -f
+	cd symfony8 && $(COMPOSE) logs -f
 
 test-symfony8:
-	cd demo-symfony8 && $(COMPOSE) exec -T php composer test
+	cd symfony8 && $(COMPOSE) exec -T php composer test
 
 clean:
-	rm -rf demo-symfony8/vendor
-	rm -rf demo-symfony8/var/cache
-	rm -rf demo-symfony8/var/log
-	rm -rf demo-symfony8/.phpunit.cache
-	rm -rf demo-symfony8/coverage
-	rm -f demo-symfony8/coverage.xml
+	rm -rf symfony8/vendor
+	rm -rf symfony8/var/cache
+	rm -rf symfony8/var/log
+	rm -rf symfony8/.phpunit.cache
+	rm -rf symfony8/coverage
+	rm -f symfony8/coverage.xml
 
 update-bundle: update-bundle-symfony8
 
 update-bundle-symfony8:
-	cd demo-symfony8 && docker compose exec -T php composer dump-autoload
-	cd demo-symfony8 && docker compose exec -T php php bin/console cache:clear --env=dev --no-warmup || true
+	cd symfony8 && docker compose exec -T php composer dump-autoload
+	cd symfony8 && docker compose exec -T php php bin/console cache:clear --env=dev --no-warmup || true
 
 verify:
-	@echo "Symfony 8 demo: http://localhost:$$(cd demo-symfony8 && grep -E '^PORT=' .env.example | cut -d= -f2 | tr -d '\r')"
+	@echo "Symfony 8 demo: http://localhost:$$(cd symfony8 && grep -E '^PORT=' .env.example | cut -d= -f2 | tr -d '\r')"
 
 release-check:
 	@$(MAKE) update-bundle

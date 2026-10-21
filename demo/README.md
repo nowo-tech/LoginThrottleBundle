@@ -52,7 +52,7 @@ If you prefer to set up manually:
 
 ```bash
 # Navigate to the demo directory
-cd demo/demo-symfony8
+cd demo/symfony8
 
 # Copy .env.example to .env if not already done
 cp .env.example .env
@@ -209,7 +209,7 @@ make help               # Show all available commands
 ## Project Structure
 
 ```
-demo-symfony8/
+symfony8/
 ├── config/              # Symfony configuration
 │   ├── packages/
 │   │   ├── nowo_login_throttle.yaml  # Bundle configuration
@@ -232,7 +232,7 @@ demo-symfony8/
 If the default port is already in use, change it in `.env`:
 
 ```bash
-cd demo-symfony8
+cd symfony8
 PORT=8002  # Default: 8002
 ```
 

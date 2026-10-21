@@ -4,31 +4,65 @@ COMPOSE     := $(COMPOSE_BIN)
 SERVICE_PHP = php
 
 .PHONY: help ensure-up up down down-dev build shell install assets test test-coverage test-with-db \
-	test-coverage-with-db cs-check cs-fix rector rector-dry phpstan qa release-check \
+	test-coverage-with-db cs-check cs-fix rector rector-dry phpstan igor qa release-check \
 	release-check-demos demo-smoke composer-sync clean update validate validate-translations \
-	setup-hooks check-no-cursor-coauthor strip-cursor-coauthor-from-history update-deps
+	setup-hooks check-no-cursor-coauthor check-open-prs check-twig-extra check-no-raw-html-form \
+	strip-cursor-coauthor-from-history update-deps
 
 help:
+	@echo "Login Throttle Bundle - Development Commands"
+	@echo ""
 	@echo "Usage: make <target>"
 	@echo ""
 	@echo "Container:"
-	@echo "  up down down-dev build shell"
+	@echo "  up                Start Docker container"
+	@echo "  down              Stop Docker container"
+	@echo "  build             Rebuild Docker image (no cache)"
+	@echo "  shell             Open shell in container"
+	@echo ""
 	@echo "Dependencies:"
-	@echo "  install"
+	@echo "  install           Install Composer dependencies"
+	@echo ""
 	@echo "Assets:"
-	@echo "  assets"
+	@echo "  assets            No-op (no frontend assets)"
+	@echo ""
 	@echo "Tests:"
-	@echo "  test test-coverage test-with-db test-coverage-with-db"
+	@echo "  test              Run PHPUnit tests"
+	@echo "  test-coverage     Run tests with coverage (prints the PHP percentage)"
+	@echo ""
 	@echo "Quality:"
-	@echo "  cs-check cs-fix rector rector-dry phpstan qa validate-translations"
+	@echo "  cs-check          Check code style"
+	@echo "  cs-fix            Fix code style"
+	@echo "  rector            Apply Rector refactoring"
+	@echo "  rector-dry        Run Rector in dry-run mode"
+	@echo "  phpstan           Run PHPStan static analysis"
+	@echo "  igor              Run Igor worker-state audit (REQ-CS-008)"
+	@echo "  qa                Run cs-check and tests"
+	@echo ""
 	@echo "Release:"
-	@echo "  release-check demo-smoke composer-sync"
+	@echo "  release-check     Pre-release chain (REQ-MAKE-002), then demo release-check"
+	@echo "  composer-sync     Validate composer.json and align composer.lock"
+	@echo ""
 	@echo "Cleanup:"
-	@echo "  clean"
+	@echo "  clean             Remove vendor, caches and coverage"
+	@echo ""
 	@echo "Composer:"
-	@echo "  update validate"
+	@echo "  update            Update dependencies (bundle container only)"
+	@echo "  update-deps       Update bundle and demo dependencies (REQ-MAKE-008)"
+	@echo "  validate          Validate composer.json (--strict)"
+	@echo ""
+	@echo "Bundle-specific:"
+	@echo "  validate-translations  YAML lint + key parity across locales (REQ-MAKE-004)"
+	@echo "  check-no-cursor-coauthor  Fail on Cursor co-author trailers (REQ-GIT-001)"
+	@echo "  check-open-prs    Fail if unresolved open GitHub PRs remain (REQ-REL-003)"
+	@echo "  check-no-raw-html-form  Fail on raw <form>/<input>/<textarea>/<select> in demo Twig (REQ-TWIG-005)"
+	@echo "  setup-hooks       Install git hooks (.githooks)"
+	@echo "  down-dev          Stop root container (non-destructive)"
+	@echo "  test-with-db / test-coverage-with-db  Aliases of test / test-coverage"
+	@echo ""
 	@echo "Demos:"
-	@echo "  release-check-demos demo-smoke"
+	@echo "  demo-smoke        Boot demo/symfony8 and assert HTTP 200 (REQ-TEST-011)"
+	@echo "  release-check-demos  Run release-check in the demo"
 
 ensure-up:
 	@$(COMPOSE) ps -q $(SERVICE_PHP) >/dev/null 2>&1 || true
@@ -85,6 +119,7 @@ phpstan: ensure-up
 
 validate-translations: ensure-up
 	@$(COMPOSE) exec -T $(SERVICE_PHP) php vendor/bin/yaml-lint src/Resources/translations
+	@$(COMPOSE) exec -T $(SERVICE_PHP) php .scripts/validate-translations.php
 
 qa: ensure-up
 	@$(COMPOSE) exec -T $(SERVICE_PHP) composer qa
@@ -96,16 +131,28 @@ composer-sync: ensure-up
 
 # Run Igor worker-state audit (REQ-CS-008)
 igor: ensure-up
-	$(COMPOSE) exec -T php composer igor
-release-check: check-no-cursor-coauthor
+	@$(COMPOSE) exec -T $(SERVICE_PHP) composer igor
+
+check-open-prs:
+	@bash .scripts/check-open-prs.sh
+
+check-no-raw-html-form:
+	@bash .scripts/check-no-raw-html-form.sh
+
+# REQ-MAKE-002 order (the bundle ships no Twig; the raw-form gate covers demo templates).
+release-check:
 	@$(MAKE) ensure-up
+	@$(MAKE) check-no-cursor-coauthor
+	@$(MAKE) check-open-prs
+	@$(MAKE) check-no-raw-html-form
 	@$(MAKE) composer-sync
 	@$(MAKE) cs-fix
 	@$(MAKE) cs-check
 	@$(MAKE) rector-dry
 	@$(MAKE) phpstan
-	@$(MAKE) test-coverage
+	@$(MAKE) igor
 	@$(MAKE) validate-translations
+	@$(MAKE) test-coverage
 	@$(MAKE) release-check-demos
 
 release-check-demos:

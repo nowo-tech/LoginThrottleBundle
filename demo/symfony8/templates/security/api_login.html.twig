@@ -70,19 +70,15 @@
         <div class="login-form">
             <p style="margin-bottom: 20px; color: #666;">For API testing, use JSON POST request to <code>{{ path('api_login') }}</code> with <code>email</code> and <code>password</code> fields.</p>
             <p style="margin-bottom: 20px; color: #666;">Or test via this form (simulates API call):</p>
-            <form id="apiLoginForm">
-                <div class="form-group">
-                    <label for="inputEmail">Email</label>
-                    <input type="email" name="email" id="inputEmail" class="form-control" autocomplete="email" required autofocus>
-                </div>
-
-                <div class="form-group">
-                    <label for="inputPassword">Password</label>
-                    <input type="password" name="password" id="inputPassword" class="form-control" autocomplete="current-password" required>
-                </div>
+            {{ form_start(login_form, {attr: {id: 'apiLoginForm'}}) }}
+                {% for child in login_form %}
+                    {% if not child.rendered %}
+                        {{ form_row(child) }}
+                    {% endif %}
+                {% endfor %}
 
                 <button type="submit" class="btn login-button">API Login</button>
-            </form>
+            {{ form_end(login_form) }}
             <script>
                 document.getElementById('apiLoginForm').addEventListener('submit', function(e) {
                     e.preventDefault();

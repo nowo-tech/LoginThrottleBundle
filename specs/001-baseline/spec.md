@@ -64,7 +64,8 @@ Drop-in Symfony bundle wrapping native **`login_throttling`**: sensible defaults
 ### Persistence
 
 - **FR-ORM-001**: `LoginAttempt` entity for stored attempts.
-- **FR-ORM-002**: `LoginAttemptRepository` — queries and expired-attempt cleanup.
+- **FR-ORM-002**: `LoginAttemptRepository` — queries and expired-attempt cleanup; attempt windows use the optional injected `Psr\Clock\ClockInterface` (also used by `DatabaseRateLimiter`).
+- **FR-ORM-004**: `Doctrine\TablePrefixListener` prepends `doctrine.table_prefix` to the `LoginAttempt` table and its index names only; registered only when the prefix is not empty (REQ-ORM-002).
 - **FR-ORM-003**: Under long-lived workers, `LoginAttemptRepository` detaches written/loaded attempts, resets a closed EntityManager via `ManagerRegistry`, and builds DQL through a live manager (ORM 3 `ServiceEntityRepository` proxy safe).
 
 ### Rate limiting
@@ -86,7 +87,7 @@ Drop-in Symfony bundle wrapping native **`login_throttling`**: sensible defaults
 
 ## Success Criteria
 
-- **SC-001**: **36/36** production files under `src/` mapped in [`code-inventory.md`](code-inventory.md) (audited 2026-10-20; `git ls-files src | wc -l`).
+- **SC-001**: **37/37** production files under `src/` mapped in [`code-inventory.md`](code-inventory.md) (audited 2026-10-21; `git ls-files src | wc -l`).
 - **SC-002**: Config keys match [`docs/CONFIGURATION.md`](../../docs/CONFIGURATION.md).
 - **SC-003**: 100% PHPUnit line coverage on `src/` (project standard).
 

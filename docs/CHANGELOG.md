@@ -44,8 +44,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `doctrine.table_prefix` config and `Doctrine\TablePrefixListener`: prefixes `login_attempts` and its index names, never host entities (REQ-ORM-002).
+- `LoginAttemptRepository` and `DatabaseRateLimiter` take an optional `Psr\Clock\ClockInterface` (wired with `NULL_ON_INVALID_REFERENCE`); runtime dependency `psr/clock` (REQ-DI-001).
+- `.github/workflows/demo-smoke.yml` (weekly, tags, manual) running `make demo-smoke` (REQ-TEST-011); `.scripts/validate-translations.php` key parity across the 26 locales (REQ-MAKE-004).
+
 ### Changed
 
+- Demo moved from `demo/demo-symfony8` to the canonical `demo/symfony8` (REQ-DOC-002); its login pages render `LoginFormType` / `ApiLoginFormType` (CSRF `_csrf_token` / `authenticate` in the form) instead of raw `<form>` / `<input>` markup (REQ-DEMO-001, REQ-TWIG-005); the entrypoint waits for `vendor/` so worker mode boots on a clean checkout. Demo fixes found while validating: the catch-all `main` firewall now comes after `api` / `admin` (it shadowed them, so admin and API logins were never authenticated) and `/api/login` answers 200 with the user identifier after a successful `json_login` (it always returned 401).
+- Makefile: canonical `help`; `release-check` in REQ-MAKE-002 order with `check-open-prs`, `check-no-raw-html-form` and `igor` (REQ-MAKE-001/002, REQ-CS-008).
+- Commands are registered by `#[AsCommand]` + autoconfiguration (manual `console.command` tags removed) (REQ-SF-003).
+- Rector targets PHP 8.2 (package floor) with at most 2 workers (REQ-CS-003); Igor skips `.scripts/`; `.scripts/check-no-cursor-coauthor.sh` accepts git worktrees (REQ-GIT-001).
 - Dependencies refreshed (Composer and pnpm/npm lock files of the bundle and its demos, campaign 2026-10-19).
 - Documentation: wave-1 REQ compliance — README documentation list order, canonical issue templates, CONTRIBUTING Cursor Agent settings (REQ-IDE-006), tables of contents in long docs, Spec Kit inventory refresh (36/36, `CleanupLoginAttemptsCommand` mapped).
 
