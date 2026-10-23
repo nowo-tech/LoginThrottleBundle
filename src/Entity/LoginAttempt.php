@@ -13,6 +13,9 @@ use Doctrine\ORM\Mapping as ORM;
  * This entity is used when you want to store login attempts in the database
  * instead of using cache/Redis. It tracks failed login attempts per IP and username.
  *
+ * Not final: Doctrine ORM 3 builds lazy-ghost proxies by subclassing entities unless native lazy objects
+ * (PHP 8.4+) are enabled, so a final entity breaks the proxy cache warmer on PHP 8.2 / 8.3.
+ *
  * @author Héctor Franco Aceituno <hectorfranco@nowo.tech>
  * @copyright 2025 Nowo.tech
  */
@@ -20,7 +23,7 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Table(name: 'login_attempts')]
 #[ORM\Index(name: 'idx_ip_username', columns: ['ip_address', 'username'])]
 #[ORM\Index(name: 'idx_created_at', columns: ['created_at'])]
-final class LoginAttempt
+class LoginAttempt
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
