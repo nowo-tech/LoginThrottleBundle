@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[3.7.0] - 2026-10-23](#370---2026-10-23)
 - [[3.6.0] - 2026-10-21](#360---2026-10-21)
 - [[3.5.1] - 2026-10-15](#351---2026-10-15)
 - [[3.5.0] - 2026-10-13](#350---2026-10-13)
@@ -45,6 +46,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.7.0] - 2026-10-23
+
+Optional Doctrine mapping of LoginAttempt (doctrine.register_mapping: true|false|auto) for hosts with cache storage See [UPGRADING](UPGRADING.md#to-370).
+
 ### Added
 
 - `doctrine.register_mapping` (`true` default | `false` | `auto`): leave the `LoginAttempt` entity (`login_attempts` table) unmapped when no firewall uses `storage: database`, including under Doctrine `auto_mapping` (the extension now implements `PrependExtensionInterface` and prepends `mappings.NowoLoginThrottleBundle.mapping: false`). `false` with a `storage: database` firewall fails at container build. Unmapped, the repository, `DatabaseRateLimiterFactory` and `TablePrefixListener` services are not registered. New parameter `nowo_login_throttle.doctrine.mapping_enabled`. See [UPGRADING](UPGRADING.md#unreleased).
@@ -52,6 +57,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `Entity\LoginAttempt` is no longer `final`: on PHP 8.2 / 8.3 (Doctrine ORM 3 lazy-ghost proxies, no native lazy objects) the mapped final entity made the proxy cache warmer fail at kernel boot (`Cannot generate lazy ghost: class "…LoginAttempt" is final`).
+
+[3.7.0]: https://github.com/nowo-tech/LoginThrottleBundle/releases/tag/v3.7.0
 
 ## [3.6.0] - 2026-10-21
 
