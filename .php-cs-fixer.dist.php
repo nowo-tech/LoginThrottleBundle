@@ -2,12 +2,16 @@
 
 declare(strict_types=1);
 
+use PhpCsFixer\Runner\Parallel\ParallelConfig;
+
 $finder = PhpCsFixer\Finder::create()
     ->in(__DIR__ . '/src')
     ->in(__DIR__ . '/tests')
     ->name('*.php');
 
 return (new PhpCsFixer\Config())
+    // REQ-CS-001: at most 2 worker processes (shared machine).
+    ->setParallelConfig(new ParallelConfig(2))
     ->setRiskyAllowed(true)
     ->setRules([
         '@PSR12' => true,
