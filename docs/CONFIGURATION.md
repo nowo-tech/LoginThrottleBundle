@@ -23,6 +23,7 @@ For service configuration examples for different deployment scenarios (local dev
   - [Cache Storage (Default)](#cache-storage-default)
   - [Database Storage](#database-storage)
   - [Table prefix (database storage)](#table-prefix-database-storage)
+  - [Optional entity mapping (cache storage)](#optional-entity-mapping-cache-storage)
 - [Migration from anyx/login-gate-bundle](#migration-from-anyxlogin-gate-bundle)
   - [Before (anyx/login-gate-bundle)](#before-anyxlogin-gate-bundle)
   - [After (nowo-tech/login-throttle-bundle)](#after-nowo-techlogin-throttle-bundle)
@@ -355,6 +356,31 @@ nowo_login_throttle:
 `Nowo\LoginThrottleBundle\Doctrine\TablePrefixListener` (Doctrine `loadClassMetadata`, registered only when the prefix is not empty) rewrites the `LoginAttempt` mapping only; host entities are never touched. Setting a prefix on an existing install renames the table: generate a migration (`doctrine:migrations:diff`) and rename instead of dropping.
 
 The attempt windows (`countAttempts()`, `cleanup()`, retry-after of accepted attempts) use the injected `Psr\Clock\ClockInterface` when the container has one (Symfony Clock), so tests can freeze time.
+
+### Optional entity mapping (cache storage)
+
+Doctrine `auto_mapping` maps `src/Entity` of every bundle, so by default the `LoginAttempt` entity (and the `login_attempts` table in your schema / `doctrine:migrations:diff`) exists even when every firewall uses `storage: cache`. `doctrine.register_mapping` controls it:
+
+```yaml
+nowo_login_throttle:
+    storage: 'cache'
+    doctrine:
+        register_mapping: auto   # true (default) | false | auto
+```
+
+| Value | Entity mapped | Notes |
+|-------|---------------|-------|
+| `true` (default) | Always | Previous behaviour. |
+| `auto` | Only when the single-firewall `storage` or any entry of `firewalls` is `database` | Recommended for cache-only hosts. |
+| `false` | Never | Container build fails with an `InvalidArgumentException` if any firewall uses `storage: database`. |
+
+When the entity is not mapped:
+
+- the extension prepends `doctrine.orm.entity_managers.<manager>.mappings.NowoLoginThrottleBundle.mapping: false` on the auto-mapped entity manager (the one with `auto_mapping: true`, else `default_entity_manager`, else `default`). It does nothing when DoctrineBundle is not registered, when there is no `doctrine.orm` configuration, or when the host already declares a `NowoLoginThrottleBundle` mapping;
+- `LoginAttemptRepository`, its `LoginAttemptRepositoryInterface` alias, `DatabaseRateLimiterFactory` and `TablePrefixListener` are not registered; `nowo:login-throttle:cleanup` reports that there is nothing to clean and `LoginThrottleInfoService` uses the cache-storage defaults;
+- the boolean parameter `nowo_login_throttle.doctrine.mapping_enabled` (`NowoLoginThrottleExtension::MAPPING_ENABLED_PARAMETER`) is `false`.
+
+Hosts that switch an existing install to `auto` / `false` can drop the `login_attempts` table in a migration.
 
 ## Migration from anyx/login-gate-bundle
 

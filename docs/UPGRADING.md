@@ -48,6 +48,18 @@
 
 ## Unreleased
 
+No breaking change: `doctrine.register_mapping` defaults to `true` (the entity stays mapped as before).
+
+- Hosts with `storage: cache` on every firewall no longer need the `login_attempts` table: set
+  `nowo_login_throttle.doctrine.register_mapping: auto` and drop the `login_attempts` table in a migration (for
+  example the additive migration that only created it). With `auto` the entity is mapped again as soon as a firewall
+  switches to `storage: database`.
+- `register_mapping: false` while any firewall uses `storage: database` fails at container build
+  (`InvalidArgumentException`).
+- With the entity unmapped, `LoginAttemptRepository`, `LoginAttemptRepositoryInterface` and
+  `DatabaseRateLimiterFactory` are not services: inject them as optional (`?LoginAttemptRepositoryInterface`,
+  `@?…`) if your code uses them. See [CONFIGURATION](CONFIGURATION.md#optional-entity-mapping-cache-storage).
+
 ## To 3.6.0
 
 From **3.5.1**:

@@ -105,6 +105,7 @@ See [Configuration Documentation](docs/CONFIGURATION.md#multiple-firewalls) for 
 | `rate_limiter` | `string\|null` | `null` | Custom rate limiter service ID (optional). If not provided, Symfony will use default login throttling rate limiter, or database rate limiter if `storage=database` |
 | `cache_pool` | `string` | `'cache.rate_limiter'` | Cache pool to use for storing the limiter state (only used when `storage=cache`) |
 | `lock_factory` | `string\|null` | `null` | Lock factory service ID for rate limiter (optional, only used when `storage=cache`). Set to null to disable locking |
+| `doctrine.register_mapping` | `bool\|'auto'` | `true` | Map the `LoginAttempt` entity (`login_attempts` table). `true`: always. `false`: never (every firewall must use `storage: cache`). `auto`: only when a firewall uses `storage: database`. When unmapped, the bundle also opts out of Doctrine `auto_mapping`, so cache-only hosts need no table. See [CONFIGURATION.md](docs/CONFIGURATION.md#optional-entity-mapping-cache-storage). |
 
 ## How It Works
 

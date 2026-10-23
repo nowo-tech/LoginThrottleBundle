@@ -45,6 +45,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `doctrine.register_mapping` (`true` default | `false` | `auto`): leave the `LoginAttempt` entity (`login_attempts` table) unmapped when no firewall uses `storage: database`, including under Doctrine `auto_mapping` (the extension now implements `PrependExtensionInterface` and prepends `mappings.NowoLoginThrottleBundle.mapping: false`). `false` with a `storage: database` firewall fails at container build. Unmapped, the repository, `DatabaseRateLimiterFactory` and `TablePrefixListener` services are not registered. New parameter `nowo_login_throttle.doctrine.mapping_enabled`. See [UPGRADING](UPGRADING.md#unreleased).
+
+### Fixed
+
+- `Entity\LoginAttempt` is no longer `final`: on PHP 8.2 / 8.3 (Doctrine ORM 3 lazy-ghost proxies, no native lazy objects) the mapped final entity made the proxy cache warmer fail at kernel boot (`Cannot generate lazy ghost: class "…LoginAttempt" is final`).
+
 ## [3.6.0] - 2026-10-21
 
 Wave-2 REQ compliance: configurable table prefix, injectable clock, demo moved to demo/symfony8 with form-type logins, full release-check chain. See [UPGRADING](UPGRADING.md#to-360).

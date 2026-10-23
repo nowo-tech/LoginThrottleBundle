@@ -30,6 +30,11 @@ final class Configuration implements ConfigurationInterface
     public const ALIAS = 'nowo_login_throttle';
 
     /**
+     * doctrine.register_mapping value that maps the entity only when a firewall uses storage=database.
+     */
+    public const REGISTER_MAPPING_AUTO = 'auto';
+
+    /**
      * Builds the configuration tree.
      *
      * Defines the structure of the bundle configuration with all available options
@@ -106,6 +111,11 @@ final class Configuration implements ConfigurationInterface
                                 ->ifTrue(static fn (mixed $value): bool => !\is_string($value) || 1 !== preg_match('/^[A-Za-z0-9_]*$/', $value))
                                 ->thenInvalid('Invalid "nowo_login_throttle.doctrine.table_prefix" %s: use letters, digits and underscores only.')
                             ->end()
+                        ->end()
+                        ->enumNode('register_mapping')
+                            ->values([true, false, self::REGISTER_MAPPING_AUTO])
+                            ->defaultTrue()
+                            ->info('Map the LoginAttempt entity (login_attempts table). true: always (default). false: never (no firewall may use storage=database; also opts the bundle out of Doctrine auto_mapping). auto: only when a firewall uses storage=database.')
                         ->end()
                     ->end()
                 ->end()

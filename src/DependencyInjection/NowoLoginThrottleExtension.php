@@ -6,13 +6,17 @@ namespace Nowo\LoginThrottleBundle\DependencyInjection;
 
 use Nowo\LoginThrottleBundle\Doctrine\TablePrefixListener;
 use Nowo\LoginThrottleBundle\RateLimiter\DatabaseRateLimiter;
+use Nowo\LoginThrottleBundle\RateLimiter\DatabaseRateLimiterFactory;
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepository;
+use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Config\Definition\Processor;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\DependencyInjection\Exception\InvalidArgumentException;
 use Symfony\Component\DependencyInjection\Extension\Extension;
+use Symfony\Component\DependencyInjection\Extension\PrependExtensionInterface;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 use Symfony\Component\DependencyInjection\Reference;
 
@@ -25,8 +29,18 @@ use Symfony\Component\DependencyInjection\Reference;
  * @author Héctor Franco Aceituno <hectorfranco@nowo.tech>
  * @copyright 2025 Nowo.tech
  */
-final class NowoLoginThrottleExtension extends Extension
+final class NowoLoginThrottleExtension extends Extension implements PrependExtensionInterface
 {
+    /**
+     * Bundle name used as the Doctrine mapping key (auto_mapping registers the entity under it).
+     */
+    public const BUNDLE_NAME = 'NowoLoginThrottleBundle';
+
+    /**
+     * Boolean parameter: whether the LoginAttempt entity is mapped (resolved doctrine.register_mapping).
+     */
+    public const MAPPING_ENABLED_PARAMETER = 'nowo_login_throttle.doctrine.mapping_enabled';
+
     /**
      * Base service ID of the database rate limiter registered for the single-firewall configuration.
      */
@@ -97,6 +111,9 @@ final class NowoLoginThrottleExtension extends Extension
         $container->setParameter('nowo_login_throttle.config', $config);
         $container->setParameter('nowo_login_throttle.watch_period', (int) ($config['watch_period'] ?? 3600));
 
+        $mappingEnabled = $this->resolveRegisterMapping($config['doctrine']['register_mapping'], $this->usesDatabaseStorage($config));
+        $container->setParameter(self::MAPPING_ENABLED_PARAMETER, $mappingEnabled);
+
         // Check if using multiple firewalls configuration
         // Only use multiple firewalls if firewalls array is not empty
         if (isset($config['firewalls']) && \is_array($config['firewalls']) && [] !== $config['firewalls']) {
@@ -151,9 +168,130 @@ final class NowoLoginThrottleExtension extends Extension
         // REQ-ORM-002: the table prefix listener only exists when a prefix is configured.
         $tablePrefix = (string) $config['doctrine']['table_prefix'];
         $container->setParameter('nowo_login_throttle.doctrine.table_prefix', $tablePrefix);
-        if ('' === $tablePrefix) {
+        if ('' === $tablePrefix || !$mappingEnabled) {
             $container->removeDefinition(TablePrefixListener::class);
         }
+
+        if (!$mappingEnabled) {
+            // Unmapped entity: the services built on it would fail at runtime. Consumers take the repository as optional.
+            $container->removeAlias(LoginAttemptRepositoryInterface::class);
+            $container->removeDefinition(LoginAttemptRepository::class);
+            $container->removeDefinition(DatabaseRateLimiterFactory::class);
+        }
+    }
+
+    /**
+     * Doctrine auto_mapping maps src/Entity of every bundle: when doctrine.register_mapping resolves to false,
+     * prepend `mappings.NowoLoginThrottleBundle.mapping: false` on the auto-mapped entity manager (unless the host
+     * already configures a NowoLoginThrottleBundle mapping).
+     *
+     * @param ContainerBuilder $container The container builder
+     */
+    public function prepend(ContainerBuilder $container): void
+    {
+        if (!$container->hasExtension('doctrine')) {
+            return;
+        }
+
+        $registerMapping = true;
+        $merged = [];
+        foreach ($container->getExtensionConfig($this->getAlias()) as $config) {
+            $doctrine = $config['doctrine'] ?? null;
+            if (\is_array($doctrine) && \array_key_exists('register_mapping', $doctrine)) {
+                $registerMapping = $doctrine['register_mapping'];
+            }
+            if (\array_key_exists('storage', $config)) {
+                $merged['storage'] = $config['storage'];
+            }
+            foreach (\is_array($config['firewalls'] ?? null) ? $config['firewalls'] : [] as $name => $firewall) {
+                $merged['firewalls'][$name] = array_replace($merged['firewalls'][$name] ?? [], \is_array($firewall) ? $firewall : []);
+            }
+        }
+
+        $mapped = Configuration::REGISTER_MAPPING_AUTO === $registerMapping
+            ? $this->usesDatabaseStorage($merged)
+            : false !== $registerMapping;
+        if ($mapped) {
+            return;
+        }
+
+        $manager = null;
+        $hasOrm = false;
+        foreach ($container->getExtensionConfig('doctrine') as $config) {
+            if (!\is_array($config['orm'] ?? null)) {
+                continue;
+            }
+            $hasOrm = true;
+            $orm = $config['orm'];
+            if (\is_array($orm['mappings'] ?? null) && \array_key_exists(self::BUNDLE_NAME, $orm['mappings'])) {
+                return;
+            }
+            if (\is_string($orm['default_entity_manager'] ?? null)) {
+                $manager ??= $orm['default_entity_manager'];
+            }
+            foreach (\is_array($orm['entity_managers'] ?? null) ? $orm['entity_managers'] : [] as $name => $entityManager) {
+                if (!\is_array($entityManager)) {
+                    continue;
+                }
+                if (\is_array($entityManager['mappings'] ?? null) && \array_key_exists(self::BUNDLE_NAME, $entityManager['mappings'])) {
+                    return;
+                }
+                if (true === ($entityManager['auto_mapping'] ?? false)) {
+                    $manager = (string) $name;
+                }
+            }
+        }
+
+        if (!$hasOrm) {
+            return;
+        }
+
+        $container->prependExtensionConfig('doctrine', [
+            'orm' => ['entity_managers' => [$manager ?? 'default' => ['mappings' => [self::BUNDLE_NAME => ['mapping' => false]]]]],
+        ]);
+    }
+
+    /**
+     * Resolves doctrine.register_mapping: true / false / "auto" (mapped only when a firewall uses storage=database).
+     *
+     * @param bool|string $registerMapping     Configured value
+     * @param bool        $usesDatabaseStorage Whether a firewall uses storage=database
+     *
+     * @throws InvalidArgumentException When register_mapping is false while a firewall uses storage=database
+     */
+    private function resolveRegisterMapping(bool|string $registerMapping, bool $usesDatabaseStorage): bool
+    {
+        if (Configuration::REGISTER_MAPPING_AUTO === $registerMapping) {
+            return $usesDatabaseStorage;
+        }
+
+        if (false === $registerMapping && $usesDatabaseStorage) {
+            throw new InvalidArgumentException('"nowo_login_throttle.doctrine.register_mapping: false" requires storage "cache" on every firewall: storage "database" needs the LoginAttempt entity (login_attempts table). Use "auto" or true.');
+        }
+
+        return (bool) $registerMapping;
+    }
+
+    /**
+     * Whether the configuration stores attempts in the database: any entry of the multiple-firewalls
+     * configuration when it is not empty, otherwise the single-firewall storage.
+     *
+     * @param array<array-key, mixed> $config Processed configuration (or merged raw configuration in prepend())
+     */
+    private function usesDatabaseStorage(array $config): bool
+    {
+        $firewalls = \is_array($config['firewalls'] ?? null) ? $config['firewalls'] : [];
+        if ([] === $firewalls) {
+            return 'database' === ($config['storage'] ?? null);
+        }
+
+        foreach ($firewalls as $firewall) {
+            if (\is_array($firewall) && 'database' === ($firewall['storage'] ?? null)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
