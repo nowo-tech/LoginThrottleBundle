@@ -125,8 +125,8 @@ qa: ensure-up
 	@$(COMPOSE) exec -T $(SERVICE_PHP) composer qa
 
 composer-sync: ensure-up
-	@$(COMPOSE) exec -T $(SERVICE_PHP) composer validate --strict
-	@$(COMPOSE) exec -T $(SERVICE_PHP) composer update --lock --no-interaction
+	@$(COMPOSE) exec -T $(SERVICE_PHP) composer validate --strict --no-check-lock
+	@$(COMPOSE) exec -T $(SERVICE_PHP) composer update --no-interaction
 
 
 # Run Igor worker-state audit (REQ-CS-008)
