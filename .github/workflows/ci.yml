@@ -30,6 +30,7 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         php: ['8.2', '8.3', '8.4', '8.5']
+        # Each cell pins its minor with <minor>.* so it really installs that Symfony line (REQ-SF-002).
         # Symfony 8.0 reached end of maintenance (July 2026): its CI cell is dropped (REQ-SF-002); composer.json still allows ^8.0.
         symfony: ['7.4', '8.1']
         exclude:
@@ -70,7 +71,7 @@ jobs:
       - name: Install dependencies with Symfony ${{ matrix.symfony }}
         run: |
           echo "📦 Installing dependencies for Symfony ${{ matrix.symfony }}..."
-          composer require symfony/framework-bundle:^${{ matrix.symfony }} symfony/security-bundle:^${{ matrix.symfony }} symfony/rate-limiter:^${{ matrix.symfony }} --no-interaction --no-update
+          composer require symfony/framework-bundle:${{ matrix.symfony }}.* symfony/security-bundle:${{ matrix.symfony }}.* symfony/rate-limiter:${{ matrix.symfony }}.* --no-interaction --no-update
           composer update --with-all-dependencies --no-interaction --prefer-dist --no-progress
       - name: Composer audit (Critical/High)
         run: composer audit --locked
