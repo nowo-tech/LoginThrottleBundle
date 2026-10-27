@@ -46,6 +46,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `DatabaseRateLimiter` and `LoginThrottleInfoService` compute the retry-after time from the oldest attempt's timestamp instead of `DateTimeImmutable::modify()` (typed `static|false` before PHP 8.3). The value and its timezone are unchanged; PHPStan is now clean on PHP 8.2 to 8.5 (REQ-CS-005, REQ-CS-006).
+
+### Changed
+
+- PHPStan analyses against the whole supported PHP range (`phpVersion` 8.2 to 8.5 in `phpstan.neon.dist`), so the result no longer depends on the PHP runtime that runs it (REQ-CS-006).
+- CI: each Symfony matrix cell installs its own minor (`<minor>.*` instead of `^<minor>`), so the `8.1` cell keeps testing 8.1 once newer 8.x minors ship (REQ-SF-002).
+
 ## [3.7.0] - 2026-10-23
 
 Optional Doctrine mapping of LoginAttempt (doctrine.register_mapping: true|false|auto) for hosts with cache storage See [UPGRADING](UPGRADING.md#to-370).

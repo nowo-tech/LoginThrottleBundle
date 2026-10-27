@@ -1,5 +1,10 @@
 parameters:
   level: 8
+  # Analyse against every supported PHP version (composer.json: >=8.2 <8.6) so results do not depend
+  # on the PHP runtime that happens to run PHPStan (REQ-CS-006).
+  phpVersion:
+    min: 80200
+    max: 80599
   paths:
     - src
   excludePaths:

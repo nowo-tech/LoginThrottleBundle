@@ -181,9 +181,12 @@ final class LoginThrottleInfoService
         }
 
         $oldestAttempt = $attempts[array_key_last($attempts)];
-        $retryAfter = $oldestAttempt->getCreatedAt()->modify(\sprintf('+%d seconds', $timeout));
+        // Built from the timestamp instead of modify() (static|false before PHP 8.3) so PHPStan reports the
+        // same result on PHP 8.2 to 8.5; the attempt's timezone is kept.
+        $createdAt = $oldestAttempt->getCreatedAt();
 
-        return $retryAfter instanceof \DateTimeImmutable ? $retryAfter : null;
+        return (new \DateTimeImmutable('@' . ($createdAt->getTimestamp() + $timeout)))
+            ->setTimezone($createdAt->getTimezone());
     }
 
     /**
