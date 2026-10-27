@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[3.7.1] - 2026-10-27](#371---2026-10-27)
 - [[3.7.0] - 2026-10-23](#370---2026-10-23)
 - [[3.6.0] - 2026-10-21](#360---2026-10-21)
 - [[3.5.1] - 2026-10-15](#351---2026-10-15)
@@ -46,6 +47,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.7.1] - 2026-10-27
+
+PHPStan clean on PHP 8.2-8.5 (retry-after time arithmetic), pinned Symfony minor CI cells See [UPGRADING](UPGRADING.md#to-371).
+
 ### Fixed
 
 - `DatabaseRateLimiter` and `LoginThrottleInfoService` compute the retry-after time from the oldest attempt's timestamp instead of `DateTimeImmutable::modify()` (typed `static|false` before PHP 8.3). The value and its timezone are unchanged; PHPStan is now clean on PHP 8.2 to 8.5 (REQ-CS-005, REQ-CS-006).
@@ -54,6 +59,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - PHPStan analyses against the whole supported PHP range (`phpVersion` 8.2 to 8.5 in `phpstan.neon.dist`), so the result no longer depends on the PHP runtime that runs it (REQ-CS-006).
 - CI: each Symfony matrix cell installs its own minor (`<minor>.*` instead of `^<minor>`), so the `8.1` cell keeps testing 8.1 once newer 8.x minors ship (REQ-SF-002).
+
+[3.7.1]: https://github.com/nowo-tech/LoginThrottleBundle/releases/tag/v3.7.1
 
 ## [3.7.0] - 2026-10-23
 
