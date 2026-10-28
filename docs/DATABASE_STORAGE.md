@@ -110,6 +110,8 @@ CREATE TABLE login_attempts (
     blocked TINYINT(1) DEFAULT 0 NOT NULL,
     INDEX idx_ip_username (ip_address, username),
     INDEX idx_created_at (created_at),
+    INDEX idx_username_created_at (username, created_at),
+    INDEX idx_ip_created_at (ip_address, created_at),
     PRIMARY KEY(id)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB;
 ```

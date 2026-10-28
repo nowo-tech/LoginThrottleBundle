@@ -50,6 +50,17 @@
 
 ## Unreleased
 
+**Database storage only:** two new indexes on the login attempts table, `idx_username_created_at (username,
+created_at)` and `idx_ip_created_at (ip_address, created_at)` (prefixed when `doctrine.table_prefix` is set). Generate
+and run a migration:
+
+```bash
+php bin/console doctrine:migrations:diff
+php bin/console doctrine:migrations:migrate
+```
+
+Cache storage is not affected.
+
 ## To 3.7.1
 
 From **3.7.0**:

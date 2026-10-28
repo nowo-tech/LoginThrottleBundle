@@ -23,6 +23,9 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Table(name: 'login_attempts')]
 #[ORM\Index(name: 'idx_ip_username', columns: ['ip_address', 'username'])]
 #[ORM\Index(name: 'idx_created_at', columns: ['created_at'])]
+// Throttle lookups filter by username (credential stuffing across IPs) or IP plus a created_at window.
+#[ORM\Index(name: 'idx_username_created_at', columns: ['username', 'created_at'])]
+#[ORM\Index(name: 'idx_ip_created_at', columns: ['ip_address', 'created_at'])]
 class LoginAttempt
 {
     #[ORM\Id]

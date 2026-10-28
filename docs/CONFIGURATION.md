@@ -351,7 +351,7 @@ nowo_login_throttle:
 | Default | With `table_prefix: 'app_'` |
 |---------|-----------------------------|
 | table `login_attempts` | `app_login_attempts` |
-| indexes `idx_ip_username`, `idx_created_at` | `app_idx_ip_username`, `app_idx_created_at` |
+| indexes `idx_ip_username`, `idx_created_at`, `idx_username_created_at`, `idx_ip_created_at` | `app_idx_ip_username`, `app_idx_created_at`, `app_idx_username_created_at`, `app_idx_ip_created_at` |
 
 `Nowo\LoginThrottleBundle\Doctrine\TablePrefixListener` (Doctrine `loadClassMetadata`, registered only when the prefix is not empty) rewrites the `LoginAttempt` mapping only; host entities are never touched. Setting a prefix on an existing install renames the table: generate a migration (`doctrine:migrations:diff`) and rename instead of dropping.
 

@@ -47,6 +47,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Performance
+
+- **Indexes for the throttle lookups (database storage).** Attempts are counted by `username` + `created_at` window
+  (credential stuffing from many IPs) and by `ip_address` + `created_at`; only `(ip_address, username)` and
+  `(created_at)` existed, so the username lookup scanned the whole time window. New indexes
+  `idx_username_created_at (username, created_at)` and `idx_ip_created_at (ip_address, created_at)`.
+  See [UPGRADING](UPGRADING.md#unreleased).
+
 ## [3.7.1] - 2026-10-27
 
 PHPStan clean on PHP 8.2-8.5 (retry-after time arithmetic), pinned Symfony minor CI cells See [UPGRADING](UPGRADING.md#to-371).
