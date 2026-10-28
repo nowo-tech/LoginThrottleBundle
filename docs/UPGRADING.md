@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 3.8.0](#to-380)
 - [To 3.7.1](#to-371)
 - [To 3.7.0](#to-370)
 - [To 3.6.0](#to-360)
@@ -49,6 +50,14 @@
 - [Notes](#notes)
 
 ## Unreleased
+
+## To 3.8.0
+
+From **3.7.1**:
+
+```bash
+composer update nowo-tech/login-throttle-bundle
+```
 
 **Database storage only:** two new indexes on the login attempts table, `idx_username_created_at (username,
 created_at)` and `idx_ip_created_at (ip_address, created_at)` (prefixed when `doctrine.table_prefix` is set). Generate

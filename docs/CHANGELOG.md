@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[3.8.0] - 2026-10-28](#380---2026-10-28)
 - [[3.7.1] - 2026-10-27](#371---2026-10-27)
 - [[3.7.0] - 2026-10-23](#370---2026-10-23)
 - [[3.6.0] - 2026-10-21](#360---2026-10-21)
@@ -47,6 +48,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.8.0] - 2026-10-28
+
+Performance: composite indexes for the username / IP throttle lookups (database storage; migration needed). See [UPGRADING](UPGRADING.md#to-380).
+
 ### Performance
 
 - **Indexes for the throttle lookups (database storage).** Attempts are counted by `username` + `created_at` window
@@ -54,6 +59,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `(created_at)` existed, so the username lookup scanned the whole time window. New indexes
   `idx_username_created_at (username, created_at)` and `idx_ip_created_at (ip_address, created_at)`.
   See [UPGRADING](UPGRADING.md#unreleased).
+
+[3.8.0]: https://github.com/nowo-tech/LoginThrottleBundle/releases/tag/v3.8.0
 
 ## [3.7.1] - 2026-10-27
 
