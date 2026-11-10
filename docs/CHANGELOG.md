@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[3.10.0] - 2026-11-10](#3100---2026-11-10)
 - [[3.9.0] - 2026-11-10](#390---2026-11-10)
 - [[3.8.0] - 2026-10-28](#380---2026-10-28)
 - [[3.7.1] - 2026-10-27](#371---2026-10-27)
@@ -49,8 +50,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Target 3.10.0 (minor: the database limiter now follows a host override of `LoginAttemptRepositoryInterface`, which
-3.9 documented as ignored). See [UPGRADING](UPGRADING.md#to-3100).
+## [3.10.0] - 2026-11-10
+
+Database limiter: login attempts are written with a DBAL insert (savepoint inside a host transaction) and never flush the host's entity manager; the limiter now honours a host LoginAttemptRepositoryInterface. See [UPGRADING](https://github.com/nowo-tech/LoginThrottleBundle/blob/v3.10.0/docs/UPGRADING.md#to-3100).
+
 
 ### Security
 
@@ -69,6 +72,8 @@ Target 3.10.0 (minor: the database limiter now follows a host override of `Login
   `LoginAttemptRepository`, so a host store aliased to the port drives the limiter as documented.
 - A closed EntityManager is reset only when it maps the bundle's entities alone (a dedicated manager). A closed manager
   shared with the host is left for the host to reset; DQL reads and the DBAL insert keep working through it.
+
+[3.10.0]: https://github.com/nowo-tech/LoginThrottleBundle/releases/tag/v3.10.0
 
 ## [3.9.0] - 2026-11-10
 
