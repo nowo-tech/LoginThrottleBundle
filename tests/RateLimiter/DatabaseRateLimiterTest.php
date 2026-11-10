@@ -311,16 +311,15 @@ final class DatabaseRateLimiterTest extends TestCase
         $this->rateLimiter->reset($request);
     }
 
-    public function testResetWithNullUsernameClearsIpOnlyRows(): void
+    public function testResetWithoutUsernameKeepsTheIpOnlyRows(): void
     {
+        // KF-L-M1: the IP-only bucket is what the per-IP cap counts; a successful login must not wipe it.
         $request = Request::create('/login', 'POST');
         $request->server->set('REMOTE_ADDR', '192.168.1.1');
 
         $this->repository
-            ->expects($this->once())
-            ->method('clearAttempts')
-            ->with('192.168.1.1', null)
-            ->willReturn(0);
+            ->expects($this->never())
+            ->method('clearAttempts');
 
         $this->rateLimiter->reset($request);
     }

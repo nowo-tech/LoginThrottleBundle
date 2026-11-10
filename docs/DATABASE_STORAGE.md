@@ -168,7 +168,7 @@ When `storage: 'database'` is configured:
 4. Username is taken from flat form fields (`_username`, `username`, `email`) or nested AuthKit-style bags (`login_form[_username]`, etc.)
 5. The username is trimmed and lower-cased, so `Admin` and `admin` share one counter
 6. The rate limiter blocks when either the IP + username count reaches `max_count_attempts` **or** the IP-only count (all usernames) reaches `max_count_attempts_per_ip` (default `5 × max_count_attempts`)
-7. On **successful** login, Symfony calls `reset()` and the limiter **deletes** matching attempt rows for that IP + username (so the next failure starts a fresh window); the IP-only counter is not reset and decays with `timeout`
+7. On **successful** login, Symfony calls `reset()` and the limiter **deletes** matching attempt rows for that IP + username (so the next failure starts a fresh window); the IP-only counter is not reset and decays with `timeout`. Without a username (IP-only key) nothing is deleted (3.9, KF-L-M1), so a successful login cannot reopen the IP's budget
 8. After the timeout period, remaining attempts are no longer counted (and old rows can be pruned with `cleanup()`)
 
 ## Manual Security Configuration

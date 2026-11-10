@@ -65,6 +65,16 @@ Target: 3.9.0 (DDD P2). See [UPGRADING](UPGRADING.md#to-390).
   `form_login`, instead of the IP only.
 - `max_attempts_per_ip` in the `nowo_login_throttle.firewalls` parameter.
 
+### Security
+
+- **Successful logins no longer reopen an IP's budget** (KF-L-M1, affects 3.2.0–3.8.0 with `storage: database`).
+  When the bundle reads no username (`json_login`, custom authenticators, a custom `username_parameter`), attempts
+  are keyed by IP only, and `reset()` deleted all of them on a successful login, including the rows the per-IP cap
+  counts. Anyone with a valid account could alternate guesses against another account with logins into their own
+  and guess without limit from one IP. `reset()` now does nothing when there is no username; those attempts decay
+  with `timeout`, like Symfony's global login limiter. Logins with a username still clear only their IP + username
+  rows.
+
 ### Fixed
 
 - `LoginThrottleInfoService::getAttemptInfo()` (database storage) now reports what the limiter enforces: the

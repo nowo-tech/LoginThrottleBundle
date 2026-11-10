@@ -60,12 +60,18 @@ From **3.8.0** (target 3.9.0, DDD P2):
 composer update nowo-tech/login-throttle-bundle
 ```
 
-No configuration change is needed; the limiter keys and limits are unchanged.
+No configuration change is needed; the limiter keys and limits are unchanged. One security fix changes what a successful login without a username resets (see below).
 
 - **Login page figures:** with `storage: database`, `LoginThrottleInfoService::getAttemptInfo()` now returns the
   limiter's figures. With a username, `current_attempts` counts the IP + username bucket (before: that username from
   every IP) and the username is trimmed and lower-cased; `is_blocked` / `remaining_attempts` also reflect the per-IP
   cap. Templates that show these values may display different (correct) numbers.
+- **Security, successful logins without a username (KF-L-M1):** with `storage: database`, when the bundle reads no
+  username (`json_login` without `username_from_passport`, custom authenticators, a custom `username_parameter`), a
+  successful login no longer deletes the IP's attempts. Before, it deleted all of them, which let anyone with an
+  account guess without limit. Users of such logins who failed a few times keep those failures until `timeout`
+  passes, and a busy shared IP (office NAT) reaches the limit sooner. Enabling `username_from_passport: true` keys
+  those logins per identifier again, and is recommended.
 - **json_login:** to key `json_login` or custom-authenticator attempts on the submitted identifier instead of the IP
   only, set:
 

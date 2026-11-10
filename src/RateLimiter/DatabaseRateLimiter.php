@@ -130,12 +130,20 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
      *
      * Deletes stored attempts for this IP + username so the next failure starts a fresh window.
      *
+     * Without a username (KF-L-M1, 3.9) nothing is deleted: the IP-only bucket holds every attempt of the IP, the same
+     * rows the per-IP cap counts, so clearing it on any successful login (e.g. the attacker's own account) would give
+     * unlimited guesses. Those attempts decay with {@code timeout}, like Symfony's global login limiter.
+     *
      * @param Request $request The request
      */
     public function reset(Request $request): void
     {
         $ipAddress = $request->getClientIp() ?? 'unknown';
         $username = $this->extractUsername($request);
+
+        if (null === $username) {
+            return;
+        }
 
         // @igor-ignore - Mutates attached request-scoped or value object; not worker singleton cache
         $this->repository->clearAttempts($ipAddress, $username);

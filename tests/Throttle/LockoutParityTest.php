@@ -124,6 +124,56 @@ final class LockoutParityTest extends TestCase
     }
 
     /**
+     * KF-L-M1 (audit PoC P2): guess twice against a victim, log into an own account, repeat 20 times from one IP. With
+     * IP-only keys the successful login must not wipe the IP's attempts (3.2.0–3.8.0 accepted 40 / 40 guesses).
+     *
+     * @return iterable<string, array{bool, int}>
+     */
+    public static function resetBypassModes(): iterable
+    {
+        yield 'json_login, IP-only keys (default)' => [false, 2];
+        yield 'json_login, username_from_passport' => [true, 2];
+    }
+
+    #[DataProvider('resetBypassModes')]
+    public function testOwnAccountLoginDoesNotReopenTheIpBudget(bool $usernameFromPassport, int $maxAccepted): void
+    {
+        $store = new InMemoryLoginAttemptStore();
+        $limiter = $this->limiter($store, $usernameFromPassport);
+        $accepted = 0;
+
+        for ($cycle = 0; $cycle < 20; ++$cycle) {
+            for ($guess = 0; $guess < 2; ++$guess) {
+                $accepted += $limiter->consume($this->jsonRequest('6.6.6.6', 'victim'))->isAccepted() ? 1 : 0;
+                $store->advance(1);
+            }
+
+            // Symfony: consume() in checkPassport, then reset() on the successful login of the attacker's own account.
+            $own = $this->jsonRequest('6.6.6.6', 'attacker');
+            $limiter->consume($own);
+            $limiter->reset($own);
+            $store->advance(1);
+        }
+
+        self::assertLessThanOrEqual($maxAccepted, $accepted);
+        self::assertTrue($this->provider($store)->status('main', '6.6.6.6', $usernameFromPassport ? 'victim' : null)->blocked);
+    }
+
+    public function testSuccessfulLoginWithAUsernameStillClearsOnlyItsOwnBucket(): void
+    {
+        $store = new InMemoryLoginAttemptStore();
+        $limiter = $this->limiter($store);
+
+        $limiter->consume($this->formRequest('10.0.0.8', 'alice'));
+        $limiter->consume($this->formRequest('10.0.0.8', 'alice'));
+        $limiter->consume($this->formRequest('10.0.0.8', 'bob'));
+        $limiter->reset($this->formRequest('10.0.0.8', 'alice'));
+
+        self::assertSame(0, $store->countAttempts('10.0.0.8', 'alice', self::TIMEOUT));
+        self::assertSame(1, $store->countAttemptsByIp('10.0.0.8', self::TIMEOUT));
+    }
+
+    /**
      * Before the attempt: blocked ⇔ refused without recording. After it: the same verdict, remaining tokens and retry
      * time as the limiter returned. The info service reports the same figures.
      */
