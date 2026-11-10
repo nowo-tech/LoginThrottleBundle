@@ -56,11 +56,12 @@ Target 3.10.0 (minor: the database limiter now follows a host override of `Login
 
 - **A failed login no longer commits the host's pending changes (rule 6).** `LoginAttemptRepository::recordAttempt()`
   used to `persist()` the attempt and `flush()` the EntityManager of `LoginAttempt`, which is the host's default
-  manager in a standard install. Every failed login (`storage: database`) therefore wrote whatever the host had left
-  unflushed in that manager at that moment, e.g. entities changed by a user checker, a listener or an earlier
-  sub-request. The attempt is now written with one DBAL `INSERT` on that manager's connection (joining the host's
-  transaction when one is open); the host's unit of work is untouched. The returned attempt still carries its id.
-  Affects every release up to 3.9.0 (since 0.0.1) with `storage: database`.
+  manager in a standard install. Every login attempt recorded by the database limiter (`storage: database`, at
+  `CheckPassportEvent`) therefore wrote whatever the host had left unflushed in that manager at that moment, e.g.
+  entities changed by a listener or an earlier sub-request. The attempt is now written with one DBAL `INSERT` on that
+  manager's connection (in a savepoint of the host's transaction when one is open, so a failed insert never aborts
+  it); the host's unit of work is untouched. The returned attempt still carries its id. Affects `>= 0.0.1, < 3.10.0`
+  with `storage: database`.
 
 ### Fixed
 

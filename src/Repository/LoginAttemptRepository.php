@@ -129,7 +129,7 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
      *
      * Written with one DBAL `INSERT` on the connection of the attempt's EntityManager, never `persist()` + `flush()`:
      * in a standard install that manager is the host's default one, and a flush on a failed login would also commit
-     * whatever the host left pending in its unit of work. The row joins the host's transaction when one is open.
+     * whatever the host left pending in its unit of work. Inside a transaction the host left open, the row is written in a savepoint of that transaction.
      * The attempt never enters the identity map (worker safe) and a failed insert does not close the manager.
      *
      * @param string      $ipAddress IP address
@@ -160,7 +160,24 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
             $types[$column] = $metadata->getTypeOfField($field) ?? Types::STRING;
         }
 
-        $entityManager->getConnection()->insert($metadata->getTableName(), $data, $types);
+        $connection = $entityManager->getConnection();
+        if ($connection->isTransactionActive()) {
+            // A savepoint: a failed insert (e.g. an overlong username) rolls back only itself instead of aborting the
+            // host's whole transaction on PostgreSQL (SQLSTATE 25P02), which the ORM flush (a nested transaction) never
+            // did. Explicit savepoint calls, because DBAL 3 nests transactional() without a savepoint unless enabled.
+            $connection->createSavepoint('nowo_login_throttle_insert');
+
+            try {
+                $connection->insert($metadata->getTableName(), $data, $types);
+            } catch (\Throwable $exception) {
+                $connection->rollbackSavepoint('nowo_login_throttle_insert');
+
+                throw $exception;
+            }
+            $connection->releaseSavepoint('nowo_login_throttle_insert');
+        } else {
+            $connection->insert($metadata->getTableName(), $data, $types);
+        }
 
         // IDENTITY: the generator reads the connection's last insert id, as the ORM does after its own insert
         $id ??= $idGenerator->generateId($entityManager, $attempt);

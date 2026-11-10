@@ -68,7 +68,8 @@ No configuration change.
   of `persist()` + `flush()` of the manager that maps `LoginAttempt` (your default manager in a standard install), so
   pending changes of your application are no longer committed by a failed login. Same table, same values; the
   returned `LoginAttempt` is not managed and has its id set, as before. Doctrine lifecycle events (`prePersist`,
-  `postPersist`, `onFlush`, entity listeners) no longer fire for `LoginAttempt` rows.
+  `postPersist`, `onFlush`, entity listeners) no longer fire for `LoginAttempt` rows. Inside a transaction you left open, the
+  insert runs in a savepoint (rolled back alone if it fails).
 - **The database limiter uses `LoginAttemptRepositoryInterface`.** If you alias that interface to your own store, the
   `storage: database` limiter now records and counts attempts through it (before 3.10 only `LoginThrottleInfoService`,
   the status provider and the cleanup command did). Hosts that keep the default alias see no change.
