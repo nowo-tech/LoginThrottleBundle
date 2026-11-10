@@ -4,6 +4,7 @@
 
 - [Unreleased](#unreleased)
 - [To 3.9.0](#to-390)
+- [To 3.9.0](#to-390-1)
 - [To 3.8.0](#to-380)
 - [To 3.7.1](#to-371)
 - [To 3.7.0](#to-370)
@@ -51,6 +52,14 @@
 - [Notes](#notes)
 
 ## Unreleased
+
+## To 3.9.0
+
+From **3.8.0**:
+
+```bash
+composer update nowo-tech/login-throttle-bundle
+```
 
 ## To 3.9.0
 
