@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Nowo\LoginThrottleBundle\Repository;
 
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
+use Doctrine\Persistence\Mapping\Driver\MappingDriver;
 use Doctrine\Persistence\ObjectManager;
 use Nowo\LoginThrottleBundle\Entity\LoginAttempt;
 use Psr\Clock\ClockInterface;
@@ -125,32 +127,45 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
     /**
      * Record a failed login attempt.
      *
-     * The attempt is detached after the flush so a long-lived EntityManager (worker mode without
-     * kernel reset) does not accumulate one entity per login POST. A manager closed by a failed
-     * flush is reset before the exception is rethrown, so the next request can record again.
+     * Written with one DBAL `INSERT` on the connection of the attempt's EntityManager, never `persist()` + `flush()`:
+     * in a standard install that manager is the host's default one, and a flush on a failed login would also commit
+     * whatever the host left pending in its unit of work. The row joins the host's transaction when one is open.
+     * The attempt never enters the identity map (worker safe) and a failed insert does not close the manager.
      *
      * @param string      $ipAddress IP address
      * @param string|null $username  Username (optional)
      *
-     * @return LoginAttempt The created attempt (detached)
+     * @return LoginAttempt The created attempt (not managed, its id set)
      */
     public function recordAttempt(string $ipAddress, ?string $username): LoginAttempt
     {
-        $entityManager = $this->resolveWritableEntityManager();
+        $entityManager = $this->getEntityManager();
+        $metadata = $entityManager->getClassMetadata(LoginAttempt::class);
+        $idGenerator = $metadata->idGenerator;
         $attempt = new LoginAttempt($ipAddress, $username);
 
-        try {
-            $entityManager->persist($attempt);
-            $entityManager->flush();
-        } catch (\Throwable $exception) {
-            $this->resetClosedEntityManager($entityManager);
-
-            throw $exception;
-        } finally {
-            if ($entityManager->isOpen() && $entityManager->contains($attempt)) {
-                $entityManager->detach($attempt);
+        $id = null;
+        $data = [];
+        $types = [];
+        foreach ($metadata->getFieldNames() as $field) {
+            $isIdentifier = $metadata->isIdentifier($field);
+            if ($isIdentifier && $idGenerator->isPostInsertGenerator()) {
+                continue;
             }
+
+            $column = $metadata->getColumnName($field);
+            // SEQUENCE (or another pre-insert generator) chosen by the host's identity_generation_preferences
+            $value = $isIdentifier ? $id = $idGenerator->generateId($entityManager, $attempt) : $metadata->getFieldValue($attempt, $field);
+            $data[$column] = $value;
+            $types[$column] = $metadata->getTypeOfField($field) ?? Types::STRING;
         }
+
+        $entityManager->getConnection()->insert($metadata->getTableName(), $data, $types);
+
+        // IDENTITY: the generator reads the connection's last insert id, as the ORM does after its own insert
+        $id ??= $idGenerator->generateId($entityManager, $attempt);
+        // @igor-ignore - sets the id of the new, unmanaged attempt; the metadata itself is not changed
+        $metadata->setIdentifierValues($attempt, [$metadata->getSingleIdentifierFieldName() => $id]);
 
         return $attempt;
     }
@@ -338,14 +353,13 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
         return $this->resetClosedEntityManager($entityManager) ?? $entityManager;
     }
 
-    private function resolveWritableEntityManager(): EntityManagerInterface
-    {
-        return $this->getEntityManager();
-    }
-
+    /**
+     * Resets a closed manager only when it maps the bundle's entities alone (a dedicated manager). A closed manager
+     * shared with the host is left for the host to reset: DQL reads and DBAL writes still work through it.
+     */
     private function resetClosedEntityManager(EntityManagerInterface $entityManager): ?EntityManagerInterface
     {
-        if ($entityManager->isOpen()) {
+        if ($entityManager->isOpen() || !$this->isDedicatedManager($entityManager)) {
             return null;
         }
 
@@ -360,6 +374,23 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
         }
 
         return null;
+    }
+
+    /** True when every class the manager maps belongs to this bundle. */
+    private function isDedicatedManager(EntityManagerInterface $entityManager): bool
+    {
+        $driver = $entityManager->getConfiguration()->getMetadataDriverImpl();
+        if (!$driver instanceof MappingDriver) {
+            return false;
+        }
+
+        foreach ($driver->getAllClassNames() as $className) {
+            if (!str_starts_with($className, 'Nowo\\LoginThrottleBundle\\Entity\\')) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

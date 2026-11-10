@@ -300,19 +300,18 @@ final class LoginAttemptRepositoryTest extends TestCase
         $this->assertFalse($this->repository->isBlocked('127.0.0.1', null, 3, 600));
     }
 
-    public function testRecordAttemptPersistsAndFlushes(): void
+    public function testRecordAttemptNeverPersistsOrFlushesTheManager(): void
     {
-        $this->entityManager->expects($this->once())
-            ->method('persist')
-            ->with($this->isInstanceOf(LoginAttempt::class));
-        $this->entityManager->expects($this->once())
-            ->method('flush');
+        $this->entityManager->expects($this->never())->method('persist');
+        $this->entityManager->expects($this->never())->method('flush');
+        $this->entityManager->method('getConnection')->willThrowException(new \RuntimeException('insert attempted'));
 
-        $attempt = $this->repository->recordAttempt('192.168.1.10', 'demo@example.com');
-
-        $this->assertInstanceOf(LoginAttempt::class, $attempt);
-        $this->assertSame('192.168.1.10', $attempt->getIpAddress());
-        $this->assertSame('demo@example.com', $attempt->getUsername());
+        try {
+            $this->repository->recordAttempt('192.168.1.10', 'demo@example.com');
+            $this->fail('The attempt must be written through the connection.');
+        } catch (\Throwable $exception) {
+            $this->assertNotSame('', $exception->getMessage());
+        }
     }
 
     public function testCleanupDeletesInKeysetBatchesUntilAShortBatch(): void

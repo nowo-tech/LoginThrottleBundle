@@ -317,7 +317,7 @@ Use cache/Redis when:
 
 ### FrankenPHP worker mode
 
-With `storage: database`, the repository detaches every `LoginAttempt` it writes or loads and recovers a closed EntityManager through `ManagerRegistry`. That keeps the limiter safe when FrankenPHP workers do **not** reset the kernel between requests. Details: [`FRANKENPHP-WORKER-AUDIT.md`](FRANKENPHP-WORKER-AUDIT.md).
+With `storage: database`, the repository writes attempts with a DBAL insert (never `flush()`, so nothing of your application is committed and no attempt enters the identity map), detaches every `LoginAttempt` it loads, and resets a closed EntityManager through `ManagerRegistry` only when that manager maps the bundle's entities alone. That keeps the limiter safe when FrankenPHP workers do **not** reset the kernel between requests. Details: [`FRANKENPHP-WORKER-AUDIT.md`](FRANKENPHP-WORKER-AUDIT.md).
 
 ## Migration from Cache to Database
 

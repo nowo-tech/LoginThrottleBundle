@@ -99,10 +99,10 @@ final class LoginLockoutListener
 
 **Known limitations**
 
-- The database limiter is wired to the concrete `LoginAttemptRepository`. Overriding
-  `LoginAttemptRepositoryInterface` changes only `LoginThrottleInfoService` and the cleanup command, not the limiter,
-  and `storage: database` requires `register_mapping` `true` or `auto`. To use your own persistence, provide your own
-  `rate_limiter` instead.
+- Since 3.10 the database limiter uses `LoginAttemptRepositoryInterface`, so aliasing it to your own store changes the
+  limiter too. `storage: database` still requires `register_mapping` `true` or `auto` (the bundle's table is mapped
+  even when your store does not use it); for persistence without the bundle's table, provide your own `rate_limiter`.
+- The bundle's repository never flushes your EntityManager: attempts are written with a DBAL insert on its connection.
 - `LoginAttemptRepositoryInterface` still declares `recordAttempt(): LoginAttempt` and `getAttempts(): list<LoginAttempt>`
   (kept for BC); the bundle itself reads through `LoginAttemptViewRepositoryInterface` when your store implements it.
 - `username_from_passport` is `false` by default (3.x keeps today's keys): with `json_login` and no matching POST

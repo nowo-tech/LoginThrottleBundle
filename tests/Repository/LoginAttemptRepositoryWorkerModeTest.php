@@ -10,6 +10,7 @@ use Doctrine\ORM\Configuration;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\ORMSetup;
+use Doctrine\ORM\QueryBuilder;
 use Doctrine\ORM\Tools\SchemaTool;
 use Doctrine\Persistence\ManagerRegistry;
 use Doctrine\Persistence\ObjectManager;
@@ -70,7 +71,7 @@ final class LoginAttemptRepositoryWorkerModeTest extends TestCase
         $this->assertSame(0, $aliceAgain->getRemainingTokens());
     }
 
-    public function testFailedFlushDoesNotLeaveTheEntityManagerClosedForTheNextRequest(): void
+    public function testFailedInsertDoesNotCloseTheEntityManager(): void
     {
         $repository = new LoginAttemptRepository($this->registry);
         $first = $this->registry->current();
@@ -83,8 +84,9 @@ final class LoginAttemptRepositoryWorkerModeTest extends TestCase
         } catch (\Throwable) {
         }
 
-        $this->assertFalse($first->isOpen());
-        $this->assertNotSame($first, $this->registry->current());
+        // a DBAL insert never closes the manager, so nothing has to be reset (it may be the host's)
+        $this->assertTrue($first->isOpen());
+        $this->assertSame($first, $this->registry->current());
 
         $this->createSchema();
         $attempt = $repository->recordAttempt('10.0.0.2', 'bob');
@@ -123,10 +125,8 @@ final class LoginAttemptRepositoryWorkerModeTest extends TestCase
 
     public function testClosedManagerUnknownToRegistryIsNotReset(): void
     {
-        $closed = $this->createMock(EntityManagerInterface::class);
-        $closed->method('isOpen')->willReturn(false);
-        $closed->expects($this->once())->method('persist');
-        $closed->expects($this->never())->method('detach');
+        $closed = $this->registry->current();
+        $closed->close();
 
         $registry = $this->createMock(ManagerRegistry::class);
         $registry->method('getManagerForClass')->willReturn($closed);
@@ -134,14 +134,15 @@ final class LoginAttemptRepositoryWorkerModeTest extends TestCase
         $registry->method('getManager')->with('other')->willReturn($this->createMock(EntityManagerInterface::class));
         $registry->expects($this->never())->method('resetManager');
 
-        (new LoginAttemptRepository($registry))->recordAttempt('10.0.0.4', null);
+        $attempt = (new LoginAttemptRepository($registry))->recordAttempt('10.0.0.4', null);
+
+        $this->assertNotNull($attempt->getId());
     }
 
     public function testResetReturningNonOrmManagerKeepsTheClosedManager(): void
     {
-        $closed = $this->createMock(EntityManagerInterface::class);
-        $closed->method('isOpen')->willReturn(false);
-        $closed->expects($this->once())->method('persist');
+        $closed = $this->registry->current();
+        $closed->close();
 
         $registry = $this->createMock(ManagerRegistry::class);
         $registry->method('getManagerForClass')->willReturn($closed);
@@ -149,7 +150,22 @@ final class LoginAttemptRepositoryWorkerModeTest extends TestCase
         $registry->method('getManager')->with('default')->willReturn($closed);
         $registry->expects($this->once())->method('resetManager')->willReturn($this->createMock(ObjectManager::class));
 
-        (new LoginAttemptRepository($registry))->recordAttempt('10.0.0.5', null);
+        $attempt = (new LoginAttemptRepository($registry))->recordAttempt('10.0.0.5', null);
+
+        $this->assertNotNull($attempt->getId());
+    }
+
+    public function testClosedManagerWithoutMetadataDriverIsNotReset(): void
+    {
+        $closed = $this->createMock(EntityManagerInterface::class);
+        $closed->method('isOpen')->willReturn(false);
+        $closed->method('getConfiguration')->willReturn(new Configuration());
+
+        $registry = $this->createMock(ManagerRegistry::class);
+        $registry->method('getManagerForClass')->willReturn($closed);
+        $registry->expects($this->never())->method('resetManager');
+
+        $this->assertInstanceOf(QueryBuilder::class, (new LoginAttemptRepository($registry))->createQueryBuilder('la'));
     }
 
     public function testNonOrmManagerForClassThrows(): void

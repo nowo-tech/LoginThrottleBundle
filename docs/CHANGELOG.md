@@ -49,6 +49,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Target 3.10.0 (minor: the database limiter now follows a host override of `LoginAttemptRepositoryInterface`, which
+3.9 documented as ignored). See [UPGRADING](UPGRADING.md#to-3100).
+
+### Security
+
+- **A failed login no longer commits the host's pending changes (rule 6).** `LoginAttemptRepository::recordAttempt()`
+  used to `persist()` the attempt and `flush()` the EntityManager of `LoginAttempt`, which is the host's default
+  manager in a standard install. Every failed login (`storage: database`) therefore wrote whatever the host had left
+  unflushed in that manager at that moment, e.g. entities changed by a user checker, a listener or an earlier
+  sub-request. The attempt is now written with one DBAL `INSERT` on that manager's connection (joining the host's
+  transaction when one is open); the host's unit of work is untouched. The returned attempt still carries its id.
+  Affects every release up to 3.9.0 (since 0.0.1) with `storage: database`.
+
+### Fixed
+
+- The database rate limiter is wired to `LoginAttemptRepositoryInterface` instead of the concrete
+  `LoginAttemptRepository`, so a host store aliased to the port drives the limiter as documented.
+- A closed EntityManager is reset only when it maps the bundle's entities alone (a dedicated manager). A closed manager
+  shared with the host is left for the host to reset; DQL reads and the DBAL insert keep working through it.
+
 ## [3.9.0] - 2026-11-10
 
 Target: 3.9.0 (DDD P2). See [UPGRADING](UPGRADING.md#to-390).

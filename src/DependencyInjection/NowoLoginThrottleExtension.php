@@ -469,7 +469,8 @@ final class NowoLoginThrottleExtension extends Extension implements PrependExten
         // Register the database rate limiter service
         $container->register($serviceId, DatabaseRateLimiter::class)
             ->setArguments([
-                new Reference(LoginAttemptRepository::class),
+                // the port, so a host store aliased to LoginAttemptRepositoryInterface drives the limiter too
+                new Reference(LoginAttemptRepositoryInterface::class),
                 $config['max_count_attempts'],
                 $config['timeout'],
                 $config['max_count_attempts_per_ip'] ?? null,
