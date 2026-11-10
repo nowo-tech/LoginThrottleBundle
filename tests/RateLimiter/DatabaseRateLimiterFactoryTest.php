@@ -7,8 +7,11 @@ namespace Nowo\LoginThrottleBundle\Tests\RateLimiter;
 use Nowo\LoginThrottleBundle\RateLimiter\DatabaseRateLimiter;
 use Nowo\LoginThrottleBundle\RateLimiter\DatabaseRateLimiterFactory;
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface;
+use Nowo\LoginThrottleBundle\Tests\Support\InMemoryLoginAttemptStore;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Security\Http\SecurityRequestAttributes;
 
 /**
  * Tests for DatabaseRateLimiterFactory.
@@ -36,6 +39,19 @@ final class DatabaseRateLimiterFactoryTest extends TestCase
         $rateLimiter = $this->factory->create();
 
         $this->assertInstanceOf(DatabaseRateLimiter::class, $rateLimiter);
+    }
+
+    public function testCreatedLimiterKeysJsonLoginOnThePassportIdentifierWhenEnabled(): void
+    {
+        $store = new InMemoryLoginAttemptStore();
+        $request = Request::create('/api/login', 'POST', server: ['REMOTE_ADDR' => '10.0.0.1']);
+        $request->attributes->set(SecurityRequestAttributes::LAST_USERNAME, 'Carol');
+
+        (new DatabaseRateLimiterFactory($store, 3, 600, null, true))->create()->consume($request);
+        (new DatabaseRateLimiterFactory($store, 3, 600))->create()->consume($request);
+
+        $this->assertSame(1, $store->countAttemptsByUsername('carol', 600));
+        $this->assertSame(2, $store->countAttemptsByIp('10.0.0.1', 600));
     }
 
     public function testCreateReturnsNewInstance(): void

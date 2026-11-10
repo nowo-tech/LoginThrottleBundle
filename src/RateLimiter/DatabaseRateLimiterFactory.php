@@ -20,16 +20,18 @@ final class DatabaseRateLimiterFactory
     /**
      * Constructor.
      *
-     * @param LoginAttemptRepositoryInterface $repository       The login attempt repository
-     * @param int                             $maxAttempts      Maximum number of attempts per IP + username
-     * @param int                             $timeoutSeconds   Timeout period in seconds
-     * @param int|null                        $maxAttemptsPerIp Maximum number of attempts per IP (null: 5 × maxAttempts)
+     * @param LoginAttemptRepositoryInterface $repository           The login attempt repository
+     * @param int                             $maxAttempts          Maximum number of attempts per IP + username
+     * @param int                             $timeoutSeconds       Timeout period in seconds
+     * @param int|null                        $maxAttemptsPerIp     Maximum number of attempts per IP (null: 5 × maxAttempts)
+     * @param bool                            $usernameFromPassport Fall back to the passport identifier when no POST field holds a username (3.9, option {@code username_from_passport})
      */
     public function __construct(
         private readonly LoginAttemptRepositoryInterface $repository,
         private readonly int $maxAttempts,
         private readonly int $timeoutSeconds,
-        private readonly ?int $maxAttemptsPerIp = null
+        private readonly ?int $maxAttemptsPerIp = null,
+        private readonly bool $usernameFromPassport = false,
     ) {
     }
 
@@ -44,7 +46,9 @@ final class DatabaseRateLimiterFactory
             $this->repository,
             $this->maxAttempts,
             $this->timeoutSeconds,
-            $this->maxAttemptsPerIp
+            $this->maxAttemptsPerIp,
+            null,
+            $this->usernameFromPassport,
         );
     }
 }

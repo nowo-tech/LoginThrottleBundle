@@ -80,7 +80,7 @@ No configuration change is needed; the limiter keys and limits are unchanged.
 - **New ports:** prefer `LoginThrottleStatusProviderInterface` over `getAttemptInfo()` in new code. A custom
   `LoginAttemptRepositoryInterface` store can also implement `LoginAttemptViewRepositoryInterface` so the bundle
   never needs `LoginAttempt` entities from it.
-- `DatabaseRateLimiter` has a new optional sixth constructor argument (`$usernameFromPassport`, default `false`).
+- `DatabaseRateLimiter` has a new optional sixth constructor argument and `DatabaseRateLimiterFactory` a new optional fifth one (`$usernameFromPassport`, default `false`).
 
 ## To 3.8.0
 
