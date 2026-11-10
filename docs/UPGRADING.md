@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 3.10.0](#to-3100)
 - [To 3.9.0](#to-390)
 - [To 3.9.0](#to-390-1)
 - [To 3.8.0](#to-380)
@@ -52,6 +53,28 @@
 - [Notes](#notes)
 
 ## Unreleased
+
+## To 3.10.0
+
+From **3.9.0**:
+
+```bash
+composer update nowo-tech/login-throttle-bundle
+```
+
+No configuration change.
+
+- **Failed logins no longer flush your EntityManager.** `recordAttempt()` writes the row with a DBAL `INSERT` instead
+  of `persist()` + `flush()` of the manager that maps `LoginAttempt` (your default manager in a standard install), so
+  pending changes of your application are no longer committed by a failed login. Same table, same values; the
+  returned `LoginAttempt` is not managed and has its id set, as before. Doctrine lifecycle events (`prePersist`,
+  `postPersist`, `onFlush`, entity listeners) no longer fire for `LoginAttempt` rows. Inside a transaction you left open, the
+  insert runs in a savepoint (rolled back alone if it fails).
+- **The database limiter uses `LoginAttemptRepositoryInterface`.** If you alias that interface to your own store, the
+  `storage: database` limiter now records and counts attempts through it (before 3.10 only `LoginThrottleInfoService`,
+  the status provider and the cleanup command did). Hosts that keep the default alias see no change.
+- **Closed EntityManager:** the bundle no longer resets a closed manager that also maps your entities; reset it in your
+  own error handling. A manager that maps only the bundle's entities is still reset.
 
 ## To 3.9.0
 
@@ -257,7 +280,7 @@ No configuration changes.
 #### Behaviour changes (database storage, worker runtimes)
 
 - `LoginAttemptRepository::recordAttempt()` returns a **detached** `LoginAttempt` (its id is set), and `getAttempts()` returns detached entities. Code that modified these objects and relied on a later `flush()` to save the change must re-fetch them first.
-- When the EntityManager that maps `LoginAttempt` is closed, `recordAttempt()` and DQL helpers (`countAttempts*`, `clearAttempts`, `cleanup`, `getAttempts`) resolve a live manager through `ManagerRegistry` (including after `resetManager()` under Doctrine ORM 3's `ServiceEntityRepository` proxy).
+- (Superseded in 3.10: only a manager dedicated to the bundle is reset.) When the EntityManager that maps `LoginAttempt` is closed, `recordAttempt()` and DQL helpers (`countAttempts*`, `clearAttempts`, `cleanup`, `getAttempts`) resolve a live manager through `ManagerRegistry` (including after `resetManager()` under Doctrine ORM 3's `ServiceEntityRepository` proxy).
 - The default `config/packages/nowo_login_throttle.yaml` is no longer generated on boot when the target directory is not writable (read-only images).
 - See [`FRANKENPHP-WORKER-AUDIT.md`](FRANKENPHP-WORKER-AUDIT.md) for the scenario B (no kernel reset) guarantee.
 

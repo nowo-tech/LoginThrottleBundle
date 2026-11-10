@@ -10,14 +10,19 @@ use Doctrine\ORM\Tools\SchemaTool;
 use Doctrine\Persistence\ManagerRegistry;
 use Nowo\LoginThrottleBundle\DependencyInjection\NowoLoginThrottleExtension;
 use Nowo\LoginThrottleBundle\Entity\LoginAttempt;
+use Nowo\LoginThrottleBundle\RateLimiter\DatabaseRateLimiter;
+use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface;
 use Nowo\LoginThrottleBundle\Tests\Integration\Kernel\MappingTestKernel;
+use Nowo\LoginThrottleBundle\Tests\Support\InMemoryLoginAttemptStore;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Console\Tester\CommandTester;
+use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\Exception\InvalidArgumentException;
 use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\HttpFoundation\Request;
 
 /**
  * doctrine.register_mapping in a booted host with Doctrine ORM auto_mapping.
@@ -93,6 +98,26 @@ final class DoctrineMappingKernelTest extends TestCase
 
         self::assertSame(0, $tester->execute(['--dry-run' => true]));
         self::assertTrue($this->container()->has(NowoLoginThrottleExtension::DATABASE_RATE_LIMITER_SERVICE_ID));
+    }
+
+    public function testDatabaseLimiterUsesTheRepositoryPortAliasedByTheHost(): void
+    {
+        $config = ['storage' => 'database', 'max_count_attempts' => 2];
+        $this->kernel = new MappingTestKernel($config, 'host-store', static function (ContainerBuilder $container): void {
+            $container->register('app.login_attempt_store', InMemoryLoginAttemptStore::class)->setPublic(true);
+            $container->setAlias(LoginAttemptRepositoryInterface::class, 'app.login_attempt_store');
+        });
+        $this->kernel->boot();
+
+        $limiter = $this->container()->get(NowoLoginThrottleExtension::DATABASE_RATE_LIMITER_SERVICE_ID);
+        self::assertInstanceOf(DatabaseRateLimiter::class, $limiter);
+        $store = $this->container()->get('app.login_attempt_store');
+        self::assertInstanceOf(InMemoryLoginAttemptStore::class, $store);
+
+        $request = Request::create('/login', 'POST', ['_username' => 'alice'], server: ['REMOTE_ADDR' => '10.0.0.1']);
+        $limiter->consume($request);
+
+        self::assertSame(1, $store->countAttempts('10.0.0.1', 'alice', 600), 'the attempt went to the host store, not the bundle table');
     }
 
     public function testFalseWithDatabaseStorageFailsAtContainerBuild(): void

@@ -18,12 +18,14 @@ use Symfony\Component\HttpKernel\Kernel;
 final class MappingTestKernel extends Kernel
 {
     /**
-     * @param array<string, mixed> $throttleConfig nowo_login_throttle configuration
-     * @param string               $caseId         Unique cache directory suffix
+     * @param array<string, mixed>                    $throttleConfig nowo_login_throttle configuration
+     * @param string                                  $caseId         Unique cache directory suffix
+     * @param (\Closure(ContainerBuilder): void)|null $services       Host services and aliases
      */
     public function __construct(
         private readonly array $throttleConfig,
         private readonly string $caseId,
+        private readonly ?\Closure $services = null,
     ) {
         parent::__construct('test', false);
     }
@@ -70,6 +72,9 @@ final class MappingTestKernel extends Kernel
                 'orm' => ['auto_mapping' => true],
             ]);
             $container->loadFromExtension('nowo_login_throttle', $this->throttleConfig);
+            if ($this->services instanceof \Closure) {
+                ($this->services)($container);
+            }
         });
     }
 }
