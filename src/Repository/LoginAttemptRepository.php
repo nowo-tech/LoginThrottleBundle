@@ -20,7 +20,7 @@ use Psr\Clock\ClockInterface;
  * @author Héctor Franco Aceituno <hectorfranco@nowo.tech>
  * @copyright 2025 Nowo.tech
  */
-final class LoginAttemptRepository extends ServiceEntityRepository implements LoginAttemptRepositoryInterface
+final class LoginAttemptRepository extends ServiceEntityRepository implements LoginAttemptRepositoryInterface, LoginAttemptViewRepositoryInterface
 {
     /** Rows per DELETE statement in {@see cleanup()}. */
     public const CLEANUP_BATCH_SIZE = 1000;
@@ -280,6 +280,36 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
         }
 
         return $result;
+    }
+
+    /**
+     * Attempts for a given IP and username as read-only views, newest first (3.9).
+     *
+     * @param string      $ipAddress IP address (empty string to ignore the IP filter)
+     * @param string|null $username  Username (null to ignore the username filter)
+     * @param int         $seconds   Time window in seconds
+     *
+     * @return list<LoginAttemptView>
+     */
+    public function getAttemptViews(string $ipAddress, ?string $username, int $seconds): array
+    {
+        return array_map(LoginAttemptView::fromEntity(...), $this->getAttempts($ipAddress, $username, $seconds));
+    }
+
+    /**
+     * Time of the oldest attempt for a given IP and username within the window (3.9).
+     *
+     * @param string      $ipAddress IP address (empty string to ignore the IP filter)
+     * @param string|null $username  Username (null to ignore the username filter)
+     * @param int         $seconds   Time window in seconds
+     *
+     * @return \DateTimeImmutable|null The oldest attempt time, or null without attempts
+     */
+    public function findOldestAttemptAt(string $ipAddress, ?string $username, int $seconds): ?\DateTimeImmutable
+    {
+        $attempts = $this->getAttempts($ipAddress, $username, $seconds);
+
+        return [] === $attempts ? null : $attempts[array_key_last($attempts)]->getCreatedAt();
     }
 
     /**

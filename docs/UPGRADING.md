@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 3.9.0](#to-390)
 - [To 3.8.0](#to-380)
 - [To 3.7.1](#to-371)
 - [To 3.7.0](#to-370)
@@ -50,6 +51,36 @@
 - [Notes](#notes)
 
 ## Unreleased
+
+## To 3.9.0
+
+From **3.8.0** (target 3.9.0, DDD P2):
+
+```bash
+composer update nowo-tech/login-throttle-bundle
+```
+
+No configuration change is needed; the limiter keys and limits are unchanged.
+
+- **Login page figures:** with `storage: database`, `LoginThrottleInfoService::getAttemptInfo()` now returns the
+  limiter's figures. With a username, `current_attempts` counts the IP + username bucket (before: that username from
+  every IP) and the username is trimmed and lower-cased; `is_blocked` / `remaining_attempts` also reflect the per-IP
+  cap. Templates that show these values may display different (correct) numbers.
+- **json_login:** to key `json_login` or custom-authenticator attempts on the submitted identifier instead of the IP
+  only, set:
+
+  ```yaml
+  nowo_login_throttle:
+      username_from_passport: true
+  ```
+
+  Each identifier then gets its own `max_count_attempts` bucket per IP, and the per-IP cap
+  (`max_count_attempts_per_ip`, default 5 × `max_count_attempts`) still stops an IP that rotates identifiers. Without
+  it, one IP shares a single `max_count_attempts` bucket, as before.
+- **New ports:** prefer `LoginThrottleStatusProviderInterface` over `getAttemptInfo()` in new code. A custom
+  `LoginAttemptRepositoryInterface` store can also implement `LoginAttemptViewRepositoryInterface` so the bundle
+  never needs `LoginAttempt` entities from it.
+- `DatabaseRateLimiter` has a new optional sixth constructor argument (`$usernameFromPassport`, default `false`).
 
 ## To 3.8.0
 

@@ -66,7 +66,9 @@ there is no relation to your `User` entity, no `resolve_target_entities` and not
 | --- | --- |
 | Your own throttling store or rules | Implement `Symfony\Component\HttpFoundation\RateLimiter\RequestRateLimiterInterface` and set `rate_limiter: <service id>` (or `firewalls.<name>.rate_limiter`). The bundle then registers no database limiter for that firewall. |
 | React to a lockout (audit, notification) | Listen to Symfony's `LoginFailureEvent` and check `getException() instanceof TooManyLoginAttemptsAuthenticationException`. The bundle dispatches no events of its own. |
-| Show remaining attempts on the login page | `LoginThrottleInfoService::getAttemptInfo(string $firewall, Request $request, ?string $username = null): array`. It is presentation support, so keep it in your controller or Twig layer. |
+| Show remaining attempts on the login page | `LoginThrottleStatusProviderInterface::status(string $firewall, string $ipAddress, ?string $username = null): ThrottleStatus` (since 3.9; HTTP-free, typed, same rules as the database limiter: normalised username, IP + username bucket, per-IP cap). `LoginThrottleInfoService::getAttemptInfo()` returns the same figures as an array. |
+| Read the attempt store without the Doctrine entity | `LoginAttemptViewRepositoryInterface` (since 3.9, implemented by `LoginAttemptRepository`): `getAttemptViews()` returns readonly `LoginAttemptView` DTOs, `findOldestAttemptAt()` a `DateTimeImmutable`. |
+| `json_login` / custom authenticators with `storage: database` | Set `username_from_passport: true` (since 3.9): without `_username` / `username` / `email` POST fields, attempts are keyed on the identifier the visitor submitted (the passport `UserBadge` identifier, never the resolved user), like `form_login`. |
 | Testable time | Register a `Psr\Clock\ClockInterface` service. The database limiter and the repository use it when present. |
 
 Example adapter that turns a lockout into an application command:
@@ -101,9 +103,10 @@ final class LoginLockoutListener
   `LoginAttemptRepositoryInterface` changes only `LoginThrottleInfoService` and the cleanup command, not the limiter,
   and `storage: database` requires `register_mapping` `true` or `auto`. To use your own persistence, provide your own
   `rate_limiter` instead.
-- `LoginAttemptRepositoryInterface` returns the Doctrine entity `LoginAttempt` (`recordAttempt()`, `getAttempts()`).
-- The database limiter reads the username only from the `_username`, `username` and `email` POST fields (top level or
-  under `login_form`). With `json_login` or other field names, attempts are keyed by IP only.
-- `LoginThrottleInfoService` does not lowercase the username and does not apply `max_count_attempts_per_ip`, so its
-  figures can differ from what the limiter enforces.
+- `LoginAttemptRepositoryInterface` still declares `recordAttempt(): LoginAttempt` and `getAttempts(): list<LoginAttempt>`
+  (kept for BC); the bundle itself reads through `LoginAttemptViewRepositoryInterface` when your store implements it.
+- `username_from_passport` is `false` by default (3.x keeps today's keys): with `json_login` and no matching POST
+  fields, attempts stay keyed by IP only until you enable it.
+- With `storage: cache` the bundle cannot read Symfony's limiter state: `ThrottleStatus::$tracked` is `false` and the
+  figures are unknown.
 - `doctrine/orm` and `doctrine/doctrine-bundle` are required even when every firewall uses `storage: cache`.

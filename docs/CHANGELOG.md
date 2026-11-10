@@ -48,6 +48,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Target: 3.9.0 (DDD P2). See [UPGRADING](UPGRADING.md#to-390).
+
+### Added
+
+- `LoginThrottleStatusProviderInterface` (default `LoginThrottleStatusProvider`): `status(firewall, ip, ?username)`
+  returns a readonly `Throttle\ThrottleStatus` computed with the database limiter's own rules, without a `Request`.
+- `Throttle\ThrottleRules` and `Throttle\UsernameNormalizer`: one implementation of the limits, the per-IP cap, the
+  retry time and the username extraction, shared by `DatabaseRateLimiter`, the status provider and
+  `LoginThrottleInfoService`.
+- `LoginAttemptViewRepositoryInterface` (`getAttemptViews()` → readonly `LoginAttemptView` DTOs,
+  `findOldestAttemptAt()`), implemented by `LoginAttemptRepository`; used instead of the entity-returning
+  `getAttempts()` when the store implements it.
+- `username_from_passport` (default `false`): with `storage: database`, requests without username POST fields
+  (`json_login`, custom authenticators) are keyed on the passport identifier Symfony stores on the request, like
+  `form_login`, instead of the IP only.
+- `max_attempts_per_ip` in the `nowo_login_throttle.firewalls` parameter.
+
+### Fixed
+
+- `LoginThrottleInfoService::getAttemptInfo()` (database storage) now reports what the limiter enforces: the
+  IP + username bucket with a trimmed, lower-cased username (it counted the raw username across every IP), and the
+  per-IP cap (`max_count_attempts_per_ip`) in `is_blocked` / `remaining_attempts`. Same array shape.
+
 ### Documentation
 
 - USAGE: new section "Using it from a DDD / hexagonal application" (where the bundle sits in a hexagonal host, the ports, events and DTOs to build an anti-corruption layer on, and the known limitations).

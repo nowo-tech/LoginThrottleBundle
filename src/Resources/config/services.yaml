@@ -9,6 +9,8 @@ services:
     exclude:
       - '../../DependencyInjection/'
       - '../../NowoLoginThrottleBundle.php'
+      - '../../Throttle/'
+      - '../../Repository/LoginAttemptView.php'
 
   # REQ-SF-003: #[AsCommand] + autoconfigure register the commands (no manual console.command tag).
   Nowo\LoginThrottleBundle\Command\ConfigureSecurityCommand:
@@ -46,3 +48,12 @@ services:
     # Repository is optional - only needed for database storage
     # It will be autowired if available
 
+
+  # HTTP-free status with the limiter's own rules (3.9)
+  Nowo\LoginThrottleBundle\Service\LoginThrottleStatusProvider:
+    arguments:
+      $firewalls: '%nowo_login_throttle.firewalls%'
+      $repository: '@?Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface'
+
+  Nowo\LoginThrottleBundle\Service\LoginThrottleStatusProviderInterface:
+    alias: Nowo\LoginThrottleBundle\Service\LoginThrottleStatusProvider

@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Nowo\LoginThrottleBundle\Tests\Service;
 
-use Nowo\LoginThrottleBundle\Entity\LoginAttempt;
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface;
 use Nowo\LoginThrottleBundle\Service\LoginThrottleInfoService;
+use Nowo\LoginThrottleBundle\Tests\Support\InMemoryLoginAttemptStore;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
@@ -44,131 +44,55 @@ final class LoginThrottleInfoServiceTest extends TestCase
         $this->assertSame('ip', $result['tracking_type']);
     }
 
-    public function testGetAttemptInfoWithDatabaseStorageByUsername(): void
+    /**
+     * 3.9: the database figures are the limiter's IP + username bucket (normalised), not a cross-IP username count.
+     */
+    public function testDatabaseFiguresFollowTheLimiterBucket(): void
     {
-        $config = [
-            'main' => [
-                'max_attempts' => 3,
-                'timeout' => 600,
-                'storage' => 'database',
-            ],
-        ];
-        $this->service->setFirewallsConfig($config);
+        $store = new InMemoryLoginAttemptStore();
+        $store->recordAttempt('192.168.1.1', 'test@example.com');
+        $store->recordAttempt('192.168.1.1', 'test@example.com');
+        $store->recordAttempt('10.9.9.9', 'test@example.com');
 
-        $request = Request::create('/login', 'POST', ['_username' => 'test@example.com']);
+        $service = new LoginThrottleInfoService();
+        $service->setRepository($store);
+        $service->setFirewallsConfig(['main' => ['max_attempts' => 3, 'timeout' => 600, 'storage' => 'database']]);
 
-        $this->repository
-            ->expects($this->once())
-            ->method('countAttemptsByUsername')
-            ->with('test@example.com', 600)
-            ->willReturn(2);
-
-        $result = $this->service->getAttemptInfo('main', $request);
+        $request = Request::create('/login', 'POST', ['login_form' => ['_username' => ' Test@Example.com']], server: ['REMOTE_ADDR' => '192.168.1.1']);
+        $result = $service->getAttemptInfo('main', $request);
 
         $this->assertSame(2, $result['current_attempts']);
         $this->assertSame(3, $result['max_attempts']);
         $this->assertSame(1, $result['remaining_attempts']);
         $this->assertFalse($result['is_blocked']);
+        $this->assertNull($result['retry_after']);
         $this->assertSame('username', $result['tracking_type']);
+
+        $store->recordAttempt('192.168.1.1', 'test@example.com');
+        $blocked = $service->getAttemptInfo('main', Request::create('/login', 'GET', server: ['REMOTE_ADDR' => '192.168.1.1']), 'TEST@example.com');
+        $this->assertTrue($blocked['is_blocked']);
+        $this->assertSame(0, $blocked['remaining_attempts']);
+        $this->assertEquals($store->now->modify('+600 seconds'), $blocked['retry_after']);
     }
 
-    public function testGetAttemptInfoWithDatabaseStorageByIp(): void
+    public function testDatabaseFiguresApplyThePerIpCapAndTheLegacyFlatConfig(): void
     {
-        $config = [
-            'main' => [
-                'max_attempts' => 3,
-                'timeout' => 600,
-                'storage' => 'database',
-            ],
-        ];
-        $this->service->setFirewallsConfig($config);
+        $store = new InMemoryLoginAttemptStore();
+        foreach (['a', 'b'] as $username) {
+            $store->recordAttempt('192.168.1.1', $username);
+        }
 
-        $request = Request::create('/login', 'POST');
-        $request->server->set('REMOTE_ADDR', '192.168.1.1');
+        $service = new LoginThrottleInfoService();
+        $service->setRepository($store);
+        $service->setFirewallsConfig(['max_attempts' => 5, 'interval' => '5 minutes', 'storage' => 'database', 'firewall' => 'main', 'max_attempts_per_ip' => 2]);
 
-        $this->repository
-            ->expects($this->once())
-            ->method('countAttemptsByIp')
-            ->with('192.168.1.1', 600)
-            ->willReturn(1);
+        $result = $service->getAttemptInfo('main', Request::create('/login', 'POST', ['email' => 'c'], server: ['REMOTE_ADDR' => '192.168.1.1']));
 
-        $result = $this->service->getAttemptInfo('main', $request);
-
-        $this->assertSame(1, $result['current_attempts']);
-        $this->assertSame(3, $result['max_attempts']);
-        $this->assertSame(2, $result['remaining_attempts']);
-        $this->assertFalse($result['is_blocked']);
-        $this->assertSame('ip', $result['tracking_type']);
-    }
-
-    public function testGetAttemptInfoWithBlockedAccountByUsername(): void
-    {
-        $config = [
-            'main' => [
-                'max_attempts' => 3,
-                'timeout' => 600,
-                'storage' => 'database',
-            ],
-        ];
-        $this->service->setFirewallsConfig($config);
-
-        $request = Request::create('/login', 'POST', ['_username' => 'test@example.com']);
-
-        $this->repository
-            ->expects($this->once())
-            ->method('countAttemptsByUsername')
-            ->with('test@example.com', 600)
-            ->willReturn(3);
-
-        $oldestAttempt = new LoginAttempt('192.168.1.1', 'test@example.com');
-        new \DateTimeImmutable('+10 minutes');
-
-        $this->repository
-            ->expects($this->once())
-            ->method('getAttempts')
-            ->with('', 'test@example.com', 600)
-            ->willReturn([$oldestAttempt]);
-
-        $result = $this->service->getAttemptInfo('main', $request);
-
-        $this->assertSame(3, $result['current_attempts']);
+        $this->assertSame(0, $result['current_attempts']);
+        $this->assertSame(5, $result['max_attempts']);
         $this->assertTrue($result['is_blocked']);
+        $this->assertSame(0, $result['remaining_attempts']);
         $this->assertSame('username', $result['tracking_type']);
-    }
-
-    public function testGetAttemptInfoWithBlockedAccountByIp(): void
-    {
-        $config = [
-            'main' => [
-                'max_attempts' => 3,
-                'timeout' => 600,
-                'storage' => 'database',
-            ],
-        ];
-        $this->service->setFirewallsConfig($config);
-
-        $request = Request::create('/login', 'POST');
-        $request->server->set('REMOTE_ADDR', '192.168.1.1');
-
-        $this->repository
-            ->expects($this->once())
-            ->method('countAttemptsByIp')
-            ->with('192.168.1.1', 600)
-            ->willReturn(3);
-
-        $oldestAttempt = new LoginAttempt('192.168.1.1');
-
-        $this->repository
-            ->expects($this->once())
-            ->method('getAttempts')
-            ->with('192.168.1.1', null, 600)
-            ->willReturn([$oldestAttempt]);
-
-        $result = $this->service->getAttemptInfo('main', $request);
-
-        $this->assertSame(3, $result['current_attempts']);
-        $this->assertTrue($result['is_blocked']);
-        $this->assertSame('ip', $result['tracking_type']);
     }
 
     public function testGetAttemptInfoWithCacheStorage(): void
@@ -191,30 +115,6 @@ final class LoginThrottleInfoServiceTest extends TestCase
         $this->assertSame(0, $result['remaining_attempts']);
         $this->assertFalse($result['is_blocked']);
         $this->assertSame('username', $result['tracking_type']);
-    }
-
-    public function testGetAttemptInfoWithSingleFirewallConfig(): void
-    {
-        $config = [
-            'max_attempts' => 5,
-            'timeout' => 300,
-            'storage' => 'database',
-            'firewall' => 'main',
-        ];
-        $this->service->setFirewallsConfig($config);
-
-        $request = Request::create('/login', 'POST', ['_username' => 'test@example.com']);
-
-        $this->repository
-            ->expects($this->once())
-            ->method('countAttemptsByUsername')
-            ->with('test@example.com', 300)
-            ->willReturn(2);
-
-        $result = $this->service->getAttemptInfo('main', $request);
-
-        $this->assertSame(2, $result['current_attempts']);
-        $this->assertSame(5, $result['max_attempts']);
     }
 
     public function testGetAttemptInfoWithIntervalString(): void
@@ -241,33 +141,6 @@ final class LoginThrottleInfoServiceTest extends TestCase
         $this->assertSame(0, $result['current_attempts']);
     }
 
-    public function testExtractUsernameFromRequest(): void
-    {
-        $config = [
-            'main' => [
-                'max_attempts' => 3,
-                'timeout' => 600,
-                'storage' => 'database',
-            ],
-        ];
-        $this->service->setFirewallsConfig($config);
-
-        // Test with _username
-        $request1 = Request::create('/login', 'POST', ['_username' => 'user1@example.com']);
-        $this->repository
-            ->expects($this->exactly(2))
-            ->method('countAttemptsByUsername')
-            ->willReturnCallback(static function ($username, $seconds): int {
-                return 0;
-            });
-
-        $this->service->getAttemptInfo('main', $request1);
-
-        // Test with email
-        $request2 = Request::create('/login', 'POST', ['email' => 'user2@example.com']);
-        $this->service->getAttemptInfo('main', $request2);
-    }
-
     public function testGetAttemptInfoWithEmptyUsername(): void
     {
         $config = [
@@ -291,38 +164,6 @@ final class LoginThrottleInfoServiceTest extends TestCase
         $result = $this->service->getAttemptInfo('main', $request);
 
         $this->assertSame('ip', $result['tracking_type']);
-    }
-
-    public function testGetAttemptInfoWithNestedLoginFormUsername(): void
-    {
-        $config = [
-            'main' => [
-                'max_attempts' => 3,
-                'timeout' => 600,
-                'storage' => 'database',
-            ],
-        ];
-        $this->service->setFirewallsConfig($config);
-
-        $request = Request::create('/login', 'POST', [
-            'login_form' => ['_username' => 'nested@example.com'],
-        ]);
-        $request->server->set('REMOTE_ADDR', '192.168.1.1');
-
-        $this->repository
-            ->expects($this->once())
-            ->method('countAttemptsByUsername')
-            ->with('nested@example.com', 600)
-            ->willReturn(1);
-
-        $this->repository
-            ->expects($this->never())
-            ->method('getAttempts');
-
-        $result = $this->service->getAttemptInfo('main', $request);
-
-        $this->assertSame('username', $result['tracking_type']);
-        $this->assertSame(1, $result['current_attempts']);
     }
 
     public function testGetAttemptInfoWithDifferentIntervalFormats(): void
@@ -409,37 +250,6 @@ final class LoginThrottleInfoServiceTest extends TestCase
         $result = $this->service->getAttemptInfo('other', $request);
 
         $this->assertSame(0, $result['current_attempts']);
-    }
-
-    public function testGetAttemptInfoWithBlockedAccountEmptyAttemptsArray(): void
-    {
-        $config = [
-            'main' => [
-                'max_attempts' => 3,
-                'timeout' => 600,
-                'storage' => 'database',
-            ],
-        ];
-        $this->service->setFirewallsConfig($config);
-
-        $request = Request::create('/login', 'POST', ['_username' => 'test@example.com']);
-
-        $this->repository
-            ->expects($this->once())
-            ->method('countAttemptsByUsername')
-            ->with('test@example.com', 600)
-            ->willReturn(3);
-
-        $this->repository
-            ->expects($this->once())
-            ->method('getAttempts')
-            ->with('', 'test@example.com', 600)
-            ->willReturn([]);
-
-        $result = $this->service->getAttemptInfo('main', $request);
-
-        $this->assertTrue($result['is_blocked']);
-        $this->assertNull($result['retry_after']);
     }
 
     public function testGetTimeoutSecondsWithVariousUnits(): void

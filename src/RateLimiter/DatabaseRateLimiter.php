@@ -6,6 +6,8 @@ namespace Nowo\LoginThrottleBundle\RateLimiter;
 
 use Nowo\LoginThrottleBundle\Entity\LoginAttempt;
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface;
+use Nowo\LoginThrottleBundle\Throttle\ThrottleRules;
+use Nowo\LoginThrottleBundle\Throttle\UsernameNormalizer;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\HttpFoundation\RateLimiter\RequestRateLimiterInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -22,6 +24,9 @@ use Symfony\Component\RateLimiter\RateLimit;
  * Usernames are normalized (trimmed and lower-cased) so case variants such as {@code Admin} and
  * {@code admin} share one bucket. A second, IP-only cap (default: 5 × {@code maxAttempts}, like
  * Symfony's {@code DefaultLoginRateLimiter}) blocks an IP that rotates usernames.
+ * With {@code username_from_passport: true} (3.9), a request without those fields (json_login, custom
+ * authenticators) is keyed on the passport identifier Symfony stores on the request, like form_login.
+ * The rules live in {@see ThrottleRules}, shared with the status provider.
  * On successful login, {@see reset()} deletes matching {@see LoginAttempt} rows for that IP +
  * username only; the IP-wide counter keeps decaying with the timeout window.
  *
@@ -30,20 +35,6 @@ use Symfony\Component\RateLimiter\RateLimit;
  */
 final class DatabaseRateLimiter implements RequestRateLimiterInterface
 {
-    /**
-     * Nested request bags checked before flat keys (AuthKit / FormType names).
-     *
-     * @var list<string>
-     */
-    private const NESTED_FORM_BAGS = ['login_form'];
-
-    /**
-     * Username parameter keys (nested bag first, then root request).
-     *
-     * @var list<string>
-     */
-    private const USERNAME_KEYS = ['_username', 'username', 'email'];
-
     /**
      * Default multiplier applied to {@code maxAttempts} for the IP-only cap.
      */
@@ -54,14 +45,17 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
      */
     private readonly int $maxAttemptsPerIp;
 
+    private readonly ThrottleRules $rules;
+
     /**
      * Constructor.
      *
-     * @param LoginAttemptRepositoryInterface $repository       The login attempt repository
-     * @param int                             $maxAttempts      Maximum number of attempts per IP + username
-     * @param int                             $timeoutSeconds   Timeout period in seconds
-     * @param int|null                        $maxAttemptsPerIp Maximum number of attempts per IP (null: 5 × maxAttempts)
-     * @param ClockInterface|null             $clock            Time source (system time when null; REQ-DI-001)
+     * @param LoginAttemptRepositoryInterface $repository           The login attempt repository
+     * @param int                             $maxAttempts          Maximum number of attempts per IP + username
+     * @param int                             $timeoutSeconds       Timeout period in seconds
+     * @param int|null                        $maxAttemptsPerIp     Maximum number of attempts per IP (null: 5 × maxAttempts)
+     * @param ClockInterface|null             $clock                Time source (system time when null; REQ-DI-001)
+     * @param bool                            $usernameFromPassport Fall back to the passport identifier when no POST field holds a username (3.9)
      */
     public function __construct(
         private readonly LoginAttemptRepositoryInterface $repository,
@@ -69,8 +63,10 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
         private readonly int $timeoutSeconds,
         ?int $maxAttemptsPerIp = null,
         private readonly ?ClockInterface $clock = null,
+        private readonly bool $usernameFromPassport = false,
     ) {
-        $this->maxAttemptsPerIp = max(1, $maxAttemptsPerIp ?? $maxAttempts * self::DEFAULT_IP_ATTEMPTS_MULTIPLIER);
+        $this->rules = new ThrottleRules($repository, $maxAttempts, $timeoutSeconds, $maxAttemptsPerIp);
+        $this->maxAttemptsPerIp = $this->rules->maxAttemptsPerIp();
     }
 
     /**
@@ -146,10 +142,7 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
     }
 
     /**
-     * Extract username from request.
-     *
-     * Checks nested bags such as {@code login_form[_username]} (AuthKit) before flat keys.
-     * The value is trimmed and lower-cased so case or whitespace variants share one bucket.
+     * Extract the normalised username from the request ({@see UsernameNormalizer}).
      *
      * @param Request $request The request
      *
@@ -157,47 +150,7 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
      */
     private function extractUsername(Request $request): ?string
     {
-        foreach (self::NESTED_FORM_BAGS as $bag) {
-            $nested = $request->request->all($bag);
-
-            foreach (self::USERNAME_KEYS as $key) {
-                $value = $nested[$key] ?? null;
-
-                $normalized = $this->normalizeUsername($value);
-
-                if (null !== $normalized) {
-                    return $normalized;
-                }
-            }
-        }
-
-        foreach (self::USERNAME_KEYS as $key) {
-            $normalized = $this->normalizeUsername($request->request->get($key));
-
-            if (null !== $normalized) {
-                return $normalized;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Normalize a submitted username (trim + lower-case); non-string or blank values yield null.
-     *
-     * @param mixed $value Raw request value
-     *
-     * @return string|null The normalized username or null
-     */
-    private function normalizeUsername(mixed $value): ?string
-    {
-        if (!\is_string($value)) {
-            return null;
-        }
-
-        $normalized = mb_strtolower(trim($value));
-
-        return '' === $normalized ? null : $normalized;
+        return UsernameNormalizer::fromRequest($request, $this->usernameFromPassport);
     }
 
     /**
@@ -210,19 +163,6 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
      */
     private function calculateRetryAfter(string $ipAddress, ?string $username): ?\DateTimeImmutable
     {
-        $attempts = $this->repository->getAttempts($ipAddress, $username, $this->timeoutSeconds);
-
-        if ([] === $attempts) {
-            return null;
-        }
-
-        // getAttempts orders by DESC (newest first); the last element is the oldest
-        $oldestAttempt = $attempts[array_key_last($attempts)];
-        // Built from the timestamp instead of modify() (static|false before PHP 8.3) so PHPStan reports the
-        // same result on PHP 8.2 to 8.5; the attempt's timezone is kept.
-        $createdAt = $oldestAttempt->getCreatedAt();
-
-        return (new \DateTimeImmutable('@' . ($createdAt->getTimestamp() + $this->timeoutSeconds)))
-            ->setTimezone($createdAt->getTimezone());
+        return $this->rules->retryAfter($ipAddress, $username);
     }
 }

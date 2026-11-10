@@ -393,6 +393,29 @@ final class LoginAttemptRepositoryTest extends TestCase
         $this->assertSame(1, $deleted);
     }
 
+    public function testEntityFreeReadsMapGetAttempts(): void
+    {
+        $newest = new LoginAttempt('192.168.1.1', 'alice');
+        $oldest = new LoginAttempt('192.168.1.1', 'alice');
+        (new \ReflectionProperty(LoginAttempt::class, 'createdAt'))->setValue($oldest, new \DateTimeImmutable('2026-11-10 09:00:00'));
+
+        $query = $this->createQueryMock();
+        $query->method('getResult')->willReturnOnConsecutiveCalls([$newest, $oldest], [$newest, $oldest], []);
+        $this->queryBuilder->method('where')->willReturnSelf();
+        $this->queryBuilder->method('andWhere')->willReturnSelf();
+        $this->queryBuilder->method('setParameter')->willReturnSelf();
+        $this->queryBuilder->method('orderBy')->willReturnSelf();
+        $this->queryBuilder->method('getQuery')->willReturn($query);
+
+        $views = $this->repository->getAttemptViews('192.168.1.1', 'alice', 600);
+        $this->assertCount(2, $views);
+        $this->assertSame('alice', $views[0]->username);
+        $this->assertSame($oldest->getCreatedAt(), $views[1]->createdAt);
+
+        $this->assertSame($oldest->getCreatedAt(), $this->repository->findOldestAttemptAt('192.168.1.1', 'alice', 600));
+        $this->assertNull($this->repository->findOldestAttemptAt('192.168.1.1', 'alice', 600));
+    }
+
     /**
      * @return MockObject&Query
      */
