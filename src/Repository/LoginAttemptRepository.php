@@ -165,7 +165,10 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
             // A savepoint: a failed insert (e.g. an overlong username) rolls back only itself instead of aborting the
             // host's whole transaction on PostgreSQL (SQLSTATE 25P02), which the ORM flush (a nested transaction) never
             // did. Explicit savepoint calls, because DBAL 3 nests transactional() without a savepoint unless enabled.
-            $connection->createSavepoint('nowo_login_throttle_insert');
+            // a name unique per call: on MySQL / MariaDB a SAVEPOINT with an existing name replaces it, so a fixed name
+            // could replace a host savepoint that happens to share it
+            $savepoint = 'nowo_login_throttle_insert_' . bin2hex(random_bytes(6));
+            $connection->createSavepoint($savepoint);
 
             try {
                 $connection->insert($metadata->getTableName(), $data, $types);
@@ -173,7 +176,7 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
                 $id ??= $idGenerator->generateId($entityManager, $attempt);
             } catch (\Throwable $exception) {
                 try {
-                    $connection->rollbackSavepoint('nowo_login_throttle_insert');
+                    $connection->rollbackSavepoint($savepoint);
                 } catch (\Throwable) {
                     // a deadlock or lock wait timeout may already have rolled back the whole transaction (and the
                     // savepoint with it): the original error is the one to report
@@ -181,7 +184,7 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
 
                 throw $exception;
             }
-            $connection->releaseSavepoint('nowo_login_throttle_insert');
+            $connection->releaseSavepoint($savepoint);
         } else {
             $connection->insert($metadata->getTableName(), $data, $types);
         }

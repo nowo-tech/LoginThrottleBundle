@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 3.10.1](#to-3101)
 - [To 3.10.0](#to-3100)
 - [To 3.9.0](#to-390)
 - [To 3.9.0](#to-390-1)
@@ -53,6 +54,17 @@
 - [Notes](#notes)
 
 ## Unreleased
+
+## To 3.10.1
+
+From **3.10.0**:
+
+```bash
+composer update nowo-tech/login-throttle-bundle
+```
+
+No configuration change. Inside your open transactions, the bundle's savepoint is now named
+`nowo_login_throttle_insert_<random>` instead of `nowo_login_throttle_insert`.
 
 ## To 3.10.0
 

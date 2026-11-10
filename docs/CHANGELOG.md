@@ -50,6 +50,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Target 3.10.1.
+
+### Fixed
+
+- **Savepoint name unique per call (audit KY-D-I1).** Inside a host transaction the attempt's savepoint was always
+  `nowo_login_throttle_insert`; on MySQL / MariaDB a second `SAVEPOINT` with an existing name replaces the first, so a
+  host savepoint of that name was lost. The name now carries a random suffix per call.
+
 ## [3.10.0] - 2026-11-10
 
 Database limiter: login attempts are written with a DBAL insert (savepoint inside a host transaction) and never flush the host's entity manager; the limiter now honours a host LoginAttemptRepositoryInterface. See [UPGRADING](https://github.com/nowo-tech/LoginThrottleBundle/blob/v3.10.0/docs/UPGRADING.md#to-3100).

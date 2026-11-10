@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\LoginThrottleBundle\Tests\Repository;
 
 use Doctrine\DBAL\DriverManager;
+use Doctrine\DBAL\Exception;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\DBAL\Tools\DsnParser;
 use Doctrine\ORM\EntityManager;
@@ -114,7 +115,8 @@ final class OpenHostTransactionTest extends TestCase
         $entityManager->getClassMetadata(LoginAttempt::class)->setIdGenerator(new class extends AbstractIdGenerator {
             public function generateId(EntityManagerInterface $em, ?object $entity): mixed
             {
-                $em->getConnection()->executeStatement('RELEASE SAVEPOINT nowo_login_throttle_insert');
+                // the server ends the whole transaction, savepoints included
+                $em->getConnection()->executeStatement('ROLLBACK');
 
                 throw new \RuntimeException('deadlock: the transaction was rolled back');
             }
@@ -135,8 +137,37 @@ final class OpenHostTransactionTest extends TestCase
         } catch (\RuntimeException $exception) {
             $this->assertSame('deadlock: the transaction was rolled back', $exception->getMessage());
         } finally {
-            $connection->rollBack();
+            try {
+                $connection->rollBack(); // the server already ended the transaction
+            } catch (Exception) {
+            }
         }
+    }
+
+    /**
+     * KY-D-I1: the bundle's savepoint name is unique per call. On MySQL / MariaDB a SAVEPOINT with an existing name
+     * replaces it, so the former fixed name would have destroyed a host savepoint of that name.
+     */
+    #[DataProvider('platforms')]
+    public function testAHostSavepointWithTheBundlesFormerNameSurvivesAnAttempt(string $source): void
+    {
+        $entityManager = $this->entityManager($source);
+        $connection = $entityManager->getConnection();
+        $registry = $this->createMock(ManagerRegistry::class);
+        $registry->method('getManagerForClass')->willReturn($entityManager);
+        $repository = new LoginAttemptRepository($registry);
+
+        $connection->beginTransaction();
+        $connection->insert('host_w0_note', ['id' => 1, 'body' => 'kept']);
+        $connection->createSavepoint('nowo_login_throttle_insert');
+        $connection->insert('host_w0_note', ['id' => 2, 'body' => 'rolled back by the host']);
+        $repository->recordAttempt('10.0.0.1', 'alice');
+        $repository->recordAttempt('10.0.0.2', 'bob');
+        $connection->rollbackSavepoint('nowo_login_throttle_insert');
+        $connection->commit();
+
+        $this->assertSame([1], array_map(intval(...), $connection->fetchFirstColumn('SELECT id FROM host_w0_note')));
+        $this->assertSame(0, (int) $connection->fetchOne('SELECT COUNT(*) FROM login_attempts'), 'the attempts were after the host savepoint');
     }
 
     private function entityManager(string $source): EntityManager
