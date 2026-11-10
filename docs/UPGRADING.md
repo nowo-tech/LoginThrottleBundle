@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 3.9.0](#to-390)
 - [To 3.8.0](#to-380)
 - [To 3.7.1](#to-371)
 - [To 3.7.0](#to-370)
@@ -50,6 +51,46 @@
 - [Notes](#notes)
 
 ## Unreleased
+
+## To 3.9.0
+
+From **3.8.0** (target 3.9.0, DDD P2):
+
+```bash
+composer update nowo-tech/login-throttle-bundle
+```
+
+No configuration change is needed; the limiter keys and limits are unchanged. One security fix changes what a successful login without a username resets (see below).
+
+- **Login page figures:** with `storage: database`, `LoginThrottleInfoService::getAttemptInfo()` now returns the
+  limiter's figures. With a username, `current_attempts` counts the IP + username bucket (before: that username from
+  every IP) and the username is trimmed and lower-cased; `is_blocked` / `remaining_attempts` also reflect the per-IP
+  cap. Templates that show these values may display different (correct) numbers.
+- **Security, successful logins without a username (KF-L-M1):** with `storage: database`, when the bundle reads no
+  username (`json_login` without `username_from_passport`, custom authenticators, a custom `username_parameter`), a
+  successful login no longer deletes the IP's attempts. Before, it deleted all of them, which let anyone with an
+  account guess without limit. Users of such logins who failed a few times keep those failures until `timeout`
+  passes, and a busy shared IP (office NAT) reaches the limit sooner. Enabling `username_from_passport: true` keys
+  those logins per identifier again, and is recommended.
+- **json_login:** to key `json_login` or custom-authenticator attempts on the submitted identifier instead of the IP
+  only, set:
+
+  ```yaml
+  nowo_login_throttle:
+      username_from_passport: true
+  ```
+
+  Each identifier then gets its own `max_count_attempts` bucket per IP, and the per-IP cap
+  (`max_count_attempts_per_ip`, default 5 × `max_count_attempts`) still stops an IP that rotates identifiers. Without
+  it, one IP shares a single `max_count_attempts` bucket, as before.
+
+  **Budget change:** enabling it raises what one IP can try on json_login from `max_count_attempts` (one shared
+  bucket) to the per-IP cap, i.e. **5 × `max_count_attempts` by default** (15 with the default 3), spread over
+  several identifiers. If that is too much, set `max_count_attempts_per_ip` explicitly when you enable the option.
+- **New ports:** prefer `LoginThrottleStatusProviderInterface` over `getAttemptInfo()` in new code. A custom
+  `LoginAttemptRepositoryInterface` store can also implement `LoginAttemptViewRepositoryInterface` so the bundle
+  never needs `LoginAttempt` entities from it.
+- `DatabaseRateLimiter` has a new optional sixth constructor argument and `DatabaseRateLimiterFactory` a new optional fifth one (`$usernameFromPassport`, default `false`). The container's `DatabaseRateLimiterFactory` definition gets the `username_from_passport` value; if you build the factory yourself, pass it.
 
 ## To 3.8.0
 

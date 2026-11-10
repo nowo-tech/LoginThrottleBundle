@@ -110,6 +110,7 @@ final class NowoLoginThrottleExtension extends Extension implements PrependExten
         // Store configuration as container parameters
         $container->setParameter('nowo_login_throttle.config', $config);
         $container->setParameter('nowo_login_throttle.watch_period', (int) ($config['watch_period'] ?? 3600));
+        $container->setParameter('nowo_login_throttle.username_from_passport', (bool) ($config['username_from_passport'] ?? false));
 
         $mappingEnabled = $this->resolveRegisterMapping($config['doctrine']['register_mapping'], $this->usesDatabaseStorage($config));
         $container->setParameter(self::MAPPING_ENABLED_PARAMETER, $mappingEnabled);
@@ -157,6 +158,7 @@ final class NowoLoginThrottleExtension extends Extension implements PrependExten
                     'timeout' => $config['timeout'], // Store timeout in seconds for easier access
                     'storage' => $config['storage'],
                     'firewall' => $config['firewall'],
+                    'max_attempts_per_ip' => $config['max_count_attempts_per_ip'] ?? null,
                 ],
             ]);
         }
@@ -418,6 +420,7 @@ final class NowoLoginThrottleExtension extends Extension implements PrependExten
                 'cache_pool' => $firewallConfig['cache_pool'] ?? 'cache.rate_limiter',
                 'lock_factory' => $firewallConfig['lock_factory'] ?? null,
                 'storage' => $firewallConfig['storage'],
+                'max_attempts_per_ip' => $firewallConfig['max_count_attempts_per_ip'] ?? null,
             ];
         }
 
@@ -471,6 +474,7 @@ final class NowoLoginThrottleExtension extends Extension implements PrependExten
                 $config['timeout'],
                 $config['max_count_attempts_per_ip'] ?? null,
                 new Reference(ClockInterface::class, ContainerInterface::NULL_ON_INVALID_REFERENCE),
+                '%nowo_login_throttle.username_from_passport%',
             ])
             ->setPublic(true); // Must be public to be used as a rate limiter service
     }

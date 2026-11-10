@@ -9,6 +9,8 @@ services:
     exclude:
       - '../../DependencyInjection/'
       - '../../NowoLoginThrottleBundle.php'
+      - '../../Throttle/'
+      - '../../Repository/LoginAttemptView.php'
 
   # REQ-SF-003: #[AsCommand] + autoconfigure register the commands (no manual console.command tag).
   Nowo\LoginThrottleBundle\Command\ConfigureSecurityCommand:
@@ -34,6 +36,12 @@ services:
 
   Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface: '@Nowo\LoginThrottleBundle\Repository\LoginAttemptRepository'
 
+  # Host code that gets the factory from the container receives the username_from_passport option (KF-L-I4);
+  # the limits are still yours to bind.
+  Nowo\LoginThrottleBundle\RateLimiter\DatabaseRateLimiterFactory:
+    arguments:
+      $usernameFromPassport: '%nowo_login_throttle.username_from_passport%'
+
   # Database rate limiter (registered conditionally in Extension when storage=database)
   # This service is registered dynamically in NowoLoginThrottleExtension::registerDatabaseRateLimiter()
   # It implements RequestRateLimiterInterface and can be used as a limiter in security.yaml
@@ -46,3 +54,12 @@ services:
     # Repository is optional - only needed for database storage
     # It will be autowired if available
 
+
+  # HTTP-free status with the limiter's own rules (3.9)
+  Nowo\LoginThrottleBundle\Service\LoginThrottleStatusProvider:
+    arguments:
+      $firewalls: '%nowo_login_throttle.firewalls%'
+      $repository: '@?Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface'
+
+  Nowo\LoginThrottleBundle\Service\LoginThrottleStatusProviderInterface:
+    alias: Nowo\LoginThrottleBundle\Service\LoginThrottleStatusProvider

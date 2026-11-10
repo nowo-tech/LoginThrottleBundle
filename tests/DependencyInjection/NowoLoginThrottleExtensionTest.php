@@ -6,6 +6,9 @@ namespace Nowo\LoginThrottleBundle\Tests\DependencyInjection;
 
 use Nowo\LoginThrottleBundle\DependencyInjection\NowoLoginThrottleExtension;
 use Nowo\LoginThrottleBundle\Doctrine\TablePrefixListener;
+use Nowo\LoginThrottleBundle\RateLimiter\DatabaseRateLimiterFactory;
+use Nowo\LoginThrottleBundle\Service\LoginThrottleStatusProvider;
+use Nowo\LoginThrottleBundle\Service\LoginThrottleStatusProviderInterface;
 use PHPUnit\Framework\TestCase;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
@@ -327,6 +330,42 @@ final class NowoLoginThrottleExtensionTest extends TestCase
         $this->assertSame('nowo_login_throttle.database_rate_limiter.admin', NowoLoginThrottleExtension::databaseRateLimiterServiceId('admin'));
         $this->assertSame('nowo_login_throttle.database_rate_limiter.shared_5_300s_3600s', NowoLoginThrottleExtension::sharedDatabaseRateLimiterServiceId(5, 300, 3600));
         $this->assertSame('nowo_login_throttle.database_rate_limiter.shared_5_300s_3600s_ip50', NowoLoginThrottleExtension::sharedDatabaseRateLimiterServiceId(5, 300, 3600, 50));
+    }
+
+    public function testUsernameFromPassportIsOffByDefaultAndReachesEveryDatabaseLimiter(): void
+    {
+        $this->extension->load([['storage' => 'database', 'max_count_attempts_per_ip' => 12]], $this->container);
+
+        $this->assertFalse($this->container->getParameter('nowo_login_throttle.username_from_passport'));
+        $definition = $this->container->getDefinition('nowo_login_throttle.database_rate_limiter');
+        $this->assertSame('%nowo_login_throttle.username_from_passport%', $definition->getArgument(5));
+        $this->assertSame(12, $this->container->getParameter('nowo_login_throttle.firewalls')['main']['max_attempts_per_ip']);
+
+        $container = new ContainerBuilder();
+        $this->extension->load([[
+            'username_from_passport' => true,
+            'firewalls' => ['api' => ['storage' => 'database'], 'main' => ['storage' => 'cache']],
+        ]], $container);
+
+        $this->assertTrue($container->getParameter('nowo_login_throttle.username_from_passport'));
+        $firewalls = $container->getParameter('nowo_login_throttle.firewalls');
+        $this->assertNull($firewalls['api']['max_attempts_per_ip']);
+        $this->assertSame('%nowo_login_throttle.username_from_passport%', $container->getDefinition($firewalls['api']['limiter'])->getArgument(5));
+    }
+
+    public function testFactoryDefinitionReceivesTheUsernameFromPassportOption(): void
+    {
+        $this->extension->load([['storage' => 'database', 'username_from_passport' => true]], $this->container);
+
+        $this->assertSame('%nowo_login_throttle.username_from_passport%', $this->container->getDefinition(DatabaseRateLimiterFactory::class)->getArgument('$usernameFromPassport'));
+    }
+
+    public function testStatusProviderInterfaceAliasesTheDefaultProvider(): void
+    {
+        $this->extension->load([['storage' => 'database']], $this->container);
+
+        $this->assertSame(LoginThrottleStatusProvider::class, (string) $this->container->getAlias(LoginThrottleStatusProviderInterface::class));
+        $this->assertSame('%nowo_login_throttle.firewalls%', $this->container->getDefinition(LoginThrottleStatusProvider::class)->getArgument('$firewalls'));
     }
 
     public function testLoadPassesMaxAttemptsPerIpToDatabaseLimiter(): void
