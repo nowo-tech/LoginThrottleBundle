@@ -21,7 +21,7 @@ use PHPUnit\Framework\TestCase;
 /**
  * An attempt recorded inside a transaction the host left open runs in a savepoint: a failed insert must not abort the
  * host's transaction (PostgreSQL SQLSTATE 25P02). SQLite always; MySQL / PostgreSQL when LOGIN_THROTTLE_TEST_MYSQL_URL
- * / LOGIN_THROTTLE_TEST_PGSQL_URL point at a throwaway database.
+ * / LOGIN_THROTTLE_TEST_PGSQL_URL point at a throwaway database (re-runnable: the tables are dropped first).
  *
  * @author Héctor Franco Aceituno <hectorfranco@nowo.tech>
  * @copyright 2025 Nowo.tech
@@ -73,6 +73,70 @@ final class OpenHostTransactionTest extends TestCase
 
         $connection->executeStatement('DROP TABLE host_w0_note');
         $connection->executeStatement('DROP TABLE login_attempts');
+    }
+
+    /**
+     * KY-D-L-M1: the IDENTITY id is read before RELEASE SAVEPOINT, which resets the last insert id on MySQL / MariaDB.
+     */
+    #[DataProvider('platforms')]
+    public function testTheIdentityIdInsideAnOpenTransactionIsTheRowId(string $source): void
+    {
+        $entityManager = $this->entityManager($source);
+        $connection = $entityManager->getConnection();
+        $this->assertTrue($entityManager->getClassMetadata(LoginAttempt::class)->idGenerator->isPostInsertGenerator(), 'the real IDENTITY generator');
+        $registry = $this->createMock(ManagerRegistry::class);
+        $registry->method('getManagerForClass')->willReturn($entityManager);
+        $repository = new LoginAttemptRepository($registry);
+
+        $connection->beginTransaction();
+        $connection->insert('host_w0_note', ['id' => 1, 'body' => 'host row']);
+        $first = $repository->recordAttempt('10.0.0.1', 'alice');
+        $second = $repository->recordAttempt('10.0.0.2', 'bob');
+        $connection->commit();
+
+        $rows = array_map(
+            static fn (array $row): array => [(int) $row['id'], $row['username']],
+            $connection->fetchAllAssociative('SELECT id, username FROM login_attempts ORDER BY id'),
+        );
+        $this->assertSame([[$first->getId(), 'alice'], [$second->getId(), 'bob']], $rows);
+        $this->assertGreaterThan(0, $first->getId());
+        $this->assertSame(1, (int) $connection->fetchOne('SELECT COUNT(*) FROM host_w0_note'));
+    }
+
+    /**
+     * KY-D-I2: when the savepoint is already gone (MySQL rolls back the whole transaction on a deadlock), the original
+     * error is reported, not the failed ROLLBACK TO SAVEPOINT.
+     */
+    public function testTheOriginalErrorIsRethrownWhenTheSavepointIsGone(): void
+    {
+        $entityManager = $this->entityManager('sqlite');
+        $connection = $entityManager->getConnection();
+        $entityManager->getClassMetadata(LoginAttempt::class)->setIdGenerator(new class extends AbstractIdGenerator {
+            public function generateId(EntityManagerInterface $em, ?object $entity): mixed
+            {
+                $em->getConnection()->executeStatement('RELEASE SAVEPOINT nowo_login_throttle_insert');
+
+                throw new \RuntimeException('deadlock: the transaction was rolled back');
+            }
+
+            public function isPostInsertGenerator(): bool
+            {
+                return true;
+            }
+        });
+        $registry = $this->createMock(ManagerRegistry::class);
+        $registry->method('getManagerForClass')->willReturn($entityManager);
+
+        $connection->beginTransaction();
+
+        try {
+            (new LoginAttemptRepository($registry))->recordAttempt('10.0.0.1', 'alice');
+            $this->fail('The original error must be rethrown.');
+        } catch (\RuntimeException $exception) {
+            $this->assertSame('deadlock: the transaction was rolled back', $exception->getMessage());
+        } finally {
+            $connection->rollBack();
+        }
     }
 
     private function entityManager(string $source): EntityManager

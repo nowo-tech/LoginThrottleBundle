@@ -169,8 +169,15 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
 
             try {
                 $connection->insert($metadata->getTableName(), $data, $types);
+                // before RELEASE SAVEPOINT: on MySQL / MariaDB every statement resets the last insert id
+                $id ??= $idGenerator->generateId($entityManager, $attempt);
             } catch (\Throwable $exception) {
-                $connection->rollbackSavepoint('nowo_login_throttle_insert');
+                try {
+                    $connection->rollbackSavepoint('nowo_login_throttle_insert');
+                } catch (\Throwable) {
+                    // a deadlock or lock wait timeout may already have rolled back the whole transaction (and the
+                    // savepoint with it): the original error is the one to report
+                }
 
                 throw $exception;
             }
