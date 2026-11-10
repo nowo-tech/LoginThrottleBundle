@@ -75,6 +75,30 @@ final class LoginThrottleInfoServiceTest extends TestCase
         $this->assertEquals($store->now->modify('+600 seconds'), $blocked['retry_after']);
     }
 
+    /**
+     * KF-L-L1: the info service reads the request like the limiter (a blank nested value is skipped, values are trimmed).
+     */
+    public function testRequestUsernameIsExtractedLikeTheLimiter(): void
+    {
+        $store = new InMemoryLoginAttemptStore();
+        $store->recordAttempt('192.168.1.1', 'x@example.com');
+        $store->recordAttempt('192.168.1.1', null);
+
+        $service = new LoginThrottleInfoService();
+        $service->setRepository($store);
+        $service->setFirewallsConfig(['main' => ['max_attempts' => 3, 'timeout' => 600, 'storage' => 'database']]);
+
+        $request = Request::create('/login', 'POST', ['login_form' => ['_username' => ' '], 'email' => ' X@Example.com '], server: ['REMOTE_ADDR' => '192.168.1.1']);
+        $result = $service->getAttemptInfo('main', $request);
+
+        $this->assertSame('username', $result['tracking_type']);
+        $this->assertSame(1, $result['current_attempts']);
+
+        $cache = new LoginThrottleInfoService();
+        $cache->setFirewallsConfig(['main' => ['max_attempts' => 3, 'storage' => 'cache']]);
+        $this->assertSame('ip', $cache->getAttemptInfo('main', Request::create('/login', 'POST', ['_username' => '   ']))['tracking_type']);
+    }
+
     public function testDatabaseFiguresApplyThePerIpCapAndTheLegacyFlatConfig(): void
     {
         $store = new InMemoryLoginAttemptStore();

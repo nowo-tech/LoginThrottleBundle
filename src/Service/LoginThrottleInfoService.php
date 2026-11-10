@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\LoginThrottleBundle\Service;
 
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface;
+use Nowo\LoginThrottleBundle\Throttle\UsernameNormalizer;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Contracts\Service\Attribute\Required;
 
@@ -158,25 +159,9 @@ final class LoginThrottleInfoService
      */
     private function extractUsername(Request $request): ?string
     {
-        $loginForm = $request->request->all('login_form');
-
-        foreach (['_username', 'username', 'email'] as $key) {
-            $value = $loginForm[$key] ?? null;
-
-            if (\is_string($value) && '' !== $value) {
-                return $value;
-            }
-        }
-
-        foreach (['_username', 'username', 'email'] as $key) {
-            $value = $request->request->get($key);
-
-            if (\is_string($value) && '' !== $value) {
-                return $value;
-            }
-        }
-
-        return null;
+        // KF-L-L1: the limiter's own extraction (trim + lower-case, blank values skipped), so the figures describe the
+        // bucket the limiter enforces.
+        return UsernameNormalizer::fromRequest($request);
     }
 
     /**

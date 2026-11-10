@@ -6,6 +6,7 @@ namespace Nowo\LoginThrottleBundle\Tests\DependencyInjection;
 
 use Nowo\LoginThrottleBundle\DependencyInjection\NowoLoginThrottleExtension;
 use Nowo\LoginThrottleBundle\Doctrine\TablePrefixListener;
+use Nowo\LoginThrottleBundle\RateLimiter\DatabaseRateLimiterFactory;
 use Nowo\LoginThrottleBundle\Service\LoginThrottleStatusProvider;
 use Nowo\LoginThrottleBundle\Service\LoginThrottleStatusProviderInterface;
 use PHPUnit\Framework\TestCase;
@@ -350,6 +351,13 @@ final class NowoLoginThrottleExtensionTest extends TestCase
         $firewalls = $container->getParameter('nowo_login_throttle.firewalls');
         $this->assertNull($firewalls['api']['max_attempts_per_ip']);
         $this->assertSame('%nowo_login_throttle.username_from_passport%', $container->getDefinition($firewalls['api']['limiter'])->getArgument(5));
+    }
+
+    public function testFactoryDefinitionReceivesTheUsernameFromPassportOption(): void
+    {
+        $this->extension->load([['storage' => 'database', 'username_from_passport' => true]], $this->container);
+
+        $this->assertSame('%nowo_login_throttle.username_from_passport%', $this->container->getDefinition(DatabaseRateLimiterFactory::class)->getArgument('$usernameFromPassport'));
     }
 
     public function testStatusProviderInterfaceAliasesTheDefaultProvider(): void

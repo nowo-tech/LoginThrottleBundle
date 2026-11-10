@@ -77,10 +77,14 @@ No configuration change is needed; the limiter keys and limits are unchanged.
   Each identifier then gets its own `max_count_attempts` bucket per IP, and the per-IP cap
   (`max_count_attempts_per_ip`, default 5 × `max_count_attempts`) still stops an IP that rotates identifiers. Without
   it, one IP shares a single `max_count_attempts` bucket, as before.
+
+  **Budget change:** enabling it raises what one IP can try on json_login from `max_count_attempts` (one shared
+  bucket) to the per-IP cap, i.e. **5 × `max_count_attempts` by default** (15 with the default 3), spread over
+  several identifiers. If that is too much, set `max_count_attempts_per_ip` explicitly when you enable the option.
 - **New ports:** prefer `LoginThrottleStatusProviderInterface` over `getAttemptInfo()` in new code. A custom
   `LoginAttemptRepositoryInterface` store can also implement `LoginAttemptViewRepositoryInterface` so the bundle
   never needs `LoginAttempt` entities from it.
-- `DatabaseRateLimiter` has a new optional sixth constructor argument and `DatabaseRateLimiterFactory` a new optional fifth one (`$usernameFromPassport`, default `false`).
+- `DatabaseRateLimiter` has a new optional sixth constructor argument and `DatabaseRateLimiterFactory` a new optional fifth one (`$usernameFromPassport`, default `false`). The container's `DatabaseRateLimiterFactory` definition gets the `username_from_passport` value; if you build the factory yourself, pass it.
 
 ## To 3.8.0
 
