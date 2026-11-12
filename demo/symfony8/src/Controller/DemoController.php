@@ -15,7 +15,7 @@ class DemoController extends AbstractController
     public function home(Request $request): Response
     {
         $session = $request->getSession();
-        
+
         // Add informational flash messages (only once per session)
         if (!$session->has('demo_info_shown')) {
             $session->set('demo_info_shown', true);
@@ -24,7 +24,7 @@ class DemoController extends AbstractController
                 'message' => 'This demo showcases the Login Throttle Bundle functionality. Try logging in with wrong credentials multiple times to see throttling in action!',
             ]);
         }
-        
+
         return $this->render('demo/home.html.twig', [
             'title' => 'Login Throttle Bundle - Demo',
             'message' => 'This demo showcases the Login Throttle Bundle with <strong>multiple firewalls</strong> and different throttling configurations.',
@@ -63,4 +63,3 @@ class DemoController extends AbstractController
         ]);
     }
 }
-

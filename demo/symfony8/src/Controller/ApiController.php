@@ -18,8 +18,6 @@ class ApiController extends AbstractController
 {
     /**
      * API home endpoint.
-     *
-     * @return JsonResponse
      */
     #[Route('/api/home', name: 'api_home')]
     public function home(): JsonResponse
@@ -44,8 +42,6 @@ class ApiController extends AbstractController
     /**
      * API login endpoint (matches check_path in security.yaml).
      * This route is used by json_login authenticator.
-     *
-     * @return JsonResponse
      */
     #[Route('/api/login', name: 'api_login')]
     public function login(): JsonResponse
@@ -62,10 +58,6 @@ class ApiController extends AbstractController
 
     /**
      * API login page (for testing).
-     *
-     * @param Request $request
-     *
-     * @return Response
      */
     #[Route('/api/login-page', name: 'api_login_page')]
     public function loginPage(Request $request): Response
@@ -81,4 +73,3 @@ class ApiController extends AbstractController
         ]);
     }
 }
-
