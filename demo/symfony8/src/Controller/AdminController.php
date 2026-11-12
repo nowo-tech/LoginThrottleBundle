@@ -19,11 +19,6 @@ class AdminController extends AbstractController
 {
     /**
      * Admin login page.
-     *
-     * @param AuthenticationUtils $authenticationUtils
-     * @param Request             $request
-     *
-     * @return Response
      */
     #[Route('/admin/login', name: 'admin_login')]
     public function login(AuthenticationUtils $authenticationUtils, Request $request, LoginThrottleInfoService $throttleInfoService): Response
@@ -55,6 +50,7 @@ class AdminController extends AbstractController
 
         $loginForm = $this->createForm(LoginFormType::class, ['_username' => $lastUsername], [
             'action' => $this->generateUrl('admin_login'),
+            'submit_label' => 'Admin Login',
         ]);
 
         return $this->render('security/admin_login.html.twig', [
@@ -67,8 +63,6 @@ class AdminController extends AbstractController
 
     /**
      * Admin home page.
-     *
-     * @return Response
      */
     #[Route('/admin/home', name: 'admin_home')]
     public function home(): Response
@@ -89,8 +83,6 @@ class AdminController extends AbstractController
 
     /**
      * Handles admin logout.
-     *
-     * @return void
      */
     #[Route('/admin/logout', name: 'admin_logout')]
     public function logout(): void
@@ -98,4 +90,3 @@ class AdminController extends AbstractController
         throw new \LogicException('This method can be blank - it will be intercepted by the logout key on your firewall.');
     }
 }
-

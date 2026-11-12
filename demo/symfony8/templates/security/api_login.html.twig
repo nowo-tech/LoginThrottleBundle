@@ -2,83 +2,27 @@
 
 {% block title %}API Login - Login Throttle Demo{% endblock %}
 
-{% block styles %}
-    {{ parent() }}
-    <style>
-        .login-container {
-            max-width: 500px;
-            margin: 50px auto;
-        }
-        .login-form {
-            background: #f8f9fa;
-            padding: 30px;
-            border-radius: 8px;
-            border: 1px solid #dee2e6;
-        }
-        .form-group {
-            margin-bottom: 20px;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: bold;
-            color: #495057;
-        }
-        .form-group input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #ced4da;
-            border-radius: 4px;
-            font-size: 16px;
-            box-sizing: border-box;
-        }
-        .api-info {
-            background: #e7f3ff;
-            border: 1px solid #b8daff;
-            padding: 15px;
-            border-radius: 4px;
-            margin-top: 20px;
-        }
-        .api-info h3 {
-            margin-top: 0;
-            font-size: 16px;
-        }
-        .config-badge {
-            display: inline-block;
-            padding: 4px 8px;
-            background: #007bff;
-            color: white;
-            border-radius: 4px;
-            font-size: 12px;
-            margin: 2px;
-        }
-    </style>
+{% block nowo_ui_page_header %}
+    {{ include(nowo_ui_partial('page_header'), {title: 'API Login'}) }}
 {% endblock %}
 
 {% block body %}
-    <div class="login-container">
-        <h1 style="text-align: center; margin-bottom: 30px;">🔌 API Login</h1>
+    <div class="nowo-ui-flash nowo-ui-flash--info" role="note">
+        <p><strong>API firewall configuration</strong></p>
+        <p><strong>Max Attempts:</strong> <span class="nowo-ui-badge nowo-ui-badge--primary">5</span>
+            <strong>Timeout:</strong> <span class="nowo-ui-badge nowo-ui-badge--primary">5 minutes</span>
+            <strong>Storage:</strong> <span class="nowo-ui-badge nowo-ui-badge--neutral">Database</span></p>
+        <p>This firewall is more lenient for API usage (5 attempts vs 3 for main).</p>
+    </div>
 
-        <div class="api-info">
-            <h3>📋 API Firewall Configuration:</h3>
-            <p><strong>Max Attempts:</strong> <span class="config-badge">5</span></p>
-            <p><strong>Timeout:</strong> <span class="config-badge">5 minutes</span></p>
-            <p><strong>Storage:</strong> <span class="config-badge">Database</span></p>
-            <p style="margin-top: 10px; font-size: 14px;">This firewall is more lenient for API usage (5 attempts vs 3 for main).</p>
-        </div>
-
-        <div class="login-form">
-            <p style="margin-bottom: 20px; color: #666;">For API testing, use JSON POST request to <code>{{ path('api_login') }}</code> with <code>email</code> and <code>password</code> fields.</p>
-            <p style="margin-bottom: 20px; color: #666;">Or test via this form (simulates API call):</p>
+    <section class="nowo-ui-card">
+        <div class="nowo-ui-card__body">
+            <p>For API testing, use JSON POST request to <code>{{ path('api_login') }}</code> with <code>email</code> and <code>password</code> fields.</p>
+            <p>Or test via this form (simulates API call):</p>
             {{ form_start(login_form, {attr: {id: 'apiLoginForm'}}) }}
-                {% for child in login_form %}
-                    {% if not child.rendered %}
-                        {{ form_row(child) }}
-                    {% endif %}
-                {% endfor %}
-
-                <button type="submit" class="btn login-button">API Login</button>
-            {{ form_end(login_form) }}
+                {{ form_errors(login_form) }}
+                {{ form_rest(login_form) }}
+            {{ form_end(login_form, {render_rest: false}) }}
             <script>
                 document.getElementById('apiLoginForm').addEventListener('submit', function(e) {
                     e.preventDefault();
@@ -109,34 +53,20 @@
                 });
             </script>
         </div>
+    </section>
 
-        <div class="api-info">
-            <h3>🧪 Demo Credentials:</h3>
-            <ul>
-                <li><strong>demo@example.com</strong> / <code>demo123</code></li>
-                <li><strong>admin@example.com</strong> / <code>admin123</code></li>
-            </ul>
-            <p style="margin: 10px 0 0 0; font-size: 14px;"><strong>💡 Tip:</strong> Try 5 wrong attempts to see API throttling (more lenient than main firewall).</p>
-        </div>
-
-        <div style="margin-top: 30px; padding: 20px; background: #e7f3ff; border-radius: 8px; border: 1px solid #b8daff;">
-            <h3 style="margin-top: 0; font-size: 16px;">🔗 Test Other Firewalls:</h3>
-            <p style="margin-bottom: 15px; font-size: 14px;">This demo includes <strong>3 different firewalls</strong> with independent throttling. Each firewall has its own throttling state:</p>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <a href="{{ path('login') }}" class="btn" style="flex: 1; min-width: 150px; text-align: center;">
-                    🔐 Main Login<br>
-                    <small style="font-size: 11px;">3 attempts, 10 min</small>
-                </a>
-                <a href="{{ path('admin_login') }}" class="btn btn-warning" style="flex: 1; min-width: 150px; text-align: center;">
-                    🔒 Admin Login<br>
-                    <small style="font-size: 11px;">3 attempts, 30 min</small>
-                </a>
-                <a href="{{ path('demo_home') }}" class="btn btn-secondary" style="flex: 1; min-width: 150px; text-align: center;">
-                    🏠 Home<br>
-                    <small style="font-size: 11px;">Overview</small>
-                </a>
-            </div>
-        </div>
+    <div class="nowo-ui-flash nowo-ui-flash--info" role="note">
+        <p><strong>Demo credentials</strong></p>
+        <ul>
+            <li><strong>demo@example.com</strong> / <code>demo123</code></li>
+            <li><strong>admin@example.com</strong> / <code>admin123</code></li>
+        </ul>
+        <p><strong>Tip:</strong> Try 5 wrong attempts to see API throttling (more lenient than main firewall).</p>
     </div>
-{% endblock %}
 
+    {{ include('security/_other_firewalls.html.twig', {links: [
+        {path: path('login'), label: 'Main Login', note: '3 attempts, 10 min'},
+        {path: path('admin_login'), label: 'Admin Login', note: '3 attempts, 30 min'},
+        {path: path('demo_home'), label: 'Home', note: 'Overview'},
+    ]}) }}
+{% endblock %}

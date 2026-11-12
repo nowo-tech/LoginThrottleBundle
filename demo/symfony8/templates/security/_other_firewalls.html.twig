@@ -1,0 +1,12 @@
+{#- "Test other firewalls" card shared by the login pages. Parameter: links (list of {path, label, note}). -#}
+<section class="nowo-ui-card">
+    <div class="nowo-ui-card__body">
+        <h2 class="nowo-ui-card__title">Test other firewalls</h2>
+        <p>This demo includes <strong>3 different firewalls</strong> with independent throttling. Each firewall has its own throttling state.</p>
+        <p>
+            {% for link in links %}
+                <a href="{{ link.path }}" class="nowo-ui-btn nowo-ui-btn--outline">{{ link.label }} <span class="nowo-ui-muted">{{ link.note }}</span></a>
+            {% endfor %}
+        </p>
+    </div>
+</section>

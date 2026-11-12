@@ -51,6 +51,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Demo uses the UiKit base style and FormKit forms (REQ-DEMO-014/015).
+
 ## [3.10.1] - 2026-11-10
 
 Savepoints are unique per recorded attempt, so a host savepoint with the same name is never replaced. See [UPGRADING](https://github.com/nowo-tech/LoginThrottleBundle/blob/v3.10.1/docs/UPGRADING.md#to-3101).
