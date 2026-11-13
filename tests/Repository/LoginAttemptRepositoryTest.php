@@ -261,6 +261,8 @@ final class LoginAttemptRepositoryTest extends TestCase
             ->willReturn(array_merge(
                 array_fill(0, 4, ['ipAddress' => '10.0.0.1', 'username' => 'user@example.com']),
                 [['ipAddress' => '10.0.0.1', 'username' => 'User@example.com'], ['ipAddress' => '10.0.0.1', 'username' => 'user@example.com ']],
+                // a folding collation may also return another IP string (PAD SPACE): never counted
+                [['ipAddress' => '10.0.0.1 ', 'username' => 'user@example.com']],
             ));
 
         $this->queryBuilder->expects($this->once())->method('where')->with('la.ipAddress = :ipAddress')->willReturnSelf();
