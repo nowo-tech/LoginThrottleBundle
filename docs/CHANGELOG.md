@@ -52,6 +52,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Tooling: `rector.php` now skips three Rector rules, each limited to the named files and with the reason written beside
+  it, so `composer rector-dry` (and with it `make release-check`) passes on `main` again.
+  `LocallyCalledStaticMethodToNonStaticRector` is skipped in `src/Repository/LoginAttemptRepository.php` (`isExact()`) and
+  `tests/Doctrine/ExactCollationListenerTest.php` (`collationOf()`, `charsetOf()`): they are pure functions and
+  intentionally `static`. `RemoveNullArgOnNullDefaultParamRector` is skipped in `tests/Repository/LoginAttemptRepositoryTest.php`
+  (the explicit `null` documents the IP-only bucket). `DirnameDirConcatStringToDirectStringPathRector` is skipped in
+  `tests/Doctrine/ExactCollationListenerTest.php` (keeps one path style in the fixture-path array). Do not apply those hunks;
+  no production or test code changed.
+
 ## [3.11.0] - 2026-11-13
 
 Identifiers are matched byte for byte, so a look-alike account (`alicé@` for `alice@`) can no longer clear or inflate
