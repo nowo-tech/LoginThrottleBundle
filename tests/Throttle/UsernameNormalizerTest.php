@@ -64,6 +64,41 @@ final class UsernameNormalizerTest extends TestCase
         self::assertSame('victim@example.com', UsernameNormalizer::fromRequest(Request::create('/login', 'POST', ['_username' => "\t ", 'email' => 'Victim@example.com'])));
     }
 
+    public function testSkeletonFoldsCaseAccentsAndWidth(): void
+    {
+        $skeleton = UsernameNormalizer::skeleton('bob@example.com');
+        foreach (['BOB@example.com', 'bób@example.com', "bo\u{0301}b@example.com", 'ｂｏｂ@example.com', 'Bõb@EXAMPLE.com'] as $variant) {
+            self::assertSame($skeleton, UsernameNormalizer::skeleton($variant), $variant);
+        }
+        self::assertSame('strasse', UsernameNormalizer::skeleton('Straße'));
+        self::assertNotSame($skeleton, UsernameNormalizer::skeleton('bob@example.com '));
+        self::assertNotSame($skeleton, UsernameNormalizer::skeleton("bob@example.com\u{200B}"));
+        self::assertSame("bob\xFF", UsernameNormalizer::skeleton("bob\xFF"), 'invalid UTF-8 is compared as stored');
+    }
+
+    /**
+     * Audit F-LT-1 (3.10.2): the limiter keys on the identifier Symfony authenticates (LAST_USERNAME), not on another
+     * POST field.
+     */
+    public function testForLimiterPrefersTheAuthenticatedIdentifier(): void
+    {
+        $confused = Request::create('/login', 'POST', ['login_form' => ['_username' => 'victim@example.com'], '_username' => 'Attacker@example.com']);
+        self::assertSame('victim@example.com', UsernameNormalizer::forLimiter($confused), 'without the attribute the POST fields decide');
+        $confused->attributes->set(SecurityRequestAttributes::LAST_USERNAME, 'Attacker@example.com');
+        self::assertSame('attacker@example.com', UsernameNormalizer::forLimiter($confused));
+
+        $unusable = Request::create('/login', 'POST', ['_username' => "attacker\t"]);
+        $unusable->attributes->set(SecurityRequestAttributes::LAST_USERNAME, "attacker\t");
+        self::assertNull(UsernameNormalizer::forLimiter($unusable, true));
+
+        // json_login (no username field): IP-only unless username_from_passport
+        $json = Request::create('/api/login', 'POST');
+        $json->attributes->set(SecurityRequestAttributes::LAST_USERNAME, 'Json@Example.com');
+        self::assertNull(UsernameNormalizer::forLimiter($json));
+        self::assertSame('json@example.com', UsernameNormalizer::forLimiter($json, true));
+        self::assertNull(UsernameNormalizer::forLimiter(Request::create('/api/login', 'POST')));
+    }
+
     public function testPassportIdentifierOnlyWhenEnabled(): void
     {
         $request = Request::create('/api/login', 'POST');

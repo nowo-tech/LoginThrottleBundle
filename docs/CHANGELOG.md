@@ -58,11 +58,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   MySQL / MariaDB collations `alicé@`, `Alice@` and (PAD SPACE) `alice@ ` equal `alice@`, so an attacker who owns a
   look-alike account could brute-force `alice@`, log in successfully as the look-alike from the same IP, and wipe
   Alice's attempts, which also emptied the per-IP counter. Affects 3.2.0 to 3.10.1 with `storage: database` on MySQL /
-  MariaDB. `clearAttempts()` now selects the rows, keeps the byte-identical ones (`===`) and deletes them by primary
-  key.
-- **Counting is exact too.** `countAttempts()`, `countAttemptsByIp()`, `countAttemptsByUsername()` and
-  `getAttempts()` / `getAttemptViews()` / `findOldestAttemptAt()` re-check every row with `===`, so a look-alike's
-  failures never count for or against another username.
+  MariaDB. `clearAttempts()` now selects the rows, keeps the byte-identical ones (`===`) and clears them by primary
+  key. Lower-casing still happens before, so `Bob` and `bob` are one account (a successful `Bob` login clears `bob`).
+- **The bucket is the identifier Symfony authenticates.** With `login_throttling`, the limiter keys `consume()` and
+  `reset()` on the passport identifier Symfony stores as `LAST_USERNAME` whenever the request submitted a username
+  field, instead of the first POST field. Before, `_username=attacker` plus `login_form[_username]=victim` made the
+  attacker's own successful login reset the victim's counter (unlimited guesses from one IP). Affects 3.2.0 to 3.10.1.
+  The POST fields still decide when the limiter is called without that attribute.
+- **Cleared attempts keep counting for the IP.** A successful login no longer deletes the attempts it clears: their
+  username is set to NULL, so they leave the username's bucket but still count against `max_count_attempts_per_ip`
+  until `timeout`. No schema change.
+- **Spelling variants share one budget.** Per-IP username counts (`countAttempts()`, `getAttempts()` with an IP, and
+  so `isBlocked()` / retry-after) compare a folded skeleton (NFKD, accents removed, case folded) over the IP's
+  attempts, which the per-IP cap bounds: `bób`, `ｂob` or `bo` + U+0301 + `b` never get a fresh budget against `bob`.
+  Clearing stays byte-exact. `countAttemptsByUsername()` (across IPs, not used by the limiter) stays exact. Requires
+  `symfony/polyfill-intl-normalizer` (added) when `ext-intl` is missing.
 - **NO PAD binary collation on `username` and `ip_address`** in the generated schema: `utf8mb4_0900_bin` on MySQL
   8.0.17+, `utf8mb4_nopad_bin` on MariaDB, `utf8mb4_bin` (PAD SPACE) only for MySQL 5.7 / 8.0.0-8.0.16 or a `server_version` without the
   patch number, with a logged warning. Existing tables keep their collation until the `ALTER` of UPGRADING; the

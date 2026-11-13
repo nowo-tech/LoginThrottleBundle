@@ -20,15 +20,16 @@ use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepository;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Security\Http\SecurityRequestAttributes;
 
 /**
- * REQ-SEC-006 (3.10.2): look-alike usernames (`Bob`, `bób`, `bob `, `bob\n`, NBSP, ZWSP) never count for, count
- * against, or clear the attempts of `bob`.
+ * REQ-SEC-006 (3.10.2): look-alike usernames (`Bob`, `bób`, `bob `, `bob\n`, NBSP, ZWSP) never clear the attempts of
+ * `bob`; spelling variants (case, accents, width) count in bob's bucket, so they never add guesses either.
  *
  * Runs on SQLite with `COLLATE NOCASE` columns always, and on MySQL / MariaDB when LOGIN_THROTTLE_TEST_MYSQL_URL /
  * LOGIN_THROTTLE_TEST_MARIADB_URL point at a throwaway database (the tables are dropped first). The "legacy" variants
  * keep the server's default folding collation (a table created before 3.10.2, without the ALTER of UPGRADING): the
- * repository's `===` re-check alone must keep the counters exact.
+ * repository's PHP re-check alone must keep the buckets right.
  *
  * @author Héctor Franco Aceituno <hectorfranco@nowo.tech>
  * @copyright 2025 Nowo.tech
@@ -61,31 +62,42 @@ final class LookAlikeUsernameTest extends TestCase
         yield 'mariadb exact collation' => ['LOGIN_THROTTLE_TEST_MARIADB_URL', true];
     }
 
+    /**
+     * Counting (3.10.2): the per-username bucket is the folded skeleton over the IP's attempts, so case and accent
+     * variants (`Bob`, `bób`) count for `bob`; whitespace, control and format variants stay separate buckets.
+     */
     #[DataProvider('platforms')]
-    public function testLookAlikesNeverCountForTheOwner(string $source, bool $exactCollation): void
+    public function testCountingUsesTheFoldedSkeletonOverTheIpsAttempts(string $source, bool $exactCollation): void
     {
         $repository = $this->seededRepository($source, $exactCollation);
+        $expected = [
+            self::OWNER => 5,
+            'Bob@example.com' => 5,
+            'bób@example.com' => 5,
+            'bob@example.com ' => 2,
+            "bob@example.com\n" => 1,
+            "bob@example.com\u{00A0}" => 2, // NFKD turns NBSP into a space
+            "bob@example.com\u{200B}" => 1,
+        ];
 
-        $this->assertSame(3, $repository->countAttempts(self::IP, self::OWNER, 600));
-        // the fourth row of the owner comes from another IP string
-        $this->assertSame(4, $repository->countAttemptsByUsername(self::OWNER, 600));
-        $this->assertTrue($repository->isBlocked(self::IP, self::OWNER, 3, 600));
-        $this->assertFalse($repository->isBlocked(self::IP, self::OWNER, 4, 600));
-        $this->assertCount(3, $repository->getAttempts(self::IP, self::OWNER, 600));
-        $this->assertCount(4, $repository->getAttempts('', self::OWNER, 600));
-        foreach (self::LOOK_ALIKES as $lookAlike) {
-            $this->assertSame(1, $repository->countAttempts(self::IP, $lookAlike, 600), json_encode($lookAlike, \JSON_THROW_ON_ERROR));
-            $this->assertSame(1, $repository->countAttemptsByUsername($lookAlike, 600));
-            $views = $repository->getAttemptViews(self::IP, $lookAlike, 600);
-            $this->assertCount(1, $views);
-            $this->assertSame($lookAlike, $views[0]->username);
+        foreach ($expected as $username => $count) {
+            $label = json_encode($username, \JSON_THROW_ON_ERROR);
+            $this->assertSame($count, $repository->countAttempts(self::IP, $username, 600), $label);
+            $this->assertCount($count, $repository->getAttemptViews(self::IP, $username, 600), $label);
+            // across IPs the count stays exact
+            $this->assertSame(self::OWNER === $username ? 4 : 1, $repository->countAttemptsByUsername($username, 600), $label);
         }
+        $this->assertTrue($repository->isBlocked(self::IP, self::OWNER, 5, 600));
+        $this->assertFalse($repository->isBlocked(self::IP, self::OWNER, 6, 600));
+        $this->assertCount(4, $repository->getAttempts('', self::OWNER, 600));
         $this->assertSame(3 + \count(self::LOOK_ALIKES), $repository->countAttemptsByIp(self::IP, 600));
+        $this->assertSame(3 + \count(self::LOOK_ALIKES), $repository->countAttempts(self::IP, null, 600));
         $this->assertSame(1, $repository->countAttemptsByIp(self::IP . ' ', 600));
     }
 
     /**
-     * F2: a successful login on a look-alike account clears only that account's own attempts, never the owner's.
+     * F2: a successful login on a look-alike account clears only that account's own attempts, never the owner's; and
+     * cleared attempts keep counting for the IP (3.10.2).
      */
     #[DataProvider('platforms')]
     public function testClearingALookAlikeKeepsTheOwnersAttempts(string $source, bool $exactCollation): void
@@ -98,33 +110,103 @@ final class LookAlikeUsernameTest extends TestCase
         $this->assertSame(0, $repository->clearAttempts(self::IP, 'bóB@example.com'));
 
         $this->assertSame(3, $repository->countAttempts(self::IP, self::OWNER, 600));
-        $this->assertSame(3, $repository->countAttemptsByIp(self::IP, 600));
         $this->assertSame(3, $repository->clearAttempts(self::IP, self::OWNER));
-        $this->assertSame(0, $repository->countAttemptsByIp(self::IP, 600));
+        $this->assertSame(0, $repository->countAttempts(self::IP, self::OWNER, 600));
+        $this->assertSame(3 + \count(self::LOOK_ALIKES), $repository->countAttemptsByIp(self::IP, 600), 'cleared attempts still count for the IP');
         $this->assertSame(1, $repository->countAttemptsByIp(self::IP . ' ', 600));
+        $this->assertSame(1, $repository->countAttempts(self::IP . ' ', self::OWNER, 600));
     }
 
     /**
-     * End to end through the limiter: the attacker brute-forces `bob@`, then logs in successfully as `bób@` from the
-     * same IP; bob's bucket stays blocked.
+     * End to end through the limiter: the attacker brute-forces `bob@`, then tries a successful login as `bób@` from
+     * the same IP; the variant shares bob's blocked bucket, and its reset clears nothing of bob's.
      */
     #[DataProvider('platforms')]
     public function testASuccessfulLookAlikeLoginDoesNotUnblockTheOwner(string $source, bool $exactCollation): void
     {
         $repository = new LoginAttemptRepository($this->registry($this->entityManager($source, $exactCollation)));
         $limiter = new DatabaseRateLimiter($repository, 3, 600);
-        $request = static fn (string $username): Request => Request::create('/login', 'POST', ['_username' => $username], server: ['REMOTE_ADDR' => self::IP]);
 
         for ($i = 0; $i < 3; ++$i) {
-            $limiter->consume($request(self::OWNER));
+            $limiter->consume(self::login(self::OWNER));
         }
-        $this->assertFalse($limiter->consume($request(self::OWNER))->isAccepted());
+        $this->assertFalse($limiter->consume(self::login(self::OWNER))->isAccepted());
 
-        $this->assertTrue($limiter->consume($request('bób@example.com'))->isAccepted());
-        $limiter->reset($request('bób@example.com'));
+        $this->assertFalse($limiter->consume(self::login('bób@example.com'))->isAccepted(), 'an accent variant shares the bucket');
+        $limiter->reset(self::login('bób@example.com'));
 
-        $this->assertFalse($limiter->consume($request(self::OWNER))->isAccepted(), 'the owner must stay blocked');
+        $this->assertFalse($limiter->consume(self::login(self::OWNER))->isAccepted(), 'the owner must stay blocked');
         $this->assertSame(3, $repository->countAttempts(self::IP, self::OWNER, 600));
+    }
+
+    /**
+     * Audit F-LT-2: case, accent, NFD and fullwidth variants of one username never multiply its budget.
+     */
+    #[DataProvider('platforms')]
+    public function testSpellingVariantsShareOneBudget(string $source, bool $exactCollation): void
+    {
+        $limiter = new DatabaseRateLimiter(new LoginAttemptRepository($this->registry($this->entityManager($source, $exactCollation))), 3, 600);
+        $accepted = 0;
+        foreach (['bob@example.com', 'BOB@example.com', 'bób@example.com', 'bòb@example.com', 'böb@example.com', "bo\u{0301}b@example.com", 'ｂｏｂ@example.com', 'bõb@example.com'] as $variant) {
+            for ($i = 0; $i < 3; ++$i) {
+                $accepted += $limiter->consume(self::login($variant))->isAccepted() ? 1 : 0;
+            }
+        }
+
+        $this->assertSame(2, $accepted);
+    }
+
+    /**
+     * Audit F-LT-1: Symfony authenticates `_username` and stores it as LAST_USERNAME; an extra
+     * `login_form[_username]=victim` field on the attacker's own successful login no longer resets the victim.
+     */
+    #[DataProvider('platforms')]
+    public function testFieldConfusionNoLongerResetsTheVictim(string $source, bool $exactCollation): void
+    {
+        $limiter = new DatabaseRateLimiter(new LoginAttemptRepository($this->registry($this->entityManager($source, $exactCollation))), 3, 600);
+        $ownLogin = static fn (): Request => self::login('attacker@example.com', ['login_form' => ['_username' => 'victim@example.com']]);
+        $accepted = 0;
+        for ($round = 0; $round < 20; ++$round) {
+            $accepted += $limiter->consume(self::login('victim@example.com'))->isAccepted() ? 1 : 0;
+            $limiter->consume($ownLogin());
+            $limiter->reset($ownLogin());
+        }
+
+        $this->assertSame(2, $accepted);
+    }
+
+    /**
+     * Without Symfony's attribute (the limiter called directly) the POST fields decide, and the confusion still works
+     * on the username bucket; cleared attempts keep counting for the IP, so the per-IP cap (15) still bounds it.
+     */
+    #[DataProvider('platforms')]
+    public function testThePerIpCapBoundsAnyResetConfusion(string $source, bool $exactCollation): void
+    {
+        $limiter = new DatabaseRateLimiter(new LoginAttemptRepository($this->registry($this->entityManager($source, $exactCollation))), 3, 600);
+        $guess = static fn (): Request => Request::create('/login', 'POST', ['_username' => 'victim@example.com'], server: ['REMOTE_ADDR' => self::IP]);
+        $ownLogin = static fn (): Request => Request::create('/login', 'POST', ['login_form' => ['_username' => 'victim@example.com'], '_username' => 'attacker@example.com'], server: ['REMOTE_ADDR' => self::IP]);
+        $accepted = 0;
+        for ($round = 0; $round < 20; ++$round) {
+            $accepted += $limiter->consume($guess())->isAccepted() ? 1 : 0;
+            $limiter->consume($ownLogin());
+            $limiter->reset($ownLogin());
+        }
+
+        $this->assertLessThan(15, $accepted, 'before 3.10.2: 20 of 20');
+    }
+
+    /**
+     * A login request as Symfony's login_throttling listener hands it over: POST fields plus the authenticated
+     * identifier in LAST_USERNAME.
+     *
+     * @param array<string, mixed> $extra
+     */
+    private static function login(string $username, array $extra = []): Request
+    {
+        $request = Request::create('/login', 'POST', ['_username' => $username] + $extra, server: ['REMOTE_ADDR' => self::IP]);
+        $request->attributes->set(SecurityRequestAttributes::LAST_USERNAME, $username);
+
+        return $request;
     }
 
     /**
@@ -134,7 +216,7 @@ final class LookAlikeUsernameTest extends TestCase
     public function testTheListenerSetsTheExactCollation(string $source, bool $exactCollation): void
     {
         if (!$exactCollation) {
-            $this->assertTrue(true);
+            $this->addToAssertionCount(1); // the legacy variants keep the server's default collation
 
             return;
         }

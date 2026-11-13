@@ -27,8 +27,7 @@ use Symfony\Component\RateLimiter\RateLimit;
  * With {@code username_from_passport: true} (3.9), a request without those fields (json_login, custom
  * authenticators) is keyed on the passport identifier Symfony stores on the request, like form_login.
  * The rules live in {@see ThrottleRules}, shared with the status provider.
- * On successful login, {@see reset()} deletes matching {@see LoginAttempt} rows for that IP +
- * username only; the IP-wide counter keeps decaying with the timeout window.
+ * On successful login, {@see reset()} clears that IP + username's {@see LoginAttempt} rows (3.10.2: username set to NULL, so they keep counting for the IP); the username is the identifier Symfony authenticates ({@see UsernameNormalizer::forLimiter()}).
  *
  * @author Héctor Franco Aceituno <hectorfranco@nowo.tech>
  * @copyright 2025 Nowo.tech
@@ -128,7 +127,7 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
     /**
      * Reset the rate limiter for the given request (successful login).
      *
-     * Deletes stored attempts for this IP + username so the next failure starts a fresh window.
+     * Clears the stored attempts of this IP + username (they keep counting for the IP) so the next failure starts a fresh window.
      *
      * Without a username (KF-L-M1, 3.9) nothing is deleted: the IP-only bucket holds every attempt of the IP, the same
      * rows the per-IP cap counts, so clearing it on any successful login (e.g. the attacker's own account) would give
@@ -158,7 +157,7 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
      */
     private function extractUsername(Request $request): ?string
     {
-        return UsernameNormalizer::fromRequest($request, $this->usernameFromPassport);
+        return UsernameNormalizer::forLimiter($request, $this->usernameFromPassport);
     }
 
     /**

@@ -42,7 +42,9 @@ final class ExactCollationListenerTest extends TestCase
     public static function platforms(): iterable
     {
         yield 'mariadb' => [new MariaDBPlatform(), 'utf8mb4_nopad_bin'];
-        yield 'mysql 8.4' => [new MySQL84Platform(), 'utf8mb4_0900_bin'];
+        if (class_exists(MySQL84Platform::class)) { // DBAL 4.1+
+            yield 'mysql 8.4' => [new MySQL84Platform(), 'utf8mb4_0900_bin'];
+        }
         yield 'mysql 8.0' => [new MySQL80Platform(), 'utf8mb4_0900_bin'];
         yield 'mysql 5.7 or server_version without patch' => [new MySQLPlatform(), 'utf8mb4_bin'];
         yield 'postgresql' => [new PostgreSQLPlatform(), null];
@@ -120,13 +122,18 @@ final class ExactCollationListenerTest extends TestCase
         yield 'mysql 8.0.40 with a suffix' => [new MySQL80Platform(), '8.0.40-0ubuntu0.24.04.1', 'utf8mb4_0900_bin'];
         yield 'unreadable version: the platform decides' => [new MySQL80Platform(), new \RuntimeException('offline'), 'utf8mb4_0900_bin'];
         yield 'unparsable version: the platform decides' => [new MySQL80Platform(), 'unknown', 'utf8mb4_0900_bin'];
-        yield 'mysql 8.4 platform is not queried' => [new MySQL84Platform(), new \LogicException('must not be read'), 'utf8mb4_0900_bin'];
+        if (class_exists(MySQL84Platform::class)) { // DBAL 4.1+
+            yield 'mysql 8.4 platform is not queried' => [new MySQL84Platform(), new \LogicException('must not be read'), 'utf8mb4_0900_bin'];
+        }
         yield 'mariadb is not queried' => [new MariaDBPlatform(), new \LogicException('must not be read'), 'utf8mb4_nopad_bin'];
     }
 
     #[DataProvider('serverVersions')]
     public function testCollationForConnectionChecksTheMySql80Patch(AbstractPlatform $platform, string|\Throwable $version, string $expected): void
     {
+        if (!(new \ReflectionMethod(Connection::class, 'getServerVersion'))->isPublic()) {
+            $this->markTestSkipped('DBAL 3 keeps Connection::getServerVersion() private (covered by the native-connection test).');
+        }
         $connection = $this->createMock(Connection::class);
         $connection->method('getDatabasePlatform')->willReturn($platform);
         if ($version instanceof \Throwable) {

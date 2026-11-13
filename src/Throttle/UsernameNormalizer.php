@@ -68,6 +68,53 @@ final class UsernameNormalizer
     }
 
     /**
+     * Folded skeleton of a username, the key of its per-username bucket (3.10.2): compatibility decomposition (NFKD:
+     * fullwidth and other width variants become their plain form), combining marks removed (accents), then Unicode
+     * case folding. `bob`, `Bób`, `ｂｏｂ` and `bo` + U+0301 + `b` share one bucket, so spelling variants of one account
+     * never add guesses. Only counting uses it; clearing stays byte-exact, so a look-alike never clears another
+     * account's attempts.
+     */
+    public static function skeleton(string $username): string
+    {
+        // invalid UTF-8 (legacy rows): compared as stored
+        if (!mb_check_encoding($username, 'UTF-8') || !\is_string($decomposed = \Normalizer::normalize($username, \Normalizer::FORM_KD))) {
+            return $username;
+        }
+
+        return mb_convert_case(preg_replace('/\p{Mn}+/u', '', $decomposed) ?? $decomposed, \MB_CASE_FOLD, 'UTF-8');
+    }
+
+    /**
+     * The username the database limiter keys an attempt on (3.10.2).
+     *
+     * When Symfony's `login_throttling` listener stored the identifier it authenticates
+     * ({@see SecurityRequestAttributes::LAST_USERNAME}, the passport's UserBadge identifier), that identifier is used
+     * and the POST fields only tell whether the request submitted a username at all: a `login_form[_username]=victim`
+     * field next to `_username=attacker` can no longer make the attacker's successful login clear the victim's bucket.
+     * Without a submitted username field the request stays IP-only unless $fromSecurityAttribute (option
+     * `username_from_passport`). Without the attribute (the limiter called directly), the POST fields decide
+     * ({@see fromRequest()}).
+     *
+     * @param Request $request               The login request
+     * @param bool    $fromSecurityAttribute Key requests without a username field on the passport identifier
+     *
+     * @return string|null The normalised username or null
+     */
+    public static function forLimiter(Request $request, bool $fromSecurityAttribute = false): ?string
+    {
+        $identifier = $request->attributes->get(SecurityRequestAttributes::LAST_USERNAME);
+        if (!\is_string($identifier)) {
+            return self::fromRequest($request);
+        }
+
+        if ($fromSecurityAttribute || self::submitsUsername($request)) {
+            return self::normalize($identifier);
+        }
+
+        return null;
+    }
+
+    /**
      * Extract the normalised username from the request.
      *
      * Reads the POST fields first ({@code login_form[_username|username|email]}, then the top-level fields). With
@@ -96,6 +143,18 @@ final class UsernameNormalizer
         }
 
         return null;
+    }
+
+    /** Whether a username field holds a non-blank string (even an unusable one). */
+    private static function submitsUsername(Request $request): bool
+    {
+        foreach (self::candidates($request) as $value) {
+            if (\is_string($value) && '' !== trim($value)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

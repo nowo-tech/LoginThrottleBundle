@@ -58,9 +58,15 @@
 From **3.10.1** (target 3.10.2), `storage: database` on MySQL / MariaDB only (REQ-SEC-006). PostgreSQL and SQLite need
 nothing.
 
-**What changes without any action.** The repository re-checks every row with `===`: a successful login clears only the
-byte-identical username's attempts, and look-alikes (`Alice@`, `alicé@`, `alice@ `, NBSP / ZWSP variants) never count
-for or against another username. Usernames with control or format characters, non-ASCII spaces, invalid UTF-8 or more
+**What changes without any action.**
+- With Symfony's `login_throttling`, the bucket is the identifier Symfony authenticates (`LAST_USERNAME`) whenever the
+  request submitted a username field, not the first POST field: an extra `login_form[_username]` can no longer point
+  the bucket (and its reset) at another account. `json_login` without `username_from_passport` stays IP-only.
+- A successful login clears only the byte-identical username's attempts, and it no longer deletes them: their username
+  is set to NULL, so they keep counting for the IP until `timeout`. A shared IP (office NAT) therefore reaches
+  `max_count_attempts_per_ip` a little sooner after many failed-then-successful logins.
+- Per-IP username counts fold case, accents and width (`bób`, `ｂob` count for `bob`), so spelling variants never add
+  guesses; clearing stays exact. Usernames with control or format characters, non-ASCII spaces, invalid UTF-8 or more
 than 255 characters are no longer recorded under a username: they are throttled on the IP bucket. Plain lower-case
 ASCII usernames and emails behave exactly as before.
 

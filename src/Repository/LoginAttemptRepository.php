@@ -12,6 +12,7 @@ use Doctrine\Persistence\ManagerRegistry;
 use Doctrine\Persistence\Mapping\Driver\MappingDriver;
 use Doctrine\Persistence\ObjectManager;
 use Nowo\LoginThrottleBundle\Entity\LoginAttempt;
+use Nowo\LoginThrottleBundle\Throttle\UsernameNormalizer;
 use Psr\Clock\ClockInterface;
 
 /**
@@ -44,6 +45,11 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
     /**
      * Count failed login attempts for a given IP and username within a time period.
      *
+     * With a username, every attempt of the IP in the window is read (the per-IP cap bounds them) and the attempts
+     * whose username has the same folded skeleton are counted ({@see UsernameNormalizer::skeleton()}: compatibility
+     * decomposition, accents and case folded), so `bób`, `ｂob` or `BOB` never get a fresh budget against `bob`
+     * (3.10.2). Without a username, every attempt of the IP counts.
+     *
      * @param string      $ipAddress IP address
      * @param string|null $username  Username (optional)
      * @param int         $seconds   Time period in seconds
@@ -59,12 +65,19 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
             ->setParameter('ipAddress', $ipAddress)
             ->setParameter('since', $this->secondsAgo($seconds));
 
-        if (null !== $username) {
-            $qb->andWhere('la.username = :username')
-                ->setParameter('username', $username);
+        $skeleton = null === $username ? null : UsernameNormalizer::skeleton($username);
+        $count = 0;
+        foreach ($this->rows($qb) as $row) {
+            if (($row['ipAddress'] ?? null) !== $ipAddress) {
+                continue;
+            }
+            $stored = $row['username'] ?? null;
+            if (null === $skeleton || (\is_string($stored) && UsernameNormalizer::skeleton($stored) === $skeleton)) {
+                ++$count;
+            }
         }
 
-        return $this->countExact($qb, $ipAddress, $username);
+        return $count;
     }
 
     /**
@@ -89,6 +102,8 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
 
     /**
      * Count failed login attempts by username/email only (ignoring IP).
+     *
+     * Exact (`===`): across IPs there is no per-IP cap bounding a skeleton scan. The limiter does not use it.
      *
      * @param string $username Username/email
      * @param int    $seconds  Time period in seconds
@@ -198,18 +213,21 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
     }
 
     /**
-     * Delete login attempts for a given IP and username (e.g. after successful login).
+     * Clear login attempts for a given IP and username (e.g. after successful login).
      *
      * When username is null or empty, only rows with a null username are removed.
      *
-     * Selects first, keeps the rows whose IP and username are byte-identical (`===`, REQ-SEC-006), then deletes those
-     * rows by primary key: on a folding MySQL / MariaDB collation `alicé@` = `alice@` = `Alice@ `, so a delete by
-     * username alone let a successful login on a look-alike account wipe another account's failed attempts.
+     * With a username, selects first, keeps the rows whose IP and username are byte-identical (`===`, REQ-SEC-006)
+     * and clears them by primary key: on a folding MySQL / MariaDB collation `alicé@` = `alice@` = `Alice@ `, so a
+     * delete by username alone let a successful login on a look-alike account wipe another account's failed attempts.
+     * Since 3.10.2 the cleared rows are not deleted: their username is set to NULL, so they leave the username's bucket
+     * but keep counting for the IP until they expire; whatever key a successful login clears, the per-IP cap still
+     * bounds the guesses made from that IP.
      *
      * @param string      $ipAddress IP address
      * @param string|null $username  Username (optional)
      *
-     * @return int Number of deleted records
+     * @return int Number of cleared (username) or deleted (no username) records
      */
     public function clearAttempts(string $ipAddress, ?string $username): int
     {
@@ -233,17 +251,22 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
             }
         }
 
-        $deleted = 0;
+        $changed = 0;
         foreach (array_chunk($ids, self::CLEANUP_BATCH_SIZE) as $chunk) {
-            $deleted += (int) $this->createQueryBuilder('la')
-                ->delete()
+            $qb = $this->createQueryBuilder('la');
+            if (null === $username) {
+                $qb->delete();
+            } else {
+                $qb->update()->set('la.username', 'NULL');
+            }
+            $changed += (int) $qb
                 ->where('la.id IN (:ids)')
                 ->setParameter('ids', $chunk)
                 ->getQuery()
                 ->execute();
         }
 
-        return $deleted;
+        return $changed;
     }
 
     /**
@@ -328,7 +351,9 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
                 ->setParameter('ipAddress', $ipAddress);
         }
 
-        if (null !== $username) {
+        // with an IP, the bucket is the username's folded skeleton (as in countAttempts()); across IPs, exact
+        $skeleton = '' !== $ipAddress && null !== $username ? UsernameNormalizer::skeleton($username) : null;
+        if (null !== $username && null === $skeleton) {
             $qb->andWhere('la.username = :username')
                 ->setParameter('username', $username);
         }
@@ -342,8 +367,12 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
             if ($entityManager->contains($attempt)) {
                 $entityManager->detach($attempt);
             }
-            // REQ-SEC-006: the SQL filter may fold (case, accents, trailing spaces); keep byte-identical rows only
-            if (('' === $ipAddress || $attempt->getIpAddress() === $ipAddress) && (null === $username || $attempt->getUsername() === $username)) {
+            // REQ-SEC-006: the SQL filter may fold (case, accents, trailing spaces); keep the bucket's rows only
+            if ('' !== $ipAddress && $attempt->getIpAddress() !== $ipAddress) {
+                continue;
+            }
+            $stored = $attempt->getUsername();
+            if (null !== $skeleton ? null !== $stored && UsernameNormalizer::skeleton($stored) === $skeleton : null === $username || $stored === $username) {
                 $result[] = $attempt;
             }
         }

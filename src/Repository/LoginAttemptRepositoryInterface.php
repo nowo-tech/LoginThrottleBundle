@@ -68,7 +68,7 @@ interface LoginAttemptRepositoryInterface
     public function recordAttempt(string $ipAddress, ?string $username): LoginAttempt;
 
     /**
-     * Delete login attempts for a given IP and username (e.g. after successful login).
+     * Clear login attempts for a given IP and username (e.g. after successful login); since 3.10.2 the bundle repository keeps them for the per-IP count.
      *
      * When username is null or empty, only rows with a null username are removed.
      *

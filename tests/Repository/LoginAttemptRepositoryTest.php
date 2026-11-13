@@ -264,13 +264,14 @@ final class LoginAttemptRepositoryTest extends TestCase
             ));
 
         $this->queryBuilder->expects($this->once())->method('where')->with('la.ipAddress = :ipAddress')->willReturnSelf();
-        $this->queryBuilder->expects($this->exactly(2))->method('andWhere')->willReturnSelf();
-        $this->queryBuilder->expects($this->exactly(3))->method('setParameter')->willReturnSelf();
+        $this->queryBuilder->expects($this->once())->method('andWhere')->with('la.createdAt >= :since')->willReturnSelf();
+        $this->queryBuilder->expects($this->exactly(2))->method('setParameter')->willReturnSelf();
         $this->queryBuilder->expects($this->once())->method('getQuery')->willReturn($query);
 
         $result = $this->repository->countAttempts('10.0.0.1', 'user@example.com', 120);
 
-        $this->assertSame(4, $result);
+        // 3.10.2: `User@` shares the folded skeleton; `user@ ` (trailing space) is another bucket
+        $this->assertSame(5, $result);
     }
 
     public function testIsBlockedReturnsTrueWhenLimitReached(): void
@@ -366,7 +367,8 @@ final class LoginAttemptRepositoryTest extends TestCase
     public function testClearAttemptsWithUsernameDeletesOnlyTheExactRowsById(): void
     {
         $query = $this->createQueryMock();
-        // REQ-SEC-006: the folding SQL also returned look-alike rows (5, 6, 7); only 1, 2 and 3 are deleted
+        // REQ-SEC-006: the folding SQL also returned look-alike rows (5, 6, 7); only 1, 2 and 3 are cleared (3.10.2:
+        // username set to NULL, so they keep counting for the IP)
         $query->expects($this->once())->method('getArrayResult')->willReturn([
             ['id' => 1, 'ipAddress' => '192.168.1.1', 'username' => 'user@example.com'],
             ['id' => 5, 'ipAddress' => '192.168.1.1', 'username' => 'usér@example.com'],
@@ -377,7 +379,9 @@ final class LoginAttemptRepositoryTest extends TestCase
         ]);
         $query->expects($this->once())->method('execute')->willReturn(3);
 
-        $this->queryBuilder->expects($this->once())->method('delete')->willReturnSelf();
+        $this->queryBuilder->expects($this->never())->method('delete');
+        $this->queryBuilder->expects($this->once())->method('update')->willReturnSelf();
+        $this->queryBuilder->expects($this->once())->method('set')->with('la.username', 'NULL')->willReturnSelf();
         $where = [];
         $this->queryBuilder->expects($this->exactly(2))->method('where')->willReturnCallback(function (string $predicate) use (&$where): QueryBuilder {
             $where[] = $predicate;
@@ -449,9 +453,11 @@ final class LoginAttemptRepositoryTest extends TestCase
         (new \ReflectionProperty(LoginAttempt::class, 'createdAt'))->setValue($oldest, new \DateTimeImmutable('2026-11-10 09:00:00'));
 
         $query = $this->createQueryMock();
-        $lookAlike = new LoginAttempt('192.168.1.1', 'Alice');
+        // another bucket (a trailing space survives the skeleton), a cleared attempt (null username) and another IP
+        $lookAlike = new LoginAttempt('192.168.1.1', 'alice ');
+        $cleared = new LoginAttempt('192.168.1.1', null);
         $otherIp = new LoginAttempt('192.168.1.1 ', 'alice');
-        $query->method('getResult')->willReturnOnConsecutiveCalls([$newest, $lookAlike, $otherIp, $oldest], [$newest, $oldest, $lookAlike], []);
+        $query->method('getResult')->willReturnOnConsecutiveCalls([$newest, $lookAlike, $cleared, $otherIp, $oldest], [$newest, $oldest, $lookAlike], []);
         $this->queryBuilder->method('where')->willReturnSelf();
         $this->queryBuilder->method('andWhere')->willReturnSelf();
         $this->queryBuilder->method('setParameter')->willReturnSelf();
