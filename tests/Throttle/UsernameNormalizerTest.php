@@ -21,7 +21,7 @@ final class UsernameNormalizerTest extends TestCase
     }
 
     /**
-     * REQ-SEC-006 item 1 (3.10.2): unusable usernames are refused, never cleaned into another user's bucket.
+     * REQ-SEC-006 item 1 (3.11.0): unusable usernames are refused, never cleaned into another user's bucket.
      */
     public function testUnusableUsernamesAreRefused(): void
     {
@@ -77,7 +77,7 @@ final class UsernameNormalizerTest extends TestCase
     }
 
     /**
-     * Audit F-LT-1 (3.10.2): the limiter keys on the identifier Symfony authenticates (LAST_USERNAME), not on another
+     * Audit F-LT-1 (3.11.0): the limiter keys on the identifier Symfony authenticates (LAST_USERNAME), not on another
      * POST field.
      */
     public function testForLimiterPrefersTheAuthenticatedIdentifier(): void

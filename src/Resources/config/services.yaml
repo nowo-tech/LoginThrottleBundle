@@ -29,7 +29,7 @@ services:
     tags:
       - { name: doctrine.event_listener, event: loadClassMetadata }
 
-  # REQ-SEC-006 (3.10.2): byte-exact NO PAD collation on username / ip_address (MySQL / MariaDB); removed by the
+  # REQ-SEC-006 (3.11.0): byte-exact NO PAD collation on username / ip_address (MySQL / MariaDB); removed by the
   # extension when the mapping is disabled.
   Nowo\LoginThrottleBundle\Doctrine\ExactCollationListener:
     arguments:

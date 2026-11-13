@@ -43,7 +43,7 @@ final class ThrottleRulesTest extends TestCase
     {
         $status = (new ThrottleRules(new InMemoryLoginAttemptStore(), 3, 600))->status('10.0.0.1', null);
 
-        // 3.10.2: the IP bucket's limit is the per-IP cap (3 × 5), not max_count_attempts
+        // 3.11.0: the IP bucket's limit is the per-IP cap (3 × 5), not max_count_attempts
         self::assertEquals(new ThrottleStatus(0, 15, 15, false, null, ThrottleStatus::TRACKING_IP, 0, 15), $status);
         self::assertTrue($status->tracked);
     }

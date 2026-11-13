@@ -27,7 +27,7 @@ use Symfony\Component\RateLimiter\RateLimit;
  * With {@code username_from_passport: true} (3.9), a request without those fields (json_login, custom
  * authenticators) is keyed on the passport identifier Symfony stores on the request, like form_login.
  * The rules live in {@see ThrottleRules}, shared with the status provider.
- * On successful login, {@see reset()} clears that IP + username's {@see LoginAttempt} rows (3.10.2: username set to NULL, so they keep counting for the IP); the username is the identifier Symfony authenticates ({@see UsernameNormalizer::forLimiter()}).
+ * On successful login, {@see reset()} clears that IP + username's {@see LoginAttempt} rows (3.11.0: username set to NULL, so they keep counting for the IP); the username is the identifier Symfony authenticates ({@see UsernameNormalizer::forLimiter()}).
  *
  * @author Héctor Franco Aceituno <hectorfranco@nowo.tech>
  * @copyright 2025 Nowo.tech
@@ -81,7 +81,7 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
         $username = $this->extractUsername($request);
 
         // Check if already blocked (IP + username first, then the IP-only cap). Without a username the bucket is the
-        // IP itself, so only the cap applies (3.10.2): those are the rows the cap counts anyway.
+        // IP itself, so only the cap applies (3.11.0): those are the rows the cap counts anyway.
         $isBlocked = null !== $username && $this->repository->isBlocked($ipAddress, $username, $this->maxAttempts, $this->timeoutSeconds);
         $isIpBlocked = !$isBlocked && $this->repository->countAttemptsByIp($ipAddress, $this->timeoutSeconds) >= $this->maxAttemptsPerIp;
 

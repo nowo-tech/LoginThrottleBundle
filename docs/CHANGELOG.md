@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[3.11.0] - 2026-11-13](#3110---2026-11-13)
 - [[3.10.1] - 2026-11-10](#3101---2026-11-10)
 - [[3.10.0] - 2026-11-10](#3100---2026-11-10)
 - [[3.9.0] - 2026-11-10](#390---2026-11-10)
@@ -51,6 +52,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.11.0] - 2026-11-13
+
+Identifiers are matched byte for byte, so a look-alike account (`alicé@` for `alice@`) can no longer clear or inflate
+another account's login attempts (REQ-SEC-006), and the bucket a request is throttled on is the identifier Symfony
+authenticates.
+
+> **Throttling budget change — read before upgrading.** A request **without a usable username** (`json_login` without
+> `username_from_passport`, or an identifier the bundle refuses) is now bounded by `max_count_attempts_per_ip`
+> instead of `max_count_attempts`. They are the same rows, so the smaller limit silently won and the cap was dead
+> configuration for that case — but the bound is **higher**: with the defaults one address goes from 2 to 14 accepted
+> attempts per 10-minute window (about 12 an hour before, 84 now). Named buckets are unchanged (`form_login`: 2 per
+> username per window). Set `max_count_attempts_per_ip: 3` to keep the 3.10.1 bound, or
+> `username_from_passport: true` to give each identifier its own bucket. See
+> [UPGRADING](https://github.com/nowo-tech/LoginThrottleBundle/blob/main/docs/UPGRADING.md).
+
 ### Security
 
 - **A successful login no longer clears a look-alike account's failed attempts (REQ-SEC-006).** On a successful
@@ -65,15 +81,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   field, instead of the first POST field. Before, `_username=attacker` plus `login_form[_username]=victim` made the
   attacker's own successful login reset the victim's counter (unlimited guesses from one IP). Affects 3.2.0 to 3.10.1.
   The POST fields still decide when the limiter is called without that attribute.
+- **A request without a usable username is bounded by the per-IP cap** (`max_count_attempts_per_ip`, 5 ×
+  `max_count_attempts` by default) instead of `max_count_attempts` — the budget of one address rises from 2 to 14
+  attempts per 10-minute window with the defaults. Those are the same rows either way, so the smaller limit won and
+  the cap was dead configuration for that case; the old bound also locked out a whole office address after a few
+  colleagues' failures. Named buckets are unchanged. `max_count_attempts_per_ip: 3` restores the old bound,
+  `username_from_passport: true` gives each identifier its own bucket. `ThrottleStatus::$maxAttempts` reports the cap
+  for the IP bucket.
 - **A successful login clears its bucket without spending the per-IP budget.** Symfony's limiter consumes a token on
   every attempt, successful ones included, so `reset()` deletes the attempt the successful request itself recorded.
   The earlier failures of that bucket keep their row and lose the username, so the next failure starts a fresh
   per-username window while they still count against `max_count_attempts_per_ip` until `timeout`, which bounds any
   confusion about which bucket a success clears. No schema change.
-- **A request without a usable username is bounded by the per-IP cap** (`max_count_attempts_per_ip`) instead of
-  `max_count_attempts`. Those are the rows the cap counts anyway, and the old limit meant a few failures from a
-  shared IP (office NAT, CGNAT) refused every later request whose username the bundle cannot use — `json_login`
-  without `username_from_passport` among them. `ThrottleStatus::$maxAttempts` reports that cap for the IP bucket.
 - **`LoginThrottleInfoService` reads the same bucket as the limiter** (the authenticated identifier when Symfony put
   it on the request). The figures are display-only; with `username_from_passport: true` a request without a username
   field still reports the IP bucket.
@@ -103,6 +122,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   on MySQL 5.7 only — binary but PAD SPACE), so a column added later cannot inherit a folding default.
 - `DATABASE_STORAGE.md`: the per-IP cap counts the client IP Symfony reports. Without correct `trusted_proxies` /
   `trusted_headers` every visitor behind the proxy shares one bucket, and the cap then locks all of them out.
+
+[3.11.0]: https://github.com/nowo-tech/LoginThrottleBundle/releases/tag/v3.11.0
 
 ## [3.10.1] - 2026-11-10
 

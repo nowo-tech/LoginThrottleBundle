@@ -157,7 +157,7 @@ final class DatabaseRateLimiterTest extends TestCase
         $request = Request::create('/login', 'POST');
         $request->server->set('REMOTE_ADDR', '192.168.1.1');
 
-        // 3.10.2: without a username the bucket is the IP itself, bounded by the per-IP cap (3 × 5) alone
+        // 3.11.0: without a username the bucket is the IP itself, bounded by the per-IP cap (3 × 5) alone
         $this->repository->expects($this->never())->method('isBlocked');
 
         $this->repository

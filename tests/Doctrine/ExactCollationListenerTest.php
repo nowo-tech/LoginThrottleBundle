@@ -29,7 +29,7 @@ use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 
 /**
- * REQ-SEC-006 (3.10.2): the key columns get the NO PAD binary collation of the platform in the generated schema.
+ * REQ-SEC-006 (3.11.0): the key columns get the NO PAD binary collation of the platform in the generated schema.
  *
  * @author Héctor Franco Aceituno <hectorfranco@nowo.tech>
  * @copyright 2025 Nowo.tech

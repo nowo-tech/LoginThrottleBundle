@@ -114,7 +114,7 @@ final class LockoutParityTest extends TestCase
         $store = new InMemoryLoginAttemptStore();
         $limiter = $this->limiter($store);
 
-        // 3.10.2: that bucket is the IP itself, so the per-IP cap bounds it (max_count_attempts would make a few
+        // 3.11.0: that bucket is the IP itself, so the per-IP cap bounds it (max_count_attempts would make a few
         // failures from a shared IP refuse every later json_login of everyone behind it)
         for ($i = 0; $i < self::MAX; ++$i) {
             $this->assertParity($store, $limiter, $this->jsonRequest('10.0.0.5', 'erin'), null);
@@ -130,26 +130,30 @@ final class LockoutParityTest extends TestCase
     }
 
     /**
-     * KF-L-M1 (audit PoC P2): guess twice against a victim, log into an own account, repeat 20 times from one IP. With
-     * IP-only keys the successful login must not wipe the IP's attempts (3.2.0–3.8.0 accepted 40 / 40 guesses).
+     * KF-L-M1 (audit PoC P2): guess twice against a victim, log into an own account, repeat from one IP. However many
+     * own logins succeed, the accepted guesses must stay bounded — they must not grow with the number of cycles
+     * (3.2.0–3.8.0 accepted 40 / 40 guesses).
      *
-     * @return iterable<string, array{bool, int}>
+     * @return iterable<string, array{bool, int, int}>
      */
     public static function resetBypassModes(): iterable
     {
         // IP-only keys: the per-IP cap (5) bounds every guess of the window, however many own logins succeed
-        yield 'json_login, IP-only keys (default)' => [false, 3];
-        yield 'json_login, username_from_passport' => [true, 2];
+        yield 'json_login, IP-only keys (default)' => [false, 3, 20];
+        // the bound must not grow with the cycles: 5 × as many own logins, the same accepted guesses
+        yield 'json_login, IP-only keys, 100 cycles' => [false, 3, 100];
+        yield 'json_login, username_from_passport' => [true, 2, 20];
+        yield 'json_login, username_from_passport, 100 cycles' => [true, 2, 100];
     }
 
     #[DataProvider('resetBypassModes')]
-    public function testOwnAccountLoginDoesNotReopenTheIpBudget(bool $usernameFromPassport, int $maxAccepted): void
+    public function testOwnAccountLoginDoesNotReopenTheIpBudget(bool $usernameFromPassport, int $maxAccepted, int $cycles): void
     {
         $store = new InMemoryLoginAttemptStore();
         $limiter = $this->limiter($store, $usernameFromPassport);
         $accepted = 0;
 
-        for ($cycle = 0; $cycle < 20; ++$cycle) {
+        for ($cycle = 0; $cycle < $cycles; ++$cycle) {
             for ($guess = 0; $guess < 2; ++$guess) {
                 $accepted += $limiter->consume($this->jsonRequest('6.6.6.6', 'victim'))->isAccepted() ? 1 : 0;
                 $store->advance(1);
@@ -177,7 +181,10 @@ final class LockoutParityTest extends TestCase
         $limiter->reset($this->formRequest('10.0.0.8', 'alice'));
 
         self::assertSame(0, $store->countAttempts('10.0.0.8', 'alice', self::TIMEOUT));
-        self::assertSame(1, $store->countAttemptsByIp('10.0.0.8', self::TIMEOUT));
+        self::assertSame(1, $store->countAttempts('10.0.0.8', 'bob', self::TIMEOUT), "bob's bucket is untouched");
+        // alice's newest attempt (the one her successful request recorded) is gone; her earlier failure stays for the
+        // IP without a username, so the per-IP cap still sees it (3.11.0)
+        self::assertSame(2, $store->countAttemptsByIp('10.0.0.8', self::TIMEOUT));
     }
 
     /**

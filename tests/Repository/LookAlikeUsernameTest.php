@@ -23,12 +23,12 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Security\Http\SecurityRequestAttributes;
 
 /**
- * REQ-SEC-006 (3.10.2): look-alike usernames (`Bob`, `bób`, `bob `, `bob\n`, NBSP, ZWSP) never clear the attempts of
+ * REQ-SEC-006 (3.11.0): look-alike usernames (`Bob`, `bób`, `bob `, `bob\n`, NBSP, ZWSP) never clear the attempts of
  * `bob`; spelling variants (case, accents, width) count in bob's bucket, so they never add guesses either.
  *
  * Runs on SQLite with `COLLATE NOCASE` columns always, and on MySQL / MariaDB when LOGIN_THROTTLE_TEST_MYSQL_URL /
  * LOGIN_THROTTLE_TEST_MARIADB_URL point at a throwaway database (the tables are dropped first). The "legacy" variants
- * keep the server's default folding collation (a table created before 3.10.2, without the ALTER of UPGRADING): the
+ * keep the server's default folding collation (a table created before 3.11.0, without the ALTER of UPGRADING): the
  * repository's PHP re-check alone must keep the buckets right.
  *
  * @author Héctor Franco Aceituno <hectorfranco@nowo.tech>
@@ -63,7 +63,7 @@ final class LookAlikeUsernameTest extends TestCase
     }
 
     /**
-     * Counting (3.10.2): the per-username bucket is the folded skeleton over the IP's attempts, so case and accent
+     * Counting (3.11.0): the per-username bucket is the folded skeleton over the IP's attempts, so case and accent
      * variants (`Bob`, `bób`) count for `bob`; whitespace, control and format variants stay separate buckets.
      */
     #[DataProvider('platforms')]
@@ -98,7 +98,7 @@ final class LookAlikeUsernameTest extends TestCase
     /**
      * F2: a successful login on a look-alike account clears only that account's own attempts, never the owner's.
      * Clearing deletes the newest row of the bucket (the successful request's own attempt) and takes the username off
-     * the older ones, which keep counting for the IP (3.10.2).
+     * the older ones, which keep counting for the IP (3.11.0).
      */
     #[DataProvider('platforms')]
     public function testClearingALookAlikeKeepsTheOwnersAttempts(string $source, bool $exactCollation): void
@@ -248,7 +248,7 @@ final class LookAlikeUsernameTest extends TestCase
             $limiter->reset($ownLogin());
         }
 
-        $this->assertLessThan(15, $accepted, 'before 3.10.2: 20 of 20');
+        $this->assertLessThan(15, $accepted, 'before 3.11.0: 20 of 20');
     }
 
     /**

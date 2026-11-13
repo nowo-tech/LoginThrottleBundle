@@ -272,7 +272,7 @@ final class LoginAttemptRepositoryTest extends TestCase
 
         $result = $this->repository->countAttempts('10.0.0.1', 'user@example.com', 120);
 
-        // 3.10.2: `User@` shares the folded skeleton; `user@ ` (trailing space) is another bucket
+        // 3.11.0: `User@` shares the folded skeleton; `user@ ` (trailing space) is another bucket
         $this->assertSame(5, $result);
     }
 

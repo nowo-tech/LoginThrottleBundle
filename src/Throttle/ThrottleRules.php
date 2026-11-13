@@ -56,7 +56,7 @@ final readonly class ThrottleRules
      *
      * Blocked exactly when the limiter's next {@code consume()} refuses the attempt before recording it.
      *
-     * Without a username the bucket is the IP itself, so its limit is {@see maxAttemptsPerIp()} (3.10.2): those rows
+     * Without a username the bucket is the IP itself, so its limit is {@see maxAttemptsPerIp()} (3.11.0): those rows
      * are the ones the per-IP cap counts, and `max_count_attempts` would make a shared IP (office NAT) refuse requests
      * without a usable username after a handful of other people's failures.
      *

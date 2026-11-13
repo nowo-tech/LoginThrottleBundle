@@ -21,7 +21,7 @@ use Psr\Log\LoggerInterface;
 
 /**
  * Byte-exact collation for the key columns (`username`, `ip_address`) of the login attempts table on MySQL / MariaDB
- * (REQ-SEC-006, 3.10.2).
+ * (REQ-SEC-006, 3.11.0).
  *
  * The default MySQL / MariaDB collations fold case and accents (`Alice` = `alice` = `alicé`) and the PAD SPACE ones
  * also ignore trailing spaces (`alice ` = `alice`). The repository re-checks every row with `===`; the binary NO PAD

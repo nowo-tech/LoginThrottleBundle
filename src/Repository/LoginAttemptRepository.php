@@ -48,7 +48,7 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
      * With a username, every attempt of the IP in the window is read (the per-IP cap bounds them) and the attempts
      * whose username has the same folded skeleton are counted ({@see UsernameNormalizer::skeleton()}: compatibility
      * decomposition, accents and case folded), so `bób`, `ｂob` or `BOB` never get a fresh budget against `bob`
-     * (3.10.2). Without a username, every attempt of the IP counts.
+     * (3.11.0). Without a username, every attempt of the IP counts.
      *
      * @param string      $ipAddress IP address
      * @param string|null $username  Username (optional)
@@ -221,7 +221,7 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
      * REQ-SEC-006): on a folding MySQL / MariaDB collation `alicé@` = `alice@` = `Alice@ `, so a delete by username
      * alone let a successful login on a look-alike account wipe another account's failed attempts.
      *
-     * Of those rows (3.10.2), the newest is deleted and the older ones keep the row but lose the username (set to
+     * Of those rows (3.11.0), the newest is deleted and the older ones keep the row but lose the username (set to
      * NULL):
      * - the newest is the attempt the successful request itself just recorded (Symfony's limiter consumes a token on
      *   every attempt, successful ones included), so deleting it keeps a successful login from spending the per-IP
@@ -520,7 +520,7 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
      * Rows of $qb (scalar columns selected by alias) whose IP and username are byte-identical to the requested ones.
      *
      * The count happens in PHP after the SQL filter (REQ-SEC-006): a MySQL / MariaDB column on a folding collation
-     * (the default before the `ALTER` of UPGRADING 3.10.2) also returns look-alike rows (`Alice`, `alicé`,
+     * (the default before the `ALTER` of UPGRADING 3.11.0) also returns look-alike rows (`Alice`, `alicé`,
      * `alice `), which must neither count for nor against another username. No LIMIT is involved, so no exact row is
      * ever hidden by a look-alike.
      *

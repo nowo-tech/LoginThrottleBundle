@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\LoginThrottleBundle\Tests\Support;
 
 use Nowo\LoginThrottleBundle\Entity\LoginAttempt;
+use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepository;
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface;
 
 /**
@@ -56,16 +57,39 @@ class InMemoryLoginAttemptStore implements LoginAttemptRepositoryInterface
         return $this->entity($ipAddress, $username, $this->now);
     }
 
+    /**
+     * Like {@see LoginAttemptRepository::clearAttempts()} (3.11.0): the newest
+     * matching attempt — the one the successful request recorded itself — is deleted, the older ones only lose their
+     * username, so they keep counting for the IP.
+     */
     public function clearAttempts(string $ipAddress, ?string $username): int
     {
-        $before = \count($this->rows);
         $key = '' === $username ? null : $username;
-        $this->rows = array_values(array_filter(
-            $this->rows,
-            static fn (array $row): bool => $row['ip'] !== $ipAddress || $row['username'] !== $key,
-        ));
+        $keys = [];
+        foreach ($this->rows as $index => $row) {
+            if ($row['ip'] === $ipAddress && $row['username'] === $key) {
+                $keys[] = $index;
+            }
+        }
 
-        return $before - \count($this->rows);
+        if ([] === $keys) {
+            return 0;
+        }
+
+        usort($keys, fn (int $a, int $b): int => [$this->rows[$b]['at'], $b] <=> [$this->rows[$a]['at'], $a]);
+        $newest = array_shift($keys);
+        foreach ($keys as $index) {
+            if (null === $key) {
+                unset($this->rows[$index]);
+
+                continue;
+            }
+            $this->rows[$index]['username'] = null;
+        }
+        unset($this->rows[$newest]);
+        $this->rows = array_values($this->rows);
+
+        return \count($keys) + 1;
     }
 
     public function cleanup(int $watchPeriodSeconds): int

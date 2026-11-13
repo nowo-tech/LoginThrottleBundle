@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 3.11.0](#to-3110)
 - [To 3.10.1](#to-3101)
 - [To 3.10.0](#to-3100)
 - [To 3.9.0](#to-390)
@@ -55,8 +56,11 @@
 
 ## Unreleased
 
-From **3.10.1** (target 3.10.2), `storage: database` on MySQL / MariaDB only (REQ-SEC-006). PostgreSQL and SQLite need
-nothing.
+## To 3.11.0
+
+From **3.10.1**, `storage: database` (REQ-SEC-006). The schema part is MySQL / MariaDB only; PostgreSQL and SQLite
+need no `ALTER`. **Read the throttling-budget change below before upgrading: it is the only one that can let more
+attempts through than 3.10.1 did.**
 
 **What changes without any action.**
 - With Symfony's `login_throttling`, the bucket is the identifier Symfony authenticates (`LAST_USERNAME`) whenever the
@@ -64,16 +68,35 @@ nothing.
   the bucket (and its reset) at another account. `json_login` without `username_from_passport` stays IP-only.
 - A successful login clears only the byte-identical username's attempts. The attempt the successful request itself
   recorded is deleted (Symfony's limiter consumes a token on every attempt), so successes never spend the per-IP
-  budget, exactly as before 3.10.2. The earlier failures of that bucket keep their row without the username: they
+  budget, exactly as before 3.11.0. The earlier failures of that bucket keep their row without the username: they
   leave the username's bucket and keep counting for the IP until `timeout`, which bounds any confusion about which
   bucket a success clears. On a shared IP (office NAT, CGNAT) those leftover failures make
   `max_count_attempts_per_ip` the binding limit a little sooner; raise it if your site has many people behind one
   address.
-- A request without a usable username (an unusable one, or `json_login` without `username_from_passport`) is now
-  bounded by `max_count_attempts_per_ip` instead of `max_count_attempts`. It is the same set of rows either way, so
-  nothing is less bounded; a handful of other people's failures from a shared IP no longer refuses those requests.
-  `ThrottleStatus::$maxAttempts` reports the per-IP cap for that bucket, and `LoginThrottleInfoService` now reads the
-  same bucket as the limiter.
+- **A request without a usable username gets a larger budget.** Such a request (an unusable username, or
+  `json_login` without `username_from_passport`) is now bounded by `max_count_attempts_per_ip` instead of
+  `max_count_attempts`. Those are literally the same rows — an IP with no username has one bucket, and the smaller of
+  the two limits simply won, which made `max_count_attempts_per_ip` dead configuration for that case. The bound is
+  therefore **higher**: with the defaults (`max_count_attempts: 3`, `max_count_attempts_per_ip` = 5 × 3 = 15,
+  `timeout: 600`) one address goes from 2 to 14 accepted attempts per 10-minute window — about 12 an hour before, 84
+  now. Named buckets are untouched: `form_login` still allows 2 attempts per username per window.
+
+  Why it changed: the old bound caused the same lockout as a shared IP's successful logins did. Three colleagues
+  failing once each at 09:00 behind one office address made the fourth person's `json_login` unusable for ten
+  minutes, with nothing they could do about it.
+
+  To keep exactly the old bound, pin the cap:
+
+  ```yaml
+  nowo_login_throttle:
+      max_count_attempts: 3
+      max_count_attempts_per_ip: 3   # 3.10.1 behaviour for requests without a username
+  ```
+
+  For `json_login`, prefer `username_from_passport: true`: each identifier then gets its own `max_count_attempts`
+  bucket and the cap keeps bounding the address.
+- `ThrottleStatus::$maxAttempts` reports the per-IP cap for the IP bucket, and `LoginThrottleInfoService` now reads
+  the same bucket as the limiter.
 - Per-IP username counts fold case, accents and width (`bób`, `ｂob` count for `bob`), so spelling variants never add
   guesses; clearing stays exact. Usernames with control or format characters, non-ASCII spaces, invalid UTF-8 or more
 than 255 characters are no longer recorded under a username: they are throttled on the IP bucket. Plain lower-case

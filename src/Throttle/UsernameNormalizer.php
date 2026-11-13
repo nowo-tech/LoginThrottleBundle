@@ -46,7 +46,7 @@ final class UsernameNormalizer
      * Normalise a submitted username: edge ASCII spaces trimmed, then lower-cased (`mb_strtolower`), so `Admin` and
      * ` admin ` share one bucket.
      *
-     * Non-string, blank and unusable values yield null (REQ-SEC-006 item 1, 3.10.2): invalid UTF-8, control or format
+     * Non-string, blank and unusable values yield null (REQ-SEC-006 item 1, 3.11.0): invalid UTF-8, control or format
      * characters anywhere (`bob\n`, `bob\t`, ZWSP, BOM, bidi marks), non-ASCII spaces (NBSP) and values longer than
      * {@see MAX_LENGTH} once normalised. They are refused rather than cleaned, so `bob\n` or `bob` + ZWSP never share
      * (or clear) the bucket of `bob`. A request without a usable username is throttled on its IP alone, the stricter
@@ -68,7 +68,7 @@ final class UsernameNormalizer
     }
 
     /**
-     * Folded skeleton of a username, the key of its per-username bucket (3.10.2): compatibility decomposition (NFKD:
+     * Folded skeleton of a username, the key of its per-username bucket (3.11.0): compatibility decomposition (NFKD:
      * fullwidth and other width variants become their plain form), combining marks removed (accents), then Unicode
      * case folding. `bob`, `Bób`, `ｂｏｂ` and `bo` + U+0301 + `b` share one bucket, so spelling variants of one account
      * never add guesses. Only counting uses it; clearing stays byte-exact, so a look-alike never clears another
@@ -85,7 +85,7 @@ final class UsernameNormalizer
     }
 
     /**
-     * The username the database limiter keys an attempt on (3.10.2).
+     * The username the database limiter keys an attempt on (3.11.0).
      *
      * When Symfony's `login_throttling` listener stored the identifier it authenticates
      * ({@see SecurityRequestAttributes::LAST_USERNAME}, the passport's UserBadge identifier), that identifier is used
