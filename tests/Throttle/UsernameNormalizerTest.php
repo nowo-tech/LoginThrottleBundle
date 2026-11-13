@@ -57,6 +57,9 @@ final class UsernameNormalizerTest extends TestCase
         $nested = Request::create('/login', 'POST', ['login_form' => ['_username' => "attacker\u{200B}"], '_username' => 'victim@example.com']);
         self::assertNull(UsernameNormalizer::fromRequest($nested));
 
+        // a later field is not read once an earlier one decides (an array there would make InputBag::get() throw)
+        self::assertSame('alice', UsernameNormalizer::fromRequest(Request::create('/login', 'POST', ['_username' => 'Alice', 'email' => ['extra']])));
+
         // blank fields still fall through, as before
         self::assertSame('victim@example.com', UsernameNormalizer::fromRequest(Request::create('/login', 'POST', ['_username' => "\t ", 'email' => 'Victim@example.com'])));
     }

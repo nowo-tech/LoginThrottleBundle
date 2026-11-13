@@ -83,18 +83,7 @@ final class UsernameNormalizer
      */
     public static function fromRequest(Request $request, bool $fromSecurityAttribute = false): ?string
     {
-        $candidates = [];
-        foreach (self::NESTED_FORM_BAGS as $bag) {
-            $nested = $request->request->all($bag);
-            foreach (self::USERNAME_KEYS as $key) {
-                $candidates[] = $nested[$key] ?? null;
-            }
-        }
-        foreach (self::USERNAME_KEYS as $key) {
-            $candidates[] = $request->request->get($key);
-        }
-
-        foreach ($candidates as $value) {
+        foreach (self::candidates($request) as $value) {
             // the first non-blank field decides: an unusable one (e.g. `attacker\t`) yields null instead of falling
             // through to a later field (`email=victim`) whose bucket a successful login would then clear (REQ-SEC-006)
             if (\is_string($value) && '' !== trim($value)) {
@@ -107,5 +96,24 @@ final class UsernameNormalizer
         }
 
         return null;
+    }
+
+    /**
+     * The username fields in order, read lazily: a later field is never read once an earlier one decides (an array in
+     * a later field would make InputBag::get() throw).
+     *
+     * @return \Generator<int, mixed>
+     */
+    private static function candidates(Request $request): \Generator
+    {
+        foreach (self::NESTED_FORM_BAGS as $bag) {
+            $nested = $request->request->all($bag);
+            foreach (self::USERNAME_KEYS as $key) {
+                yield $nested[$key] ?? null;
+            }
+        }
+        foreach (self::USERNAME_KEYS as $key) {
+            yield $request->request->get($key);
+        }
     }
 }

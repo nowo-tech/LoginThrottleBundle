@@ -78,12 +78,33 @@ final readonly class ExactCollationListener
         }
 
         try {
-            $version = $connection->getServerVersion();
+            $version = self::serverVersion($connection);
         } catch (\Throwable) {
             return $collation;
         }
 
-        return 1 === preg_match('/^\d+\.\d+\.\d+/', $version) && version_compare($version, '8.0.17', '<') ? 'utf8mb4_bin' : $collation;
+        return null !== $version && 1 === preg_match('/^\d+\.\d+\.\d+/', $version) && version_compare($version, '8.0.17', '<') ? 'utf8mb4_bin' : $collation;
+    }
+
+    /**
+     * The server version: `Connection::getServerVersion()` on DBAL 4 (private on DBAL 3), else the native PDO connection;
+     * null when neither tells (the platform then decides).
+     *
+     * @internal public for tests
+     */
+    public static function serverVersion(object $connection): ?string
+    {
+        $version = null;
+        $public = [$connection, 'getServerVersion'];
+        $native = [$connection, 'getNativeConnection'];
+        if (\is_callable($public)) {
+            $version = $public();
+        } elseif (\is_callable($native)) {
+            $handle = $native();
+            $version = $handle instanceof \PDO ? $handle->getAttribute(\PDO::ATTR_SERVER_VERSION) : null;
+        }
+
+        return \is_string($version) ? $version : null;
     }
 
     public function postGenerateSchemaTable(GenerateSchemaTableEventArgs $args): void
