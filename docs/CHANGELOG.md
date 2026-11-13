@@ -64,6 +64,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `tests/Doctrine/ExactCollationListenerTest.php` (keeps one path style in the fixture-path array). Do not apply those hunks;
   no production or test code changed.
 
+### Documentation
+
+- `max_count_attempts_per_ip` (UPGRADING "To 3.11.0", CONFIGURATION): the 3.11.0 note no longer suggests pinning it to
+  `max_count_attempts`. The cap counts every failed attempt from the IP, named or not, so that pin lets failures on one
+  account lock out other accounts behind the same IP (NAT, offices). Keep a multiple (default 5×).
+
 ## [3.12.0] - 2026-11-13
 
 ### Added
