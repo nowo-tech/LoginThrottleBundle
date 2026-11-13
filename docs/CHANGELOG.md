@@ -58,13 +58,17 @@ Target 3.13.0.
 ### Added
 
 - `max_count_attempts_without_username` (`int|null`, default `null`; root and per firewall, `storage: database`): a
-  separate bound for login attempts without a usable username (missing, blank or unusable username; `json_login`
-  without `username_from_passport`). It counts only the IP's attempts without a username within `timeout`, so a shared
+  separate bound for login attempts without a usable username (missing, blank or unusable username in every field the
+  bundle recognises). It counts only the IP's attempts without a username within `timeout`, so a shared
   IP (office NAT, CGNAT) can keep a generous `max_count_attempts_per_ip` for named logins while username-less requests
   get a tight bound. The per-IP cap still applies on top. `null` keeps the previous behaviour (the bound is the per-IP
   cap), so defaults do not change. A value above the effective per-IP cap is a configuration error. Ignored with
   `storage: cache` (Symfony's limiter has no username-less bucket). Named attempts, the `username_from_passport`
-  identifier path and `reset()` (still a no-op without a username, KF-L-M1) are unchanged.
+  identifier path and `reset()` (still a no-op without a username, KF-L-M1) are unchanged. It tightens honest
+  username-less traffic, not every client: one that sends `_username`, `username` or `email` is keyed on the passport
+  identifier and falls back to the 3.12.0 limits, so the per-IP cap remains the only hard bound per address. The IP-only
+  status (login page before a username is typed) reports this bound and can say "blocked" while named logins are
+  accepted; do not disable the login form on it alone.
 - `LoginAttemptWithoutUsernameReaderInterface` (`countAttemptsWithoutUsername()`, `findOldestAttemptWithoutUsernameAt()`),
   implemented by `LoginAttemptRepository`. Optional for host stores: without it the bundle filters the store's
   attempt views (or `getAttempts()`) itself.

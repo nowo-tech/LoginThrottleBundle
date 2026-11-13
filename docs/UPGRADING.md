@@ -69,8 +69,8 @@ composer update nowo-tech/login-throttle-bundle
 Nothing to do: the new option defaults to `null`, which keeps the 3.12.0 behaviour.
 
 **New option `max_count_attempts_without_username`** (`storage: database`, at the root and per firewall). Until now a
-request without a usable username (missing, blank or unusable username; `json_login` without `username_from_passport`)
-was bounded by `max_count_attempts_per_ip` alone, the same option that caps all accounts behind one IP, so tightening
+request without a usable username (missing, blank or unusable username in every field the bundle recognises) was
+bounded by `max_count_attempts_per_ip` alone, the same option that caps all accounts behind one IP, so tightening
 one loosened nothing and tightened both. The new option bounds those requests separately:
 
 ```yaml
@@ -90,12 +90,12 @@ nowo_login_throttle:
   clamp it to 1 .. the per-IP cap instead.
 - "Without a username" is a NULL username in the store. That includes failures a successful login cleared (3.11.0:
   they keep their row without the username), so on a busy shared IP those leftovers count against this bound too.
-  Size it for that, and remember the status of the IP-only bucket (`LoginThrottleStatusProvider::status()` /
-  `LoginThrottleInfoService::getAttemptInfo()` without a username, e.g. on the login page before a username is typed)
-  now reports this bound.
-- `json_login` without `username_from_passport` is username-less: every attempt there, successful ones included
-  (`reset()` clears nothing without a username, KF-L-M1), counts for this bound. Use `username_from_passport: true`
-  for `json_login` before you set a low value.
+  Size it for that.
+- **It is not a hard bound per address.** Requests are username-less only when no field the bundle recognises (`_username`, `username`, `email`, also nested under `login_form`) holds a username. A client that sends one of those fields is keyed on the passport identifier Symfony authenticates and never counts toward this bound, so an attacker can step around it on `form_login` with a custom `username_parameter`, on custom authenticators, and on `json_login` (a urlencoded body can carry `_username`): those requests just fall back to the 3.12.0 limits (`max_count_attempts` per identifier, the per-IP cap per address). The per-IP cap remains the only hard bound per address. This option tightens honest username-less traffic; for `json_login` and custom authenticators, `username_from_passport: true` is the setting to use.
+- Honest `json_login` clients without `username_from_passport` send no recognised field, so their attempts are
+  username-less: successful ones included (`reset()` clears nothing without a username, KF-L-M1), they count for this
+  bound. Enable `username_from_passport` before you set a low value.
+- **Login pages.** The IP-only status (`LoginThrottleStatusProvider::status()` / `LoginThrottleInfoService::getAttemptInfo()` without a username, e.g. on the login page before a username is typed) now reports this bound, so it can say "blocked" while named logins from the same address are still accepted. Do not disable the login form on that status alone: show it as a notice, or check the status again once the username is known.
 - `storage: cache` ignores it: Symfony's `login_throttling` limiters have no username-less bucket to bound.
 
 **Custom stores.** The bound reads the store through the new optional port
