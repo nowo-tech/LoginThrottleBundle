@@ -79,6 +79,8 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
     {
         $ipAddress = $request->getClientIp() ?? 'unknown';
         $username = $this->extractUsername($request);
+        // the limit this request is judged by, which {@see RateLimit::getLimit()} must report (3.11.0)
+        $limit = $this->rules->limitFor($username);
 
         // Check if already blocked (IP + username first, then the IP-only cap). Without a username the bucket is the
         // IP itself, so only the cap applies (3.11.0): those are the rows the cap counts anyway.
@@ -96,7 +98,6 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
             // Count current attempts
             $count = $this->repository->countAttempts($ipAddress, $username, $this->timeoutSeconds);
             $ipCount = $this->repository->countAttemptsByIp($ipAddress, $this->timeoutSeconds);
-            $limit = $this->rules->limitFor($username);
             $remaining = max(0, min($limit - $count, $this->maxAttemptsPerIp - $ipCount));
 
             // Check if this attempt exceeded either limit
@@ -122,7 +123,7 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
             $remaining,
             $retryAfter,
             $accepted,
-            $this->maxAttempts
+            $limit
         );
     }
 

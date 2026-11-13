@@ -176,6 +176,7 @@ final class DatabaseRateLimiterTest extends TestCase
 
         $this->assertInstanceOf(RateLimit::class, $rateLimit);
         $this->assertSame(13, $rateLimit->getRemainingTokens());
+        $this->assertSame(15, $rateLimit->getLimit(), 'the IP bucket reports the limit it is judged by');
     }
 
     public function testConsumeWithUnknownIp(): void
@@ -206,6 +207,7 @@ final class DatabaseRateLimiterTest extends TestCase
 
         $this->assertInstanceOf(RateLimit::class, $rateLimit);
         $this->assertSame(3, $rateLimit->getRemainingTokens());
+        $this->assertSame(3, $rateLimit->getLimit());
     }
 
     public function testConsumeWithDifferentUsernameFields(): void
