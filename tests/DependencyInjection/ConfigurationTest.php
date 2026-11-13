@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\LoginThrottleBundle\Tests\DependencyInjection;
 
 use Nowo\LoginThrottleBundle\DependencyInjection\Configuration;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\Config\Definition\Processor;
@@ -132,5 +133,53 @@ final class ConfigurationTest extends TestCase
         ];
 
         $this->processor->processConfiguration($this->configuration, $configs);
+    }
+
+    public function testWithoutUsernameBoundDefaultsToNull(): void
+    {
+        $config = $this->processor->processConfiguration($this->configuration, [['firewalls' => ['api' => ['storage' => 'database']]]]);
+
+        $this->assertNull($config['max_count_attempts_without_username']);
+        $this->assertNull($config['firewalls']['api']['max_count_attempts_without_username']);
+    }
+
+    public function testWithoutUsernameBoundUpToTheEffectivePerIpCapIsAccepted(): void
+    {
+        // default per-IP cap: 5 × max_count_attempts = 15
+        $config = $this->processor->processConfiguration($this->configuration, [[
+            'max_count_attempts_without_username' => 15,
+            'firewalls' => [
+                'main' => ['max_count_attempts' => 4, 'max_count_attempts_per_ip' => 40, 'max_count_attempts_without_username' => 5],
+                'api' => ['max_count_attempts_without_username' => 15],
+            ],
+        ]]);
+
+        $this->assertSame(15, $config['max_count_attempts_without_username']);
+        $this->assertSame(5, $config['firewalls']['main']['max_count_attempts_without_username']);
+        $this->assertSame(15, $config['firewalls']['api']['max_count_attempts_without_username']);
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>, string}>
+     */
+    public static function invalidWithoutUsernameBounds(): iterable
+    {
+        yield 'zero' => [['max_count_attempts_without_username' => 0], 'max_count_attempts_without_username'];
+        yield 'above the default cap' => [['max_count_attempts' => 3, 'max_count_attempts_without_username' => 16], 'cannot exceed the per-IP cap (15)'];
+        yield 'above the explicit cap' => [['max_count_attempts_per_ip' => 10, 'max_count_attempts_without_username' => 11], 'cannot exceed the per-IP cap (10)'];
+        yield 'firewall above its cap' => [['firewalls' => ['api' => ['max_count_attempts' => 2, 'max_count_attempts_without_username' => 11]]], 'cannot exceed the per-IP cap (10)'];
+        yield 'firewall zero' => [['firewalls' => ['api' => ['max_count_attempts_without_username' => 0]]], 'max_count_attempts_without_username'];
+    }
+
+    /**
+     * @param array<string, mixed> $config
+     */
+    #[DataProvider('invalidWithoutUsernameBounds')]
+    public function testWithoutUsernameBoundIsValidated(array $config, string $message): void
+    {
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessage($message);
+
+        $this->processor->processConfiguration($this->configuration, [$config]);
     }
 }

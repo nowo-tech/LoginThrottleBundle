@@ -24,7 +24,9 @@ use Symfony\Component\RateLimiter\RateLimit;
  * {@code email}) and AuthKit-style nested bags ({@code login_form[_username]}, etc.).
  * Usernames are normalized (trimmed and lower-cased) so case variants such as {@code Admin} and
  * {@code admin} share one bucket. A second, IP-only cap (default: 5 × {@code maxAttempts}, like
- * Symfony's {@code DefaultLoginRateLimiter}) blocks an IP that rotates usernames.
+ * Symfony's {@code DefaultLoginRateLimiter}) blocks an IP that rotates usernames. Requests without a usable username
+ * are bounded by that cap, or by the tighter {@code max_count_attempts_without_username} when set (3.13.0), which
+ * counts only the IP's attempts without a username; the cap still applies on top.
  * With {@code username_from_passport: true} (3.9), a request without those fields (json_login, custom
  * authenticators) is keyed on the passport identifier Symfony stores on the request, like form_login.
  * The rules live in {@see ThrottleRules}, shared with the status provider.
@@ -52,12 +54,13 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
     /**
      * Constructor.
      *
-     * @param LoginAttemptRepositoryInterface $repository           The login attempt repository
-     * @param int                             $maxAttempts          Maximum number of attempts per IP + username
-     * @param int                             $timeoutSeconds       Timeout period in seconds
-     * @param int|null                        $maxAttemptsPerIp     Maximum number of attempts per IP (null: 5 × maxAttempts)
-     * @param ClockInterface|null             $clock                Time source (system time when null; REQ-DI-001)
-     * @param bool                            $usernameFromPassport Fall back to the passport identifier when no POST field holds a username (3.9)
+     * @param LoginAttemptRepositoryInterface $repository                 The login attempt repository
+     * @param int                             $maxAttempts                Maximum number of attempts per IP + username
+     * @param int                             $timeoutSeconds             Timeout period in seconds
+     * @param int|null                        $maxAttemptsPerIp           Maximum number of attempts per IP (null: 5 × maxAttempts)
+     * @param ClockInterface|null             $clock                      Time source (system time when null; REQ-DI-001)
+     * @param bool                            $usernameFromPassport       Fall back to the passport identifier when no POST field holds a username (3.9)
+     * @param int|null                        $maxAttemptsWithoutUsername Maximum number of attempts per IP without a usable username (3.13.0; null: the per-IP cap)
      */
     public function __construct(
         private readonly LoginAttemptRepositoryInterface $repository,
@@ -66,8 +69,9 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
         ?int $maxAttemptsPerIp = null,
         private readonly ?ClockInterface $clock = null,
         private readonly bool $usernameFromPassport = false,
+        ?int $maxAttemptsWithoutUsername = null,
     ) {
-        $this->rules = new ThrottleRules($repository, $maxAttempts, $timeoutSeconds, $maxAttemptsPerIp);
+        $this->rules = new ThrottleRules($repository, $maxAttempts, $timeoutSeconds, $maxAttemptsPerIp, $maxAttemptsWithoutUsername);
         $this->maxAttemptsPerIp = $this->rules->maxAttemptsPerIp();
     }
 
@@ -86,20 +90,25 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
         $limit = $this->rules->limitFor($username);
 
         // Check if already blocked (IP + username first, then the IP-only cap). Without a username the bucket is the
-        // IP itself, so only the cap applies (3.11.0): those are the rows the cap counts anyway.
+        // IP itself, so only the cap applies (3.11.0): those are the rows the cap counts anyway. A tighter bound
+        // without a username (3.13.0) counts the IP's rows without a username, below the cap.
+        $boundsWithoutUsername = null === $username && $this->rules->boundsAttemptsWithoutUsername();
         $isBlocked = null !== $username && $this->repository->isBlocked($ipAddress, $username, $this->maxAttempts, $this->timeoutSeconds);
         $isIpBlocked = !$isBlocked && $this->repository->countAttemptsByIp($ipAddress, $this->timeoutSeconds) >= $this->maxAttemptsPerIp;
+        $isBlockedWithoutUsername = $boundsWithoutUsername && !$isIpBlocked && $this->rules->countBucket($ipAddress, null) >= $limit;
 
-        if ($isBlocked || $isIpBlocked) {
+        if ($isBlocked || $isIpBlocked || $isBlockedWithoutUsername) {
             $remaining = 0;
-            $retryAfter = $this->calculateRetryAfter($ipAddress, $isBlocked ? $username : null);
+            $retryAfter = $isBlockedWithoutUsername
+                ? $this->rules->retryAfterWithoutUsername($ipAddress)
+                : $this->calculateRetryAfter($ipAddress, $isBlocked ? $username : null);
             $accepted = false;
         } else {
             // Record the attempt
             $this->record($ipAddress, $username);
 
             // Count current attempts
-            $count = $this->repository->countAttempts($ipAddress, $username, $this->timeoutSeconds);
+            $count = $this->rules->countBucket($ipAddress, $username);
             $ipCount = $this->repository->countAttemptsByIp($ipAddress, $this->timeoutSeconds);
             $remaining = max(0, min($limit - $count, $this->maxAttemptsPerIp - $ipCount));
 
@@ -109,6 +118,9 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
                 $accepted = false;
             } elseif ($ipCount >= $this->maxAttemptsPerIp) {
                 $retryAfter = $this->calculateRetryAfter($ipAddress, null);
+                $accepted = false;
+            } elseif ($boundsWithoutUsername && $count >= $limit) {
+                $retryAfter = $this->rules->retryAfterWithoutUsername($ipAddress);
                 $accepted = false;
             } else {
                 // Not blocked, retry after is now (immediate retry allowed)

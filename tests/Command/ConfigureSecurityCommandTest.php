@@ -520,6 +520,28 @@ final class ConfigureSecurityCommandTest extends TestCase
         );
     }
 
+    public function testCommandMultipleFirewallsIncludesWithoutUsernameBoundInSharedLimiterId(): void
+    {
+        $command = new ConfigureSecurityCommand($this->testDir);
+        $commandTester = new CommandTester($command);
+
+        $this->filesystem->dumpFile(
+            $this->testDir . '/config/packages/nowo_login_throttle.yaml',
+            "nowo_login_throttle:\n    firewalls:\n        main:\n            storage: 'database'\n            max_count_attempts: 5\n            timeout: 300\n            max_count_attempts_without_username: 4\n"
+        );
+        $this->filesystem->dumpFile(
+            $this->testDir . '/config/packages/security.yaml',
+            "security:\n    firewalls:\n        main: {}\n"
+        );
+
+        $this->assertSame(0, $commandTester->execute([]));
+        $securityConfig = Yaml::parseFile($this->testDir . '/config/packages/security.yaml');
+        $this->assertSame(
+            'nowo_login_throttle.database_rate_limiter.shared_5_300s_3600s_nu4',
+            $securityConfig['security']['firewalls']['main']['login_throttling']['limiter']
+        );
+    }
+
     public function testCommandConfiguresMultipleFirewalls(): void
     {
         $command = new ConfigureSecurityCommand($this->testDir);

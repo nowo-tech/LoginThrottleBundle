@@ -431,4 +431,41 @@ final class NowoLoginThrottleExtensionTest extends TestCase
 
         $this->assertTrue($this->container->hasDefinition($serviceId));
     }
+
+    public function testWithoutUsernameBoundReachesTheLimiterAndTheStatusProvider(): void
+    {
+        $this->extension->load([['storage' => 'database', 'max_count_attempts_without_username' => 4]], $this->container);
+
+        $definition = $this->container->getDefinition('nowo_login_throttle.database_rate_limiter');
+        $this->assertSame(4, $definition->getArgument(6));
+        $this->assertSame(4, $this->container->getParameter('nowo_login_throttle.firewalls')['main']['max_attempts_without_username']);
+    }
+
+    public function testWithoutUsernameBoundIsNullByDefault(): void
+    {
+        $this->extension->load([['storage' => 'database']], $this->container);
+
+        $this->assertNull($this->container->getDefinition('nowo_login_throttle.database_rate_limiter')->getArgument(6));
+        $this->assertNull($this->container->getParameter('nowo_login_throttle.firewalls')['main']['max_attempts_without_username']);
+    }
+
+    public function testLoadWithMultipleFirewallsSeparatesLimitersByWithoutUsernameBound(): void
+    {
+        $this->extension->load([[
+            'firewalls' => [
+                'main' => ['storage' => 'database', 'max_count_attempts' => 5, 'timeout' => 600],
+                'api' => ['storage' => 'database', 'max_count_attempts' => 5, 'timeout' => 600, 'max_count_attempts_without_username' => 6],
+                'admin' => ['storage' => 'database', 'max_count_attempts' => 5, 'timeout' => 600, 'max_count_attempts_per_ip' => 50, 'max_count_attempts_without_username' => 6],
+            ],
+        ]], $this->container);
+
+        $firewalls = $this->container->getParameter('nowo_login_throttle.firewalls');
+        $this->assertSame('nowo_login_throttle.database_rate_limiter.shared_5_600s_3600s', $firewalls['main']['limiter']);
+        $this->assertSame('nowo_login_throttle.database_rate_limiter.shared_5_600s_3600s_nu6', $firewalls['api']['limiter']);
+        $this->assertSame('nowo_login_throttle.database_rate_limiter.shared_5_600s_3600s_ip50_nu6', $firewalls['admin']['limiter']);
+        $this->assertNull($this->container->getDefinition($firewalls['main']['limiter'])->getArgument(6));
+        $this->assertSame(6, $this->container->getDefinition($firewalls['api']['limiter'])->getArgument(6));
+        $this->assertSame(6, $firewalls['api']['max_attempts_without_username']);
+        $this->assertNull($firewalls['main']['max_attempts_without_username']);
+    }
 }

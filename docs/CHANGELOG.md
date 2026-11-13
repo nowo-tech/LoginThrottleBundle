@@ -53,6 +53,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Target 3.13.0.
+
+### Added
+
+- `max_count_attempts_without_username` (`int|null`, default `null`; root and per firewall, `storage: database`): a
+  separate bound for login attempts without a usable username (missing, blank or unusable username; `json_login`
+  without `username_from_passport`). It counts only the IP's attempts without a username within `timeout`, so a shared
+  IP (office NAT, CGNAT) can keep a generous `max_count_attempts_per_ip` for named logins while username-less requests
+  get a tight bound. The per-IP cap still applies on top. `null` keeps the previous behaviour (the bound is the per-IP
+  cap), so defaults do not change. A value above the effective per-IP cap is a configuration error. Ignored with
+  `storage: cache` (Symfony's limiter has no username-less bucket). Named attempts, the `username_from_passport`
+  identifier path and `reset()` (still a no-op without a username, KF-L-M1) are unchanged.
+- `LoginAttemptWithoutUsernameReaderInterface` (`countAttemptsWithoutUsername()`, `findOldestAttemptWithoutUsernameAt()`),
+  implemented by `LoginAttemptRepository`. Optional for host stores: without it the bundle filters the store's
+  attempt views (or `getAttempts()`) itself.
+- `DatabaseRateLimiter`, `DatabaseRateLimiterFactory` and `ThrottleRules` take an optional trailing
+  `?int $maxAttemptsWithoutUsername` argument; `ThrottleRules` gains `maxAttemptsWithoutUsername()`,
+  `boundsAttemptsWithoutUsername()`, `countBucket()` and `retryAfterWithoutUsername()`. Shared multi-firewall limiter
+  service IDs get a `_nu{n}` suffix when the option is set.
+
 ### Changed
 
 - Tooling: `rector.php` now skips three Rector rules, each limited to the named files and with the reason written beside
@@ -69,6 +89,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `max_count_attempts_per_ip` (UPGRADING "To 3.11.0", CONFIGURATION): the 3.11.0 note no longer suggests pinning it to
   `max_count_attempts`. The cap counts every failed attempt from the IP, named or not, so that pin lets failures on one
   account lock out other accounts behind the same IP (NAT, offices). Keep a multiple (default 5×).
+- UPGRADING "To 3.11.0" and CONFIGURATION: the username-less bound now points to `max_count_attempts_without_username`
+  instead of saying there is no separate setting.
 
 ## [3.12.0] - 2026-11-13
 

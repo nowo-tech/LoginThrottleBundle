@@ -20,11 +20,12 @@ final class DatabaseRateLimiterFactory
     /**
      * Constructor.
      *
-     * @param LoginAttemptRepositoryInterface $repository           The login attempt repository
-     * @param int                             $maxAttempts          Maximum number of attempts per IP + username
-     * @param int                             $timeoutSeconds       Timeout period in seconds
-     * @param int|null                        $maxAttemptsPerIp     Maximum number of attempts per IP (null: 5 × maxAttempts)
-     * @param bool                            $usernameFromPassport Fall back to the passport identifier when no POST field holds a username (3.9, option {@code username_from_passport})
+     * @param LoginAttemptRepositoryInterface $repository                 The login attempt repository
+     * @param int                             $maxAttempts                Maximum number of attempts per IP + username
+     * @param int                             $timeoutSeconds             Timeout period in seconds
+     * @param int|null                        $maxAttemptsPerIp           Maximum number of attempts per IP (null: 5 × maxAttempts)
+     * @param bool                            $usernameFromPassport       Fall back to the passport identifier when no POST field holds a username (3.9, option {@code username_from_passport})
+     * @param int|null                        $maxAttemptsWithoutUsername Maximum number of attempts per IP without a usable username (3.13.0, option {@code max_count_attempts_without_username}; null: the per-IP cap)
      */
     public function __construct(
         private readonly LoginAttemptRepositoryInterface $repository,
@@ -32,6 +33,7 @@ final class DatabaseRateLimiterFactory
         private readonly int $timeoutSeconds,
         private readonly ?int $maxAttemptsPerIp = null,
         private readonly bool $usernameFromPassport = false,
+        private readonly ?int $maxAttemptsWithoutUsername = null,
     ) {
     }
 
@@ -49,6 +51,7 @@ final class DatabaseRateLimiterFactory
             $this->maxAttemptsPerIp,
             null,
             $this->usernameFromPassport,
+            $this->maxAttemptsWithoutUsername,
         );
     }
 }

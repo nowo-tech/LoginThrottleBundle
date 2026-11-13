@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nowo\LoginThrottleBundle\DependencyInjection;
 
+use Nowo\LoginThrottleBundle\Throttle\ThrottleRules;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
 use Symfony\Component\Yaml\Yaml;
@@ -70,6 +71,11 @@ final class Configuration implements ConfigurationInterface
                     ->defaultNull()
                     ->min(1)
                     ->info('With storage=database: maximum attempts per IP address whatever the username (null = 5 × max_count_attempts)')
+                ->end()
+                ->integerNode('max_count_attempts_without_username')
+                    ->defaultNull()
+                    ->min(1)
+                    ->info('With storage=database: maximum attempts per IP address without a usable username (missing, blank or unusable username; json_login without username_from_passport), counting only the attempts of that IP without a username within timeout. The per-IP cap still applies on top, so it cannot exceed max_count_attempts_per_ip (5 × max_count_attempts when null). null = the per-IP cap (the behaviour before 3.13.0). Ignored with storage=cache.')
                 ->end()
                 ->integerNode('watch_period')
                     ->defaultValue(3600)
@@ -147,6 +153,11 @@ final class Configuration implements ConfigurationInterface
                                 ->min(1)
                                 ->info('With storage=database: maximum attempts per IP address whatever the username (null = 5 × max_count_attempts)')
                             ->end()
+                            ->integerNode('max_count_attempts_without_username')
+                                ->defaultNull()
+                                ->min(1)
+                                ->info('With storage=database: maximum attempts per IP address without a usable username (missing, blank or unusable username; json_login without username_from_passport), counting only the attempts of that IP without a username within timeout. The per-IP cap still applies on top, so it cannot exceed max_count_attempts_per_ip (5 × max_count_attempts when null). null = the per-IP cap (the behaviour before 3.13.0). Ignored with storage=cache.')
+                            ->end()
                             ->integerNode('watch_period')
                                 ->defaultValue(3600)
                                 ->min(1)
@@ -172,6 +183,9 @@ final class Configuration implements ConfigurationInterface
                                 ->info('Lock factory service ID for rate limiter (optional, only used when storage=cache)')
                             ->end()
                         ->end()
+                        ->validate()
+                            ->always(self::validateWithoutUsernameBound(...))
+                        ->end()
                     ->end()
                     ->info('Configure multiple firewalls with independent throttling settings. Each firewall can have its own configuration or share a rate limiter.')
                     ->example([
@@ -187,6 +201,9 @@ final class Configuration implements ConfigurationInterface
                         ],
                     ])
                 ->end()
+            ->end()
+            ->validate()
+                ->always(self::validateWithoutUsernameBound(...))
             ->end();
 
         return $treeBuilder;
@@ -231,6 +248,33 @@ final class Configuration implements ConfigurationInterface
 
         // Several workers may boot at the same time and race on the same file
         file_put_contents($configPath, $yaml, \LOCK_EX);
+    }
+
+    /**
+     * Refuses a `max_count_attempts_without_username` above the effective per-IP cap (3.13.0).
+     *
+     * The per-IP cap applies on top of it, so a higher value could never be reached: an error rather than a silent
+     * clamp, so the configuration says what is enforced.
+     *
+     * @param array<string, mixed> $config The root or one firewall's configuration
+     *
+     * @return array<string, mixed>
+     */
+    public static function validateWithoutUsernameBound(array $config): array
+    {
+        $bound = $config['max_count_attempts_without_username'] ?? null;
+        $perIp = $config['max_count_attempts_per_ip'] ?? null;
+        $maxAttempts = $config['max_count_attempts'] ?? 3;
+        if (!\is_int($bound) || !\is_int($maxAttempts)) {
+            return $config;
+        }
+
+        $cap = \is_int($perIp) ? $perIp : $maxAttempts * ThrottleRules::DEFAULT_IP_ATTEMPTS_MULTIPLIER;
+        if ($bound > $cap) {
+            throw new \InvalidArgumentException(\sprintf('"max_count_attempts_without_username" (%d) cannot exceed the per-IP cap (%d): the per-IP cap applies on top of it. Lower it, raise "max_count_attempts_per_ip", or leave it null to use the per-IP cap.', $bound, $cap));
+        }
+
+        return $config;
     }
 
     /**

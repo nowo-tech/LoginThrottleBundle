@@ -23,7 +23,7 @@ use Psr\Clock\ClockInterface;
  * @author Héctor Franco Aceituno <hectorfranco@nowo.tech>
  * @copyright 2025 Nowo.tech
  */
-final class LoginAttemptRepository extends ServiceEntityRepository implements LoginAttemptRecorderInterface, LoginAttemptRepositoryInterface, LoginAttemptViewRepositoryInterface
+final class LoginAttemptRepository extends ServiceEntityRepository implements LoginAttemptRecorderInterface, LoginAttemptRepositoryInterface, LoginAttemptViewRepositoryInterface, LoginAttemptWithoutUsernameReaderInterface
 {
     /** Rows per DELETE statement in {@see cleanup()}. */
     public const CLEANUP_BATCH_SIZE = 1000;
@@ -98,6 +98,34 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
             ->setParameter('since', $this->secondsAgo($seconds));
 
         return $this->countExact($qb, $ipAddress, null);
+    }
+
+    /**
+     * Count the attempts of exactly this IP without a username within the window (3.13.0).
+     *
+     * @param string $ipAddress IP address
+     * @param int    $seconds   Time window in seconds
+     *
+     * @return int Number of attempts
+     */
+    public function countAttemptsWithoutUsername(string $ipAddress, int $seconds): int
+    {
+        return \count($this->attemptTimesWithoutUsername($ipAddress, $seconds));
+    }
+
+    /**
+     * Time of the oldest attempt of exactly this IP without a username within the window (3.13.0).
+     *
+     * @param string $ipAddress IP address
+     * @param int    $seconds   Time window in seconds
+     *
+     * @return \DateTimeImmutable|null The oldest attempt time, or null without such attempts
+     */
+    public function findOldestAttemptWithoutUsernameAt(string $ipAddress, int $seconds): ?\DateTimeImmutable
+    {
+        $times = $this->attemptTimesWithoutUsername($ipAddress, $seconds);
+
+        return [] === $times ? null : min($times);
     }
 
     /**
@@ -555,6 +583,32 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
         }
 
         return $count;
+    }
+
+    /**
+     * Times of the attempts of exactly this IP whose username is NULL, within the window.
+     *
+     * @return list<\DateTimeImmutable>
+     */
+    private function attemptTimesWithoutUsername(string $ipAddress, int $seconds): array
+    {
+        $qb = $this->createQueryBuilder('la')
+            ->select('la.ipAddress AS ipAddress', 'la.username AS username', 'la.createdAt AS createdAt')
+            ->where('la.ipAddress = :ipAddress')
+            ->andWhere('la.username IS NULL')
+            ->andWhere('la.createdAt >= :since')
+            ->setParameter('ipAddress', $ipAddress)
+            ->setParameter('since', $this->secondsAgo($seconds));
+
+        $times = [];
+        foreach ($this->rows($qb) as $row) {
+            // byte-exact IP, as the per-IP cap counts it (a PAD SPACE collation also returns `10.0.0.1 `)
+            if (self::isExact($row, $ipAddress, null, true) && ($row['createdAt'] ?? null) instanceof \DateTimeImmutable) {
+                $times[] = $row['createdAt'];
+            }
+        }
+
+        return $times;
     }
 
     /**
