@@ -109,13 +109,16 @@ attempts through than 3.10.1 did.**
   failing once each at 09:00 behind one office address made the fourth person's `json_login` unusable for ten
   minutes, with nothing they could do about it.
 
-  To keep exactly the old bound, pin the cap:
+  **Do not pin `max_count_attempts_per_ip` to `max_count_attempts` to get the old bound back.** The per-IP cap
+  counts every failed attempt from that address, named (username) or not: it blocks as soon as the IP's total in the
+  `timeout` window reaches the cap, whichever account the failures were on. With `max_count_attempts_per_ip: 3`
+  and `max_count_attempts: 3`, three failures on account A from one IP also lock out account B from that IP, so one
+  user (or one attacker) can lock out everybody behind the same NAT or office egress. Keep the cap at a multiple of
+  `max_count_attempts` (the default is 5×) and size it for the busiest minute of the shared addresses you expect.
 
-  ```yaml
-  nowo_login_throttle:
-      max_count_attempts: 3
-      max_count_attempts_per_ip: 3   # 3.10.1 behaviour for requests without a username
-  ```
+  The trade-off: the username-less bound and the cap across all accounts are the same option, so a lower value
+  tightens requests without a username but also makes shared IPs easier to lock out; a higher value does the
+  opposite. There is no separate setting for the username-less bound.
 
   For `json_login`, prefer `username_from_passport: true`: each identifier then gets its own `max_count_attempts`
   bucket and the cap keeps bounding the address.
