@@ -64,9 +64,9 @@ final class ExactCollationListenerTest extends TestCase
         $table = $this->generatedTable($this->registryOn($platform), $logger);
 
         foreach (ExactCollationListener::COLUMNS as $column) {
-            $this->assertSame($expected, $table->getColumn($column)->getCollation(), $column);
+            $this->assertSame($expected, self::collationOf($table, $column), $column);
         }
-        $this->assertNull($table->getColumn('created_at')->getCollation());
+        $this->assertNull(self::collationOf($table, 'created_at'));
     }
 
     public function testWithoutAnOrmManagerNothingChanges(): void
@@ -76,7 +76,7 @@ final class ExactCollationListenerTest extends TestCase
 
         $table = $this->generatedTable($registry, null);
 
-        $this->assertNull($table->getColumn('username')->getCollation());
+        $this->assertNull(self::collationOf($table, 'username'));
     }
 
     public function testOtherEntitiesAreLeftAlone(): void
@@ -96,8 +96,8 @@ final class ExactCollationListenerTest extends TestCase
         $table = $this->generatedTable($this->registryOn(new SQLitePlatform()), null);
 
         $this->assertNull(ExactCollationListener::collate($table, 'username', 'utf8mb4_nopad_bin', false));
-        $this->assertSame('utf8mb4_nopad_bin', $table->getColumn('username')->getCollation());
-        $this->assertSame('utf8mb4', $table->getColumn('username')->getCharset());
+        $this->assertSame('utf8mb4_nopad_bin', self::collationOf($table, 'username'));
+        $this->assertSame('utf8mb4', self::charsetOf($table, 'username'));
     }
 
     private function generatedTable(ManagerRegistry $registry, ?LoggerInterface $logger): Table
@@ -108,6 +108,58 @@ final class ExactCollationListenerTest extends TestCase
         $schema = (new SchemaTool($entityManager))->getSchemaFromMetadata([$entityManager->getClassMetadata(LoginAttempt::class)]);
 
         return $schema->getTable('login_attempts');
+    }
+
+    /**
+     * @return iterable<string, array{AbstractPlatform, string|\Throwable, string}>
+     */
+    public static function serverVersions(): iterable
+    {
+        yield 'mysql 8.0.16 lacks utf8mb4_0900_bin' => [new MySQL80Platform(), '8.0.16', 'utf8mb4_bin'];
+        yield 'mysql 8.0.17' => [new MySQL80Platform(), '8.0.17', 'utf8mb4_0900_bin'];
+        yield 'mysql 8.0.40 with a suffix' => [new MySQL80Platform(), '8.0.40-0ubuntu0.24.04.1', 'utf8mb4_0900_bin'];
+        yield 'unreadable version: the platform decides' => [new MySQL80Platform(), new \RuntimeException('offline'), 'utf8mb4_0900_bin'];
+        yield 'unparsable version: the platform decides' => [new MySQL80Platform(), 'unknown', 'utf8mb4_0900_bin'];
+        yield 'mysql 8.4 platform is not queried' => [new MySQL84Platform(), new \LogicException('must not be read'), 'utf8mb4_0900_bin'];
+        yield 'mariadb is not queried' => [new MariaDBPlatform(), new \LogicException('must not be read'), 'utf8mb4_nopad_bin'];
+    }
+
+    #[DataProvider('serverVersions')]
+    public function testCollationForConnectionChecksTheMySql80Patch(AbstractPlatform $platform, string|\Throwable $version, string $expected): void
+    {
+        $connection = $this->createMock(Connection::class);
+        $connection->method('getDatabasePlatform')->willReturn($platform);
+        if ($version instanceof \Throwable) {
+            $connection->method('getServerVersion')->willThrowException($version);
+        } else {
+            $connection->method('getServerVersion')->willReturn($version);
+        }
+
+        $this->assertSame($expected, ExactCollationListener::collationForConnection($connection));
+    }
+
+    private static function collationOf(Table $table, string $column): ?string
+    {
+        $definition = $table->getColumn($column);
+        if (method_exists($definition, 'getCollation')) {
+            return $definition->getCollation();
+        }
+
+        $options = $definition->getPlatformOptions(); // DBAL 3
+
+        return isset($options['collation']) && \is_string($options['collation']) ? $options['collation'] : null;
+    }
+
+    private static function charsetOf(Table $table, string $column): ?string
+    {
+        $definition = $table->getColumn($column);
+        if (method_exists($definition, 'getCharset')) {
+            return $definition->getCharset();
+        }
+
+        $options = $definition->getPlatformOptions(); // DBAL 3
+
+        return isset($options['charset']) && \is_string($options['charset']) ? $options['charset'] : null;
     }
 
     private function registryOn(AbstractPlatform $platform): ManagerRegistry

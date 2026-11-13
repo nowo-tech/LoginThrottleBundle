@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace Nowo\LoginThrottleBundle\Doctrine;
 
+use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Platforms\AbstractMySQLPlatform;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Doctrine\DBAL\Platforms\MariaDBPlatform;
 use Doctrine\DBAL\Platforms\MySQL80Platform;
+use Doctrine\DBAL\Platforms\MySQL84Platform;
 use Doctrine\DBAL\Schema\ColumnEditor;
+use Doctrine\DBAL\Schema\Schema;
 use Doctrine\DBAL\Schema\Table;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\Event\GenerateSchemaTableEventArgs;
@@ -59,6 +62,30 @@ final readonly class ExactCollationListener
         };
     }
 
+    /**
+     * The exact-match collation for that connection: as {@see collationFor()}, except that MySQL 8.0.0 to 8.0.16 (which
+     * DBAL also maps to the 8.0 platform) lack `utf8mb4_0900_bin` and get `utf8mb4_bin`. The server version is read
+     * only for the 8.0 platform; when it cannot be read, the platform decides.
+     *
+     * @return non-empty-string|null
+     */
+    public static function collationForConnection(Connection $connection): ?string
+    {
+        $platform = $connection->getDatabasePlatform();
+        $collation = self::collationFor($platform);
+        if ('utf8mb4_0900_bin' !== $collation || $platform instanceof MySQL84Platform) {
+            return $collation;
+        }
+
+        try {
+            $version = $connection->getServerVersion();
+        } catch (\Throwable) {
+            return $collation;
+        }
+
+        return 1 === preg_match('/^\d+\.\d+\.\d+/', $version) && version_compare($version, '8.0.17', '<') ? 'utf8mb4_bin' : $collation;
+    }
+
     public function postGenerateSchemaTable(GenerateSchemaTableEventArgs $args): void
     {
         $class = $args->getClassMetadata()->getName();
@@ -67,19 +94,21 @@ final readonly class ExactCollationListener
         }
 
         $manager = $this->doctrine->getManagerForClass($class);
-        $collation = $manager instanceof EntityManagerInterface ? self::collationFor($manager->getConnection()->getDatabasePlatform()) : null;
+        $collation = $manager instanceof EntityManagerInterface ? self::collationForConnection($manager->getConnection()) : null;
         if (null === $collation) {
             return;
         }
 
         if ('utf8mb4_bin' === $collation) {
-            $this->logger?->warning('LoginThrottle: utf8mb4_bin (PAD SPACE) used for the login attempt key columns. On MySQL 8.0.17+ set the full server_version (e.g. "8.4.3") so utf8mb4_0900_bin (NO PAD) is chosen.');
+            $this->logger?->warning('LoginThrottle: utf8mb4_bin (PAD SPACE) used for the login attempt key columns. MySQL 5.7 or 8.0.0-8.0.16, or a server_version without the patch number: on MySQL 8.0.17+ set the full server_version (e.g. "8.4.3") so utf8mb4_0900_bin (NO PAD) is chosen.');
         }
 
         $table = $args->getClassTable();
         foreach (self::COLUMNS as $column) {
-            // @phpstan-ignore function.alreadyNarrowedType (Table::edit() exists only from DBAL 4.5)
-            $edited = self::collate($table, $column, $collation, method_exists(Table::class, 'edit'));
+            // the editor path replaces the table, which GenerateSchemaTableEventArgs::setClassTable() accepts only when
+            // Schema::edit() exists too (DBAL 4.3 has Table::edit() but not Schema::edit())
+            // @phpstan-ignore function.alreadyNarrowedType, function.alreadyNarrowedType
+            $edited = self::collate($table, $column, $collation, method_exists(Table::class, 'edit') && method_exists(Schema::class, 'edit'));
             if ($edited instanceof Table) {
                 $table = $edited;
             }

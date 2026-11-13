@@ -45,6 +45,22 @@ final class UsernameNormalizerTest extends TestCase
         self::assertSame('flat', UsernameNormalizer::fromRequest(Request::create('/login', 'POST', ['username' => ' ', 'email' => 'Flat'])));
     }
 
+    /**
+     * REQ-SEC-006: an unusable first field never falls through to a later field (another user's bucket).
+     */
+    public function testAnUnusableFieldDoesNotFallThroughToALaterOne(): void
+    {
+        $request = Request::create('/login', 'POST', ['_username' => "attacker\t", 'email' => 'victim@example.com']);
+        $request->attributes->set(SecurityRequestAttributes::LAST_USERNAME, 'victim@example.com');
+        self::assertNull(UsernameNormalizer::fromRequest($request, true));
+
+        $nested = Request::create('/login', 'POST', ['login_form' => ['_username' => "attacker\u{200B}"], '_username' => 'victim@example.com']);
+        self::assertNull(UsernameNormalizer::fromRequest($nested));
+
+        // blank fields still fall through, as before
+        self::assertSame('victim@example.com', UsernameNormalizer::fromRequest(Request::create('/login', 'POST', ['_username' => "\t ", 'email' => 'Victim@example.com'])));
+    }
+
     public function testPassportIdentifierOnlyWhenEnabled(): void
     {
         $request = Request::create('/api/login', 'POST');

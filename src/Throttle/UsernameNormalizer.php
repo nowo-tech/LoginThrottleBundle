@@ -83,23 +83,22 @@ final class UsernameNormalizer
      */
     public static function fromRequest(Request $request, bool $fromSecurityAttribute = false): ?string
     {
+        $candidates = [];
         foreach (self::NESTED_FORM_BAGS as $bag) {
             $nested = $request->request->all($bag);
-
             foreach (self::USERNAME_KEYS as $key) {
-                $normalized = self::normalize($nested[$key] ?? null);
-
-                if (null !== $normalized) {
-                    return $normalized;
-                }
+                $candidates[] = $nested[$key] ?? null;
             }
         }
-
         foreach (self::USERNAME_KEYS as $key) {
-            $normalized = self::normalize($request->request->get($key));
+            $candidates[] = $request->request->get($key);
+        }
 
-            if (null !== $normalized) {
-                return $normalized;
+        foreach ($candidates as $value) {
+            // the first non-blank field decides: an unusable one (e.g. `attacker\t`) yields null instead of falling
+            // through to a later field (`email=victim`) whose bucket a successful login would then clear (REQ-SEC-006)
+            if (\is_string($value) && '' !== trim($value)) {
+                return self::normalize($value);
             }
         }
 

@@ -64,13 +64,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `getAttempts()` / `getAttemptViews()` / `findOldestAttemptAt()` re-check every row with `===`, so a look-alike's
   failures never count for or against another username.
 - **NO PAD binary collation on `username` and `ip_address`** in the generated schema: `utf8mb4_0900_bin` on MySQL
-  8.0+, `utf8mb4_nopad_bin` on MariaDB, `utf8mb4_bin` (PAD SPACE) only for MySQL 5.7 or a `server_version` without the
+  8.0.17+, `utf8mb4_nopad_bin` on MariaDB, `utf8mb4_bin` (PAD SPACE) only for MySQL 5.7 / 8.0.0-8.0.16 or a `server_version` without the
   patch number, with a logged warning. Existing tables keep their collation until the `ALTER` of UPGRADING; the
   re-check protects them meanwhile.
 - **Unusable usernames are refused, not cleaned.** `UsernameNormalizer::normalize()` returns `null` for invalid UTF-8,
   control characters (`\n`, `\t`, …), format characters (ZWSP, BOM, bidi marks), non-ASCII spaces (NBSP) and values
   longer than 255 characters. Such a request is throttled on the stricter IP bucket and its successful login clears
-  nothing. The documented normalisation is unchanged otherwise: edge ASCII spaces trimmed, then lower-cased.
+  nothing. The first non-blank username field decides: an unusable `_username` no longer falls through to a later
+  field such as `email`. The documented normalisation is unchanged otherwise: edge ASCII spaces trimmed, then lower-cased.
 
 ### Changed
 
