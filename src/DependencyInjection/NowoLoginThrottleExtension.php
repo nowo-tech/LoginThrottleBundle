@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nowo\LoginThrottleBundle\DependencyInjection;
 
+use Nowo\LoginThrottleBundle\Doctrine\ExactCollationListener;
 use Nowo\LoginThrottleBundle\Doctrine\TablePrefixListener;
 use Nowo\LoginThrottleBundle\RateLimiter\DatabaseRateLimiter;
 use Nowo\LoginThrottleBundle\RateLimiter\DatabaseRateLimiterFactory;
@@ -179,6 +180,7 @@ final class NowoLoginThrottleExtension extends Extension implements PrependExten
             $container->removeAlias(LoginAttemptRepositoryInterface::class);
             $container->removeDefinition(LoginAttemptRepository::class);
             $container->removeDefinition(DatabaseRateLimiterFactory::class);
+            $container->removeDefinition(ExactCollationListener::class);
         }
     }
 

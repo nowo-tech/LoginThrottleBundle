@@ -34,6 +34,7 @@
         "psr/clock": "^1.0",
         "symfony/framework-bundle": "^7.4 || ^8.0",
         "symfony/security-bundle": "^7.4 || ^8.0",
+        "symfony/polyfill-intl-normalizer": "^1.27",
         "symfony/rate-limiter": "^7.4 || ^8.0",
         "doctrine/orm": "^3.7",
         "doctrine/doctrine-bundle": "^2.10 || ^3.0"

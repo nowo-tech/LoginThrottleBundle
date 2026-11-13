@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 3.11.0](#to-3110)
 - [To 3.10.1](#to-3101)
 - [To 3.10.0](#to-3100)
 - [To 3.9.0](#to-390)
@@ -54,6 +55,113 @@
 - [Notes](#notes)
 
 ## Unreleased
+
+## To 3.11.0
+
+From **3.10.1**, `storage: database` (REQ-SEC-006). The schema part is MySQL / MariaDB only; PostgreSQL and SQLite
+need no `ALTER`. **Read the throttling-budget change below before upgrading: it is the only one that can let more
+attempts through than 3.10.1 did.**
+
+**What changes without any action.**
+- With Symfony's `login_throttling`, the bucket is the identifier Symfony authenticates (`LAST_USERNAME`) whenever the
+  request submitted a username field, not the first POST field: an extra `login_form[_username]` can no longer point
+  the bucket (and its reset) at another account. `json_login` without `username_from_passport` stays IP-only.
+- A successful login clears only the byte-identical username's attempts. The attempt the successful request itself
+  recorded is deleted (Symfony's limiter consumes a token on every attempt), so successes never spend the per-IP
+  budget, exactly as before 3.11.0. The earlier failures of that bucket keep their row without the username: they
+  leave the username's bucket and keep counting for the IP until `timeout`, which bounds any confusion about which
+  bucket a success clears. On a shared IP (office NAT, CGNAT) those leftover failures make
+  `max_count_attempts_per_ip` the binding limit a little sooner; raise it if your site has many people behind one
+  address.
+- **A request without a usable username gets a larger budget.** Such a request (an unusable username, or
+  `json_login` without `username_from_passport`) is now bounded by `max_count_attempts_per_ip` instead of
+  `max_count_attempts`. Those are literally the same rows — an IP with no username has one bucket, and the smaller of
+  the two limits simply won, which made `max_count_attempts_per_ip` dead configuration for that case. The bound is
+  therefore **higher**: with the defaults (`max_count_attempts: 3`, `max_count_attempts_per_ip` = 5 × 3 = 15,
+  `timeout: 600`) one address goes from 2 to 14 accepted attempts per 10-minute window — about 12 an hour before, 84
+  now. Named buckets are untouched: `form_login` still allows 2 attempts per username per window.
+
+  Why it changed: the old bound caused the same lockout as a shared IP's successful logins did. Three colleagues
+  failing once each at 09:00 behind one office address made the fourth person's `json_login` unusable for ten
+  minutes, with nothing they could do about it.
+
+  To keep exactly the old bound, pin the cap:
+
+  ```yaml
+  nowo_login_throttle:
+      max_count_attempts: 3
+      max_count_attempts_per_ip: 3   # 3.10.1 behaviour for requests without a username
+  ```
+
+  For `json_login`, prefer `username_from_passport: true`: each identifier then gets its own `max_count_attempts`
+  bucket and the cap keeps bounding the address.
+- `ThrottleStatus::$maxAttempts` reports the per-IP cap for the IP bucket, and `LoginThrottleInfoService` now reads
+  the same bucket as the limiter.
+- Per-IP username counts fold case, accents and width (`bób`, `ｂob` count for `bob`), so spelling variants never add
+  guesses; clearing stays exact. Usernames with control or format characters, non-ASCII spaces, invalid UTF-8 or more
+than 255 characters are no longer recorded under a username: they are throttled on the IP bucket. Plain lower-case
+ASCII usernames and emails behave exactly as before.
+
+**Schema.** New schemas get a NO PAD binary collation on `username` and `ip_address` (`doctrine:migrations:diff` now
+proposes the change). Existing tables keep the server's default collation (`utf8mb4_0900_ai_ci`,
+`utf8mb4_uca1400_ai_ci`, `utf8mb4_unicode_ci`, …) until you run the `ALTER` below. The `ALTER` is recommended, not
+required for safety: the `===` re-check already protects old tables, and neither column carries a unique key, so the
+`ALTER` cannot fail on look-alike duplicates. Add your `table_prefix` to `login_attempts` if you configured one.
+
+1. Detection, before the `ALTER` (read-only):
+
+   ```sql
+   -- current collation of the key columns
+   SELECT COLUMN_NAME, COLLATION_NAME
+     FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'login_attempts' AND COLUMN_NAME IN ('username', 'ip_address');
+
+   -- usernames the current collation merges (grouped by the column's own collation, compared in bytes)
+   SELECT MIN(HEX(username)) AS one_variant_hex, COUNT(DISTINCT CAST(username AS BINARY)) AS variants, COUNT(*) AS attempts
+     FROM login_attempts
+    WHERE username IS NOT NULL
+    GROUP BY username
+   HAVING COUNT(DISTINCT CAST(username AS BINARY)) > 1;
+
+   -- the byte variants of one group
+   SELECT HEX(username) AS username_hex, COUNT(*) AS attempts
+     FROM login_attempts
+    WHERE username = 'alice@example.com'
+    GROUP BY HEX(username);
+
+   -- the same for ip_address
+   SELECT MIN(HEX(ip_address)) AS one_variant_hex, COUNT(DISTINCT CAST(ip_address AS BINARY)) AS variants
+     FROM login_attempts
+    GROUP BY ip_address
+   HAVING COUNT(DISTINCT CAST(ip_address AS BINARY)) > 1;
+   ```
+
+   Groups with more than one variant are look-alikes the old collation counted (and cleared) together. Nothing has to
+   be fixed by hand: the rows expire with `timeout` and `nowo:login-throttle:cleanup` removes them; you may also empty
+   the table, which only holds throttle state.
+
+2. The `ALTER`:
+
+   ```sql
+   -- MySQL 8.0.17+ (8.4 included)
+   ALTER TABLE login_attempts
+     MODIFY username VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin DEFAULT NULL,
+     MODIFY ip_address VARCHAR(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL;
+
+   -- MariaDB 10.2+ (11.4 included)
+   ALTER TABLE login_attempts
+     MODIFY username VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_nopad_bin DEFAULT NULL,
+     MODIFY ip_address VARCHAR(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_nopad_bin NOT NULL;
+
+   -- MySQL 5.7 only: utf8mb4_bin is PAD SPACE (trailing spaces still compare equal); the re-check covers it
+   ALTER TABLE login_attempts
+     MODIFY username VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,
+     MODIFY ip_address VARCHAR(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;
+   ```
+
+   Set the full `server_version` in your DBAL URL / configuration (e.g. `8.4.3` or `11.4.5-MariaDB`). With `8` or
+   `8.0` DBAL picks the MySQL 5.7 platform, so the generated schema falls back to `utf8mb4_bin` and the bundle logs a
+   warning.
 
 ## To 3.10.1
 

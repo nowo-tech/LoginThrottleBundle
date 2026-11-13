@@ -29,6 +29,15 @@ services:
     tags:
       - { name: doctrine.event_listener, event: loadClassMetadata }
 
+  # REQ-SEC-006 (3.11.0): byte-exact NO PAD collation on username / ip_address (MySQL / MariaDB); removed by the
+  # extension when the mapping is disabled.
+  Nowo\LoginThrottleBundle\Doctrine\ExactCollationListener:
+    arguments:
+      $doctrine: '@doctrine'
+      $logger: '@?logger'
+    tags:
+      - { name: doctrine.event_listener, event: postGenerateSchemaTable }
+
   # Repository for LoginAttempt entity (optional, only if Doctrine is installed)
   Nowo\LoginThrottleBundle\Repository\LoginAttemptRepository:
     arguments:

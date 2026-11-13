@@ -229,7 +229,7 @@ jobs:
         run: composer igor --no-interaction
 
   real-databases:
-    name: Attempt writes on PostgreSQL and MySQL
+    name: Attempt writes and look-alike usernames on PostgreSQL, MySQL and MariaDB
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -248,6 +248,14 @@ jobs:
         ports: ['3306:3306']
         options: >-
           --health-cmd "mysqladmin ping -h 127.0.0.1 -pci-placeholder" --health-interval 5s --health-timeout 5s --health-retries 30
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: ci-placeholder
+          MARIADB_DATABASE: login_throttle
+        ports: ['3307:3306']
+        options: >-
+          --health-cmd "healthcheck.sh --connect --innodb_initialized" --health-interval 5s --health-timeout 5s --health-retries 30
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -270,7 +278,12 @@ jobs:
       - name: MySQL
         env:
           LOGIN_THROTTLE_TEST_MYSQL_URL: mysql://root:ci-placeholder@127.0.0.1:3306/login_throttle?serverVersion=8.4.0&charset=utf8mb4
-        run: vendor/bin/phpunit --no-coverage tests/Repository/OpenHostTransactionTest.php
+        run: vendor/bin/phpunit --no-coverage tests/Repository/OpenHostTransactionTest.php tests/Repository/LookAlikeUsernameTest.php
+
+      - name: MariaDB (REQ-SEC-006 look-alike usernames)
+        env:
+          LOGIN_THROTTLE_TEST_MARIADB_URL: mysql://root:ci-placeholder@127.0.0.1:3307/login_throttle?serverVersion=11.4.0-MariaDB&charset=utf8mb4
+        run: vendor/bin/phpunit --no-coverage tests/Repository/LookAlikeUsernameTest.php
 
   coverage:
     name: Code Coverage

@@ -56,26 +56,39 @@ final readonly class ThrottleRules
      *
      * Blocked exactly when the limiter's next {@code consume()} refuses the attempt before recording it.
      *
+     * Without a username the bucket is the IP itself, so its limit is {@see maxAttemptsPerIp()} (3.11.0): those rows
+     * are the ones the per-IP cap counts, and `max_count_attempts` would make a shared IP (office NAT) refuse requests
+     * without a usable username after a handful of other people's failures.
+     *
      * @param string      $ipAddress Client IP ("unknown" when absent, as the limiter does)
      * @param string|null $username  Normalised username ({@see UsernameNormalizer}), null for the IP-only bucket
      */
     public function status(string $ipAddress, ?string $username): ThrottleStatus
     {
+        $limit = $this->limitFor($username);
         $count = $this->repository->countAttempts($ipAddress, $username, $this->timeoutSeconds);
         $ipCount = $this->repository->countAttemptsByIp($ipAddress, $this->timeoutSeconds);
-        $userBlocked = $this->repository->isBlocked($ipAddress, $username, $this->maxAttempts, $this->timeoutSeconds);
+        $userBlocked = null !== $username && $this->repository->isBlocked($ipAddress, $username, $this->maxAttempts, $this->timeoutSeconds);
         $blocked = $userBlocked || $ipCount >= $this->maxAttemptsPerIp;
 
         return new ThrottleStatus(
             $count,
-            $this->maxAttempts,
-            $blocked ? 0 : max(0, min($this->maxAttempts - $count, $this->maxAttemptsPerIp - $ipCount)),
+            $limit,
+            $blocked ? 0 : max(0, min($limit - $count, $this->maxAttemptsPerIp - $ipCount)),
             $blocked,
             $blocked ? $this->retryAfter($ipAddress, $userBlocked ? $username : null) : null,
             null !== $username ? ThrottleStatus::TRACKING_USERNAME : ThrottleStatus::TRACKING_IP,
             $ipCount,
             $this->maxAttemptsPerIp,
         );
+    }
+
+    /**
+     * The limit of the IP + username bucket: `max_count_attempts` with a username, the per-IP cap without one.
+     */
+    public function limitFor(?string $username): int
+    {
+        return null === $username ? $this->maxAttemptsPerIp : $this->maxAttempts;
     }
 
     /**

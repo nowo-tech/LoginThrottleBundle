@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[3.11.0] - 2026-11-13](#3110---2026-11-13)
 - [[3.10.1] - 2026-11-10](#3101---2026-11-10)
 - [[3.10.0] - 2026-11-10](#3100---2026-11-10)
 - [[3.9.0] - 2026-11-10](#390---2026-11-10)
@@ -51,9 +52,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.11.0] - 2026-11-13
+
+Identifiers are matched byte for byte, so a look-alike account (`alicé@` for `alice@`) can no longer clear or inflate
+another account's login attempts (REQ-SEC-006), and the bucket a request is throttled on is the identifier Symfony
+authenticates.
+
+> **Throttling budget change — read before upgrading.** A request **without a usable username** (`json_login` without
+> `username_from_passport`, or an identifier the bundle refuses) is now bounded by `max_count_attempts_per_ip`
+> instead of `max_count_attempts`. They are the same rows, so the smaller limit silently won and the cap was dead
+> configuration for that case — but the bound is **higher**: with the defaults one address goes from 2 to 14 accepted
+> attempts per 10-minute window (about 12 an hour before, 84 now). Named buckets are unchanged (`form_login`: 2 per
+> username per window). Set `max_count_attempts_per_ip: 3` to keep the 3.10.1 bound, or
+> `username_from_passport: true` to give each identifier its own bucket. See
+> [UPGRADING](https://github.com/nowo-tech/LoginThrottleBundle/blob/main/docs/UPGRADING.md).
+
+### Security
+
+- **A successful login no longer clears a look-alike account's failed attempts (REQ-SEC-006).** On a successful
+  login, `DatabaseRateLimiter::reset()` ran `DELETE … WHERE ip_address = :ip AND username = :username`. On the default
+  MySQL / MariaDB collations `alicé@`, `Alice@` and (PAD SPACE) `alice@ ` equal `alice@`, so an attacker who owns a
+  look-alike account could brute-force `alice@`, log in successfully as the look-alike from the same IP, and wipe
+  Alice's attempts, which also emptied the per-IP counter. Affects 3.2.0 to 3.10.1 with `storage: database` on MySQL /
+  MariaDB. `clearAttempts()` now selects the rows, keeps the byte-identical ones (`===`) and clears them by primary
+  key. Lower-casing still happens before, so `Bob` and `bob` are one account (a successful `Bob` login clears `bob`).
+- **The bucket is the identifier Symfony authenticates.** With `login_throttling`, the limiter keys `consume()` and
+  `reset()` on the passport identifier Symfony stores as `LAST_USERNAME` whenever the request submitted a username
+  field, instead of the first POST field. Before, `_username=attacker` plus `login_form[_username]=victim` made the
+  attacker's own successful login reset the victim's counter (unlimited guesses from one IP). Affects 3.2.0 to 3.10.1.
+  The POST fields still decide when the limiter is called without that attribute.
+- **A request without a usable username is bounded by the per-IP cap** (`max_count_attempts_per_ip`, 5 ×
+  `max_count_attempts` by default) instead of `max_count_attempts` — the budget of one address rises from 2 to 14
+  attempts per 10-minute window with the defaults. Those are the same rows either way, so the smaller limit won and
+  the cap was dead configuration for that case; the old bound also locked out a whole office address after a few
+  colleagues' failures. Named buckets are unchanged. `max_count_attempts_per_ip: 3` restores the old bound,
+  `username_from_passport: true` gives each identifier its own bucket. `ThrottleStatus::$maxAttempts` reports the cap
+  for the IP bucket.
+- **A successful login clears its bucket without spending the per-IP budget.** Symfony's limiter consumes a token on
+  every attempt, successful ones included, so `reset()` deletes the attempt the successful request itself recorded.
+  The earlier failures of that bucket keep their row and lose the username, so the next failure starts a fresh
+  per-username window while they still count against `max_count_attempts_per_ip` until `timeout`, which bounds any
+  confusion about which bucket a success clears. No schema change.
+- **`LoginThrottleInfoService` reads the same bucket as the limiter** (the authenticated identifier when Symfony put
+  it on the request). The figures are display-only; with `username_from_passport: true` a request without a username
+  field still reports the IP bucket.
+- **Spelling variants share one budget.** Per-IP username counts (`countAttempts()`, `getAttempts()` with an IP, and
+  so `isBlocked()` / retry-after) compare a folded skeleton (NFKD, accents removed, case folded) over the IP's
+  attempts, which the per-IP cap bounds: `bób`, `ｂob` or `bo` + U+0301 + `b` never get a fresh budget against `bob`.
+  Clearing stays byte-exact. `countAttemptsByUsername()` (across IPs, not used by the limiter) stays exact. Requires
+  `symfony/polyfill-intl-normalizer` (added) when `ext-intl` is missing.
+- **NO PAD binary collation on `username` and `ip_address`** in the generated schema: `utf8mb4_0900_bin` on MySQL
+  8.0.17+, `utf8mb4_nopad_bin` on MariaDB, `utf8mb4_bin` (PAD SPACE) only for MySQL 5.7 / 8.0.0-8.0.16 or a `server_version` without the
+  patch number, with a logged warning. Existing tables keep their collation until the `ALTER` of UPGRADING; the
+  re-check protects them meanwhile.
+- **Unusable usernames are refused, not cleaned.** `UsernameNormalizer::normalize()` returns `null` for invalid UTF-8,
+  control characters (`\n`, `\t`, …), format characters (ZWSP, BOM, bidi marks), non-ASCII spaces (NBSP) and values
+  longer than 255 characters. Such a request is throttled on the stricter IP bucket and its successful login clears
+  nothing. The first non-blank username field decides: an unusable `_username` no longer falls through to a later
+  field such as `email`. The documented normalisation is unchanged otherwise: edge ASCII spaces trimmed, then lower-cased.
+
 ### Changed
 
 - Demo uses the UiKit base style and FormKit forms (REQ-DEMO-014/015).
+
+### Documentation
+
+- `DATABASE_STORAGE.md`: the hand-written DDL and the demo migration give `username`, `ip_address` **and the table
+  default** a binary collation (`utf8mb4_0900_bin` on MySQL >= 8.0.17, `utf8mb4_nopad_bin` on MariaDB, `utf8mb4_bin`
+  on MySQL 5.7 only — binary but PAD SPACE), so a column added later cannot inherit a folding default.
+- `DATABASE_STORAGE.md`: the per-IP cap counts the client IP Symfony reports. Without correct `trusted_proxies` /
+  `trusted_headers` every visitor behind the proxy shares one bucket, and the cap then locks all of them out.
+
+[3.11.0]: https://github.com/nowo-tech/LoginThrottleBundle/releases/tag/v3.11.0
 
 ## [3.10.1] - 2026-11-10
 

@@ -157,11 +157,8 @@ final class DatabaseRateLimiterTest extends TestCase
         $request = Request::create('/login', 'POST');
         $request->server->set('REMOTE_ADDR', '192.168.1.1');
 
-        $this->repository
-            ->expects($this->once())
-            ->method('isBlocked')
-            ->with('192.168.1.1', null, 3, 600)
-            ->willReturn(false);
+        // 3.11.0: without a username the bucket is the IP itself, bounded by the per-IP cap (3 × 5) alone
+        $this->repository->expects($this->never())->method('isBlocked');
 
         $this->repository
             ->expects($this->once())
@@ -178,7 +175,8 @@ final class DatabaseRateLimiterTest extends TestCase
         $rateLimit = $this->rateLimiter->consume($request);
 
         $this->assertInstanceOf(RateLimit::class, $rateLimit);
-        $this->assertSame(1, $rateLimit->getRemainingTokens());
+        $this->assertSame(13, $rateLimit->getRemainingTokens());
+        $this->assertSame(15, $rateLimit->getLimit(), 'the IP bucket reports the limit it is judged by');
     }
 
     public function testConsumeWithUnknownIp(): void
@@ -209,6 +207,7 @@ final class DatabaseRateLimiterTest extends TestCase
 
         $this->assertInstanceOf(RateLimit::class, $rateLimit);
         $this->assertSame(3, $rateLimit->getRemainingTokens());
+        $this->assertSame(3, $rateLimit->getLimit());
     }
 
     public function testConsumeWithDifferentUsernameFields(): void
@@ -502,11 +501,7 @@ final class DatabaseRateLimiterTest extends TestCase
         $request = Request::create('/login', 'POST', ['_username' => '   ']);
         $request->server->set('REMOTE_ADDR', '192.168.1.1');
 
-        $this->repository
-            ->expects($this->once())
-            ->method('isBlocked')
-            ->with('192.168.1.1', null, 3, 600)
-            ->willReturn(false);
+        $this->repository->expects($this->never())->method('isBlocked');
         $this->repository
             ->expects($this->once())
             ->method('recordAttempt')

@@ -12,6 +12,7 @@ use Doctrine\Persistence\ManagerRegistry;
 use Doctrine\Persistence\Mapping\Driver\MappingDriver;
 use Doctrine\Persistence\ObjectManager;
 use Nowo\LoginThrottleBundle\Entity\LoginAttempt;
+use Nowo\LoginThrottleBundle\Throttle\UsernameNormalizer;
 use Psr\Clock\ClockInterface;
 
 /**
@@ -44,6 +45,11 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
     /**
      * Count failed login attempts for a given IP and username within a time period.
      *
+     * With a username, every attempt of the IP in the window is read (the per-IP cap bounds them) and the attempts
+     * whose username has the same folded skeleton are counted ({@see UsernameNormalizer::skeleton()}: compatibility
+     * decomposition, accents and case folded), so `bób`, `ｂob` or `BOB` never get a fresh budget against `bob`
+     * (3.11.0). Without a username, every attempt of the IP counts.
+     *
      * @param string      $ipAddress IP address
      * @param string|null $username  Username (optional)
      * @param int         $seconds   Time period in seconds
@@ -53,18 +59,25 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
     public function countAttempts(string $ipAddress, ?string $username, int $seconds): int
     {
         $qb = $this->createQueryBuilder('la')
-            ->select('COUNT(la.id)')
+            ->select('la.ipAddress AS ipAddress', 'la.username AS username')
             ->where('la.ipAddress = :ipAddress')
             ->andWhere('la.createdAt >= :since')
             ->setParameter('ipAddress', $ipAddress)
             ->setParameter('since', $this->secondsAgo($seconds));
 
-        if (null !== $username) {
-            $qb->andWhere('la.username = :username')
-                ->setParameter('username', $username);
+        $skeleton = null === $username ? null : UsernameNormalizer::skeleton($username);
+        $count = 0;
+        foreach ($this->rows($qb) as $row) {
+            if (($row['ipAddress'] ?? null) !== $ipAddress) {
+                continue;
+            }
+            $stored = $row['username'] ?? null;
+            if (null === $skeleton || (\is_string($stored) && UsernameNormalizer::skeleton($stored) === $skeleton)) {
+                ++$count;
+            }
         }
 
-        return (int) $qb->getQuery()->getSingleScalarResult();
+        return $count;
     }
 
     /**
@@ -78,17 +91,19 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
     public function countAttemptsByIp(string $ipAddress, int $seconds): int
     {
         $qb = $this->createQueryBuilder('la')
-            ->select('COUNT(la.id)')
+            ->select('la.ipAddress AS ipAddress')
             ->where('la.ipAddress = :ipAddress')
             ->andWhere('la.createdAt >= :since')
             ->setParameter('ipAddress', $ipAddress)
             ->setParameter('since', $this->secondsAgo($seconds));
 
-        return (int) $qb->getQuery()->getSingleScalarResult();
+        return $this->countExact($qb, $ipAddress, null);
     }
 
     /**
      * Count failed login attempts by username/email only (ignoring IP).
+     *
+     * Exact (`===`): across IPs there is no per-IP cap bounding a skeleton scan. The limiter does not use it.
      *
      * @param string $username Username/email
      * @param int    $seconds  Time period in seconds
@@ -98,13 +113,13 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
     public function countAttemptsByUsername(string $username, int $seconds): int
     {
         $qb = $this->createQueryBuilder('la')
-            ->select('COUNT(la.id)')
+            ->select('la.username AS username')
             ->where('la.username = :username')
             ->andWhere('la.createdAt >= :since')
             ->setParameter('username', $username)
             ->setParameter('since', $this->secondsAgo($seconds));
 
-        return (int) $qb->getQuery()->getSingleScalarResult();
+        return $this->countExact($qb, null, $username);
     }
 
     /**
@@ -198,30 +213,61 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
     }
 
     /**
-     * Delete login attempts for a given IP and username (e.g. after successful login).
+     * Clear login attempts for a given IP and username (e.g. after successful login).
      *
      * When username is null or empty, only rows with a null username are removed.
+     *
+     * With a username, selects first and keeps the rows whose IP and username are byte-identical (`===`,
+     * REQ-SEC-006): on a folding MySQL / MariaDB collation `alicé@` = `alice@` = `Alice@ `, so a delete by username
+     * alone let a successful login on a look-alike account wipe another account's failed attempts.
+     *
+     * Of those rows (3.11.0), the newest is deleted and the older ones keep the row but lose the username (set to
+     * NULL):
+     * - the newest is the attempt the successful request itself just recorded (Symfony's limiter consumes a token on
+     *   every attempt, successful ones included), so deleting it keeps a successful login from spending the per-IP
+     *   budget — otherwise a shared IP (office NAT, CGNAT) would lock itself out after `max_count_attempts_per_ip`
+     *   logins;
+     * - the older ones are real failures. They leave the username's bucket, so the next failure starts a fresh
+     *   window, and still count for the per-IP cap until they expire, which bounds any confusion about which bucket a
+     *   successful login clears.
      *
      * @param string      $ipAddress IP address
      * @param string|null $username  Username (optional)
      *
-     * @return int Number of deleted records
+     * @return int Number of cleared records (the deleted one included)
      */
     public function clearAttempts(string $ipAddress, ?string $username): int
     {
+        $username = '' === $username ? null : $username;
         $qb = $this->createQueryBuilder('la')
-            ->delete()
+            ->select('la.id AS id', 'la.ipAddress AS ipAddress', 'la.username AS username')
             ->where('la.ipAddress = :ipAddress')
+            ->orderBy('la.createdAt', \SortDirection::Descending)
+            ->addOrderBy('la.id', \SortDirection::Descending)
             ->setParameter('ipAddress', $ipAddress);
 
-        if (null === $username || '' === $username) {
+        if (null === $username) {
             $qb->andWhere('la.username IS NULL');
         } else {
             $qb->andWhere('la.username = :username')
                 ->setParameter('username', $username);
         }
 
-        return (int) $qb->getQuery()->execute();
+        $ids = [];
+        foreach ($this->rows($qb) as $row) {
+            if (self::isExact($row, $ipAddress, $username, true)) {
+                $ids[] = $row['id'];
+            }
+        }
+
+        if ([] === $ids) {
+            return 0;
+        }
+
+        // newest first: the row the successful request recorded itself goes, the older failures only lose the username
+        $newest = [array_shift($ids)];
+
+        return $this->deleteByIds($newest) + (null === $username ? $this->deleteByIds($ids) : $this->forgetUsernameOf($ids));
     }
 
     /**
@@ -306,18 +352,29 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
                 ->setParameter('ipAddress', $ipAddress);
         }
 
-        if (null !== $username) {
+        // with an IP, the bucket is the username's folded skeleton (as in countAttempts()); across IPs, exact
+        $skeleton = '' !== $ipAddress && null !== $username ? UsernameNormalizer::skeleton($username) : null;
+        if (null !== $username && null === $skeleton) {
             $qb->andWhere('la.username = :username')
                 ->setParameter('username', $username);
         }
 
-        /** @var list<LoginAttempt> $result */
-        $result = $qb->getQuery()->getResult();
+        /** @var list<LoginAttempt> $found */
+        $found = $qb->getQuery()->getResult();
 
         $entityManager = $this->getEntityManager();
-        foreach ($result as $attempt) {
+        $result = [];
+        foreach ($found as $attempt) {
             if ($entityManager->contains($attempt)) {
                 $entityManager->detach($attempt);
+            }
+            // REQ-SEC-006: the SQL filter may fold (case, accents, trailing spaces); keep the bucket's rows only
+            if ('' !== $ipAddress && $attempt->getIpAddress() !== $ipAddress) {
+                continue;
+            }
+            $stored = $attempt->getUsername();
+            if (null !== $skeleton ? null !== $stored && UsernameNormalizer::skeleton($stored) === $skeleton : null === $username || $stored === $username) {
+                $result[] = $attempt;
             }
         }
 
@@ -418,6 +475,100 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
         }
 
         return true;
+    }
+
+    /**
+     * Deletes the attempts of $ids (by primary key, in batches).
+     *
+     * @param list<mixed> $ids
+     */
+    private function deleteByIds(array $ids): int
+    {
+        return $this->byIds($ids, static fn (QueryBuilder $qb): QueryBuilder => $qb->delete());
+    }
+
+    /**
+     * Takes the username off the attempts of $ids (by primary key, in batches): the row leaves its username's bucket
+     * and keeps counting for the IP.
+     *
+     * @param list<mixed> $ids
+     */
+    private function forgetUsernameOf(array $ids): int
+    {
+        return $this->byIds($ids, static fn (QueryBuilder $qb): QueryBuilder => $qb->update()->set('la.username', 'NULL'));
+    }
+
+    /**
+     * @param list<mixed>                          $ids
+     * @param callable(QueryBuilder): QueryBuilder $statement
+     */
+    private function byIds(array $ids, callable $statement): int
+    {
+        $changed = 0;
+        foreach (array_chunk($ids, self::CLEANUP_BATCH_SIZE) as $chunk) {
+            $changed += (int) $statement($this->createQueryBuilder('la'))
+                ->where('la.id IN (:ids)')
+                ->setParameter('ids', $chunk)
+                ->getQuery()
+                ->execute();
+        }
+
+        return $changed;
+    }
+
+    /**
+     * Rows of $qb (scalar columns selected by alias) whose IP and username are byte-identical to the requested ones.
+     *
+     * The count happens in PHP after the SQL filter (REQ-SEC-006): a MySQL / MariaDB column on a folding collation
+     * (the default before the `ALTER` of UPGRADING 3.11.0) also returns look-alike rows (`Alice`, `alicé`,
+     * `alice `), which must neither count for nor against another username. No LIMIT is involved, so no exact row is
+     * ever hidden by a look-alike.
+     *
+     * @param string|null $ipAddress Required IP (null: the query does not select it)
+     * @param string|null $username  Required username (null: the query does not filter on it)
+     */
+    private function countExact(QueryBuilder $qb, ?string $ipAddress, ?string $username): int
+    {
+        $count = 0;
+        foreach ($this->rows($qb) as $row) {
+            if (self::isExact($row, $ipAddress, $username, false)) {
+                ++$count;
+            }
+        }
+
+        return $count;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function rows(QueryBuilder $qb): array
+    {
+        /** @var list<array<string, mixed>> $rows */
+        $rows = $qb->getQuery()->getArrayResult();
+
+        return $rows;
+    }
+
+    /**
+     * Whether a row read back is the requested IP / username byte for byte (`===`).
+     *
+     * @param array<string, mixed> $row         Row with the selected `ipAddress` / `username` aliases
+     * @param string|null          $ipAddress   Required IP (null: not checked)
+     * @param string|null          $username    Required username (null: not checked, unless $nullIsValue)
+     * @param bool                 $nullIsValue A null $username requires a null username in the row
+     */
+    private static function isExact(array $row, ?string $ipAddress, ?string $username, bool $nullIsValue): bool
+    {
+        if (null !== $ipAddress && ($row['ipAddress'] ?? null) !== $ipAddress) {
+            return false;
+        }
+
+        if (null === $username && !$nullIsValue) {
+            return true;
+        }
+
+        return ($row['username'] ?? null) === $username;
     }
 
     /**

@@ -27,8 +27,7 @@ use Symfony\Component\RateLimiter\RateLimit;
  * With {@code username_from_passport: true} (3.9), a request without those fields (json_login, custom
  * authenticators) is keyed on the passport identifier Symfony stores on the request, like form_login.
  * The rules live in {@see ThrottleRules}, shared with the status provider.
- * On successful login, {@see reset()} deletes matching {@see LoginAttempt} rows for that IP +
- * username only; the IP-wide counter keeps decaying with the timeout window.
+ * On successful login, {@see reset()} clears that IP + username's {@see LoginAttempt} rows (3.11.0: username set to NULL, so they keep counting for the IP); the username is the identifier Symfony authenticates ({@see UsernameNormalizer::forLimiter()}).
  *
  * @author Héctor Franco Aceituno <hectorfranco@nowo.tech>
  * @copyright 2025 Nowo.tech
@@ -80,9 +79,12 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
     {
         $ipAddress = $request->getClientIp() ?? 'unknown';
         $username = $this->extractUsername($request);
+        // the limit this request is judged by, which {@see RateLimit::getLimit()} must report (3.11.0)
+        $limit = $this->rules->limitFor($username);
 
-        // Check if already blocked (IP + username first, then the IP-only cap)
-        $isBlocked = $this->repository->isBlocked($ipAddress, $username, $this->maxAttempts, $this->timeoutSeconds);
+        // Check if already blocked (IP + username first, then the IP-only cap). Without a username the bucket is the
+        // IP itself, so only the cap applies (3.11.0): those are the rows the cap counts anyway.
+        $isBlocked = null !== $username && $this->repository->isBlocked($ipAddress, $username, $this->maxAttempts, $this->timeoutSeconds);
         $isIpBlocked = !$isBlocked && $this->repository->countAttemptsByIp($ipAddress, $this->timeoutSeconds) >= $this->maxAttemptsPerIp;
 
         if ($isBlocked || $isIpBlocked) {
@@ -96,10 +98,10 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
             // Count current attempts
             $count = $this->repository->countAttempts($ipAddress, $username, $this->timeoutSeconds);
             $ipCount = $this->repository->countAttemptsByIp($ipAddress, $this->timeoutSeconds);
-            $remaining = max(0, min($this->maxAttempts - $count, $this->maxAttemptsPerIp - $ipCount));
+            $remaining = max(0, min($limit - $count, $this->maxAttemptsPerIp - $ipCount));
 
             // Check if this attempt exceeded either limit
-            if ($count >= $this->maxAttempts) {
+            if (null !== $username && $count >= $limit) {
                 $retryAfter = $this->calculateRetryAfter($ipAddress, $username);
                 $accepted = false;
             } elseif ($ipCount >= $this->maxAttemptsPerIp) {
@@ -121,14 +123,14 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
             $remaining,
             $retryAfter,
             $accepted,
-            $this->maxAttempts
+            $limit
         );
     }
 
     /**
      * Reset the rate limiter for the given request (successful login).
      *
-     * Deletes stored attempts for this IP + username so the next failure starts a fresh window.
+     * Clears the stored attempts of this IP + username (they keep counting for the IP) so the next failure starts a fresh window.
      *
      * Without a username (KF-L-M1, 3.9) nothing is deleted: the IP-only bucket holds every attempt of the IP, the same
      * rows the per-IP cap counts, so clearing it on any successful login (e.g. the attacker's own account) would give
@@ -158,7 +160,7 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
      */
     private function extractUsername(Request $request): ?string
     {
-        return UsernameNormalizer::fromRequest($request, $this->usernameFromPassport);
+        return UsernameNormalizer::forLimiter($request, $this->usernameFromPassport);
     }
 
     /**

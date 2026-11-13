@@ -159,9 +159,12 @@ final class LoginThrottleInfoService
      */
     private function extractUsername(Request $request): ?string
     {
-        // KF-L-L1: the limiter's own extraction (trim + lower-case, blank values skipped), so the figures describe the
-        // bucket the limiter enforces.
-        return UsernameNormalizer::fromRequest($request);
+        // KF-L-L1: the limiter's own extraction, so the figures describe the bucket the limiter enforces: the
+        // identifier Symfony authenticated when it is on the request, else the POST fields (3.11.0).
+        // Residual: with `username_from_passport: true` the limiter keys a request without a username field (e.g.
+        // json_login) on the passport identifier, while these figures describe that IP's bucket. The figures are for
+        // display only; the limiter alone refuses attempts.
+        return UsernameNormalizer::forLimiter($request);
     }
 
     /**
