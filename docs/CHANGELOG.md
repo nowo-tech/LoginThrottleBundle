@@ -51,6 +51,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **A successful login no longer clears a look-alike account's failed attempts (REQ-SEC-006).** On a successful
+  login, `DatabaseRateLimiter::reset()` ran `DELETE … WHERE ip_address = :ip AND username = :username`. On the default
+  MySQL / MariaDB collations `alicé@`, `Alice@` and (PAD SPACE) `alice@ ` equal `alice@`, so an attacker who owns a
+  look-alike account could brute-force `alice@`, log in successfully as the look-alike from the same IP, and wipe
+  Alice's attempts, which also emptied the per-IP counter. Affects 3.2.0 to 3.10.1 with `storage: database` on MySQL /
+  MariaDB. `clearAttempts()` now selects the rows, keeps the byte-identical ones (`===`) and deletes them by primary
+  key.
+- **Counting is exact too.** `countAttempts()`, `countAttemptsByIp()`, `countAttemptsByUsername()` and
+  `getAttempts()` / `getAttemptViews()` / `findOldestAttemptAt()` re-check every row with `===`, so a look-alike's
+  failures never count for or against another username.
+- **NO PAD binary collation on `username` and `ip_address`** in the generated schema: `utf8mb4_0900_bin` on MySQL
+  8.0+, `utf8mb4_nopad_bin` on MariaDB, `utf8mb4_bin` (PAD SPACE) only for MySQL 5.7 or a `server_version` without the
+  patch number, with a logged warning. Existing tables keep their collation until the `ALTER` of UPGRADING; the
+  re-check protects them meanwhile.
+- **Unusable usernames are refused, not cleaned.** `UsernameNormalizer::normalize()` returns `null` for invalid UTF-8,
+  control characters (`\n`, `\t`, …), format characters (ZWSP, BOM, bidi marks), non-ASCII spaces (NBSP) and values
+  longer than 255 characters. Such a request is throttled on the stricter IP bucket and its successful login clears
+  nothing. The documented normalisation is unchanged otherwise: edge ASCII spaces trimmed, then lower-cased.
+
 ### Changed
 
 - Demo uses the UiKit base style and FormKit forms (REQ-DEMO-014/015).

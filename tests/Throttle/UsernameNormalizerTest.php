@@ -20,6 +20,22 @@ final class UsernameNormalizerTest extends TestCase
         self::assertNull(UsernameNormalizer::normalize(['admin']));
     }
 
+    /**
+     * REQ-SEC-006 item 1 (3.10.2): unusable usernames are refused, never cleaned into another user's bucket.
+     */
+    public function testUnusableUsernamesAreRefused(): void
+    {
+        foreach (["bob\n", "bob\t", "\tbob", "bob\r", "bob\0", "bob\u{00A0}", "\u{00A0}bob", "bob\u{200B}", "b\u{200B}ob", "\u{FEFF}bob", "bob\u{200E}", "bob\u{202E}", "bob\u{2028}", "bob\u{3000}", "bob\x80", "\xC3\x28"] as $value) {
+            self::assertNull(UsernameNormalizer::normalize($value), json_encode($value) ?: bin2hex($value));
+        }
+        self::assertNull(UsernameNormalizer::normalize(str_repeat('a', UsernameNormalizer::MAX_LENGTH + 1)));
+        self::assertSame(str_repeat('a', UsernameNormalizer::MAX_LENGTH), UsernameNormalizer::normalize(str_repeat('A', UsernameNormalizer::MAX_LENGTH)));
+        // the documented normalisation stays: edge ASCII spaces trimmed, lower-cased; accents are kept (distinct ids)
+        self::assertSame('bob@example.com', UsernameNormalizer::normalize(' BOB@example.com  '));
+        self::assertSame('bób@example.com', UsernameNormalizer::normalize('Bób@example.com'));
+        self::assertSame('bob smith', UsernameNormalizer::normalize('Bob Smith'));
+    }
+
     public function testPostFieldsComeFirstAndNestedBagBeforeFlatFields(): void
     {
         $request = Request::create('/login', 'POST', ['login_form' => ['email' => 'Nested'], '_username' => 'flat']);

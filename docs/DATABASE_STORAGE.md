@@ -99,13 +99,13 @@ php bin/console doctrine:migrations:diff
 php bin/console doctrine:migrations:migrate
 ```
 
-Or manually create the table:
+Or manually create the table (MySQL 8.0.17+; on MariaDB use `utf8mb4_nopad_bin` for the two key columns):
 
 ```sql
 CREATE TABLE login_attempts (
     id INT AUTO_INCREMENT NOT NULL,
-    ip_address VARCHAR(45) NOT NULL,
-    username VARCHAR(255) DEFAULT NULL,
+    ip_address VARCHAR(45) CHARACTER SET utf8mb4 NOT NULL COLLATE `utf8mb4_0900_bin`,
+    username VARCHAR(255) CHARACTER SET utf8mb4 DEFAULT NULL COLLATE `utf8mb4_0900_bin`,
     created_at DATETIME NOT NULL COMMENT '(DC2Type:datetime_immutable)',
     blocked TINYINT(1) DEFAULT 0 NOT NULL,
     INDEX idx_ip_username (ip_address, username),
@@ -166,7 +166,7 @@ When `storage: 'database'` is configured:
 2. This rate limiter stores login attempts in the `login_attempts` table
 3. Each failed login attempt is recorded with IP address, username, and timestamp
 4. Username is taken from flat form fields (`_username`, `username`, `email`) or nested AuthKit-style bags (`login_form[_username]`, etc.)
-5. The username is trimmed and lower-cased, so `Admin` and `admin` share one counter
+5. The username is trimmed (edge ASCII spaces) and lower-cased, so `Admin` and `admin` share one counter. Usernames with control or format characters (`\n`, ZWSP, BOM, bidi marks), non-ASCII spaces (NBSP), invalid UTF-8 or more than 255 characters are refused and only counted on the IP bucket (3.10.2). Lookups, counts and deletes compare the stored username byte for byte (`===`), and `username` / `ip_address` use a NO PAD binary collation on MySQL / MariaDB, so `alicé@` or `Alice@ ` never count for or clear `alice@` (REQ-SEC-006)
 6. The rate limiter blocks when either the IP + username count reaches `max_count_attempts` **or** the IP-only count (all usernames) reaches `max_count_attempts_per_ip` (default `5 × max_count_attempts`)
 7. On **successful** login, Symfony calls `reset()` and the limiter **deletes** matching attempt rows for that IP + username (so the next failure starts a fresh window); the IP-only counter is not reset and decays with `timeout`. Without a username (IP-only key) nothing is deleted (3.9, KF-L-M1), so a successful login cannot reopen the IP's budget
 8. After the timeout period, remaining attempts are no longer counted (and old rows can be pruned with `cleanup()`)

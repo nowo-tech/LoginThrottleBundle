@@ -55,6 +55,76 @@
 
 ## Unreleased
 
+From **3.10.1** (target 3.10.2), `storage: database` on MySQL / MariaDB only (REQ-SEC-006). PostgreSQL and SQLite need
+nothing.
+
+**What changes without any action.** The repository re-checks every row with `===`: a successful login clears only the
+byte-identical username's attempts, and look-alikes (`Alice@`, `alicé@`, `alice@ `, NBSP / ZWSP variants) never count
+for or against another username. Usernames with control or format characters, non-ASCII spaces, invalid UTF-8 or more
+than 255 characters are no longer recorded under a username: they are throttled on the IP bucket. Plain lower-case
+ASCII usernames and emails behave exactly as before.
+
+**Schema.** New schemas get a NO PAD binary collation on `username` and `ip_address` (`doctrine:migrations:diff` now
+proposes the change). Existing tables keep the server's default collation (`utf8mb4_0900_ai_ci`,
+`utf8mb4_uca1400_ai_ci`, `utf8mb4_unicode_ci`, …) until you run the `ALTER` below. The `ALTER` is recommended, not
+required for safety: the `===` re-check already protects old tables, and neither column carries a unique key, so the
+`ALTER` cannot fail on look-alike duplicates. Add your `table_prefix` to `login_attempts` if you configured one.
+
+1. Detection, before the `ALTER` (read-only):
+
+   ```sql
+   -- current collation of the key columns
+   SELECT COLUMN_NAME, COLLATION_NAME
+     FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'login_attempts' AND COLUMN_NAME IN ('username', 'ip_address');
+
+   -- usernames the current collation merges (grouped by the column's own collation, compared in bytes)
+   SELECT MIN(HEX(username)) AS one_variant_hex, COUNT(DISTINCT CAST(username AS BINARY)) AS variants, COUNT(*) AS attempts
+     FROM login_attempts
+    WHERE username IS NOT NULL
+    GROUP BY username
+   HAVING COUNT(DISTINCT CAST(username AS BINARY)) > 1;
+
+   -- the byte variants of one group
+   SELECT HEX(username) AS username_hex, COUNT(*) AS attempts
+     FROM login_attempts
+    WHERE username = 'alice@example.com'
+    GROUP BY HEX(username);
+
+   -- the same for ip_address
+   SELECT MIN(HEX(ip_address)) AS one_variant_hex, COUNT(DISTINCT CAST(ip_address AS BINARY)) AS variants
+     FROM login_attempts
+    GROUP BY ip_address
+   HAVING COUNT(DISTINCT CAST(ip_address AS BINARY)) > 1;
+   ```
+
+   Groups with more than one variant are look-alikes the old collation counted (and cleared) together. Nothing has to
+   be fixed by hand: the rows expire with `timeout` and `nowo:login-throttle:cleanup` removes them; you may also empty
+   the table, which only holds throttle state.
+
+2. The `ALTER`:
+
+   ```sql
+   -- MySQL 8.0.17+ (8.4 included)
+   ALTER TABLE login_attempts
+     MODIFY username VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin DEFAULT NULL,
+     MODIFY ip_address VARCHAR(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL;
+
+   -- MariaDB 10.2+ (11.4 included)
+   ALTER TABLE login_attempts
+     MODIFY username VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_nopad_bin DEFAULT NULL,
+     MODIFY ip_address VARCHAR(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_nopad_bin NOT NULL;
+
+   -- MySQL 5.7 only: utf8mb4_bin is PAD SPACE (trailing spaces still compare equal); the re-check covers it
+   ALTER TABLE login_attempts
+     MODIFY username VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,
+     MODIFY ip_address VARCHAR(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;
+   ```
+
+   Set the full `server_version` in your DBAL URL / configuration (e.g. `8.4.3` or `11.4.5-MariaDB`). With `8` or
+   `8.0` DBAL picks the MySQL 5.7 platform, so the generated schema falls back to `utf8mb4_bin` and the bundle logs a
+   warning.
+
 ## To 3.10.1
 
 From **3.10.0**:

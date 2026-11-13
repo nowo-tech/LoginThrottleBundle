@@ -67,7 +67,7 @@ final class LoginAttemptRepositoryTest extends TestCase
         $repository = new LoginAttemptRepository($this->registry, $clock);
 
         $query = $this->createQueryMock();
-        $query->method('getSingleScalarResult')->willReturn('0');
+        $query->method('getArrayResult')->willReturn([]);
         $this->queryBuilder->method('getQuery')->willReturn($query);
         $this->queryBuilder->method('where')->willReturnSelf();
         $this->queryBuilder->method('andWhere')->willReturnSelf();
@@ -92,8 +92,8 @@ final class LoginAttemptRepositoryTest extends TestCase
     {
         $query = $this->createQueryMock();
         $query->expects($this->once())
-            ->method('getSingleScalarResult')
-            ->willReturn('5');
+            ->method('getArrayResult')
+            ->willReturn(array_merge(array_fill(0, 5, ['ipAddress' => '192.168.1.1']), [['ipAddress' => '192.168.1.1 ']]));
 
         $this->queryBuilder
             ->expects($this->once())
@@ -126,8 +126,8 @@ final class LoginAttemptRepositoryTest extends TestCase
     {
         $query = $this->createQueryMock();
         $query->expects($this->once())
-            ->method('getSingleScalarResult')
-            ->willReturn('3');
+            ->method('getArrayResult')
+            ->willReturn([['username' => 'test@example.com'], ['username' => 'Test@example.com'], ['username' => 'test@example.com'], ['username' => 'tést@example.com'], ['username' => 'test@example.com']]);
 
         $this->queryBuilder
             ->expects($this->once())
@@ -240,8 +240,8 @@ final class LoginAttemptRepositoryTest extends TestCase
     {
         $query = $this->createQueryMock();
         $query->expects($this->once())
-            ->method('getSingleScalarResult')
-            ->willReturn('2');
+            ->method('getArrayResult')
+            ->willReturn([['ipAddress' => '10.0.0.1', 'username' => 'a'], ['ipAddress' => '10.0.0.1', 'username' => null]]);
 
         $this->queryBuilder->expects($this->once())->method('where')->with('la.ipAddress = :ipAddress')->willReturnSelf();
         $this->queryBuilder->expects($this->once())->method('andWhere')->with('la.createdAt >= :since')->willReturnSelf();
@@ -257,8 +257,11 @@ final class LoginAttemptRepositoryTest extends TestCase
     {
         $query = $this->createQueryMock();
         $query->expects($this->once())
-            ->method('getSingleScalarResult')
-            ->willReturn('4');
+            ->method('getArrayResult')
+            ->willReturn(array_merge(
+                array_fill(0, 4, ['ipAddress' => '10.0.0.1', 'username' => 'user@example.com']),
+                [['ipAddress' => '10.0.0.1', 'username' => 'User@example.com'], ['ipAddress' => '10.0.0.1', 'username' => 'user@example.com ']],
+            ));
 
         $this->queryBuilder->expects($this->once())->method('where')->with('la.ipAddress = :ipAddress')->willReturnSelf();
         $this->queryBuilder->expects($this->exactly(2))->method('andWhere')->willReturnSelf();
@@ -274,8 +277,8 @@ final class LoginAttemptRepositoryTest extends TestCase
     {
         $query = $this->createQueryMock();
         $query->expects($this->once())
-            ->method('getSingleScalarResult')
-            ->willReturn('3');
+            ->method('getArrayResult')
+            ->willReturn(array_fill(0, 3, ['ipAddress' => '127.0.0.1', 'username' => 'user@example.com']));
 
         $this->queryBuilder->method('where')->willReturnSelf();
         $this->queryBuilder->method('andWhere')->willReturnSelf();
@@ -289,8 +292,8 @@ final class LoginAttemptRepositoryTest extends TestCase
     {
         $query = $this->createQueryMock();
         $query->expects($this->once())
-            ->method('getSingleScalarResult')
-            ->willReturn('1');
+            ->method('getArrayResult')
+            ->willReturn([['ipAddress' => '127.0.0.1', 'username' => null]]);
 
         $this->queryBuilder->method('where')->willReturnSelf();
         $this->queryBuilder->method('andWhere')->willReturnSelf();
@@ -360,36 +363,83 @@ final class LoginAttemptRepositoryTest extends TestCase
         $this->assertSame(4, $count);
     }
 
-    public function testClearAttemptsWithUsername(): void
+    public function testClearAttemptsWithUsernameDeletesOnlyTheExactRowsById(): void
     {
         $query = $this->createQueryMock();
+        // REQ-SEC-006: the folding SQL also returned look-alike rows (5, 6, 7); only 1, 2 and 3 are deleted
+        $query->expects($this->once())->method('getArrayResult')->willReturn([
+            ['id' => 1, 'ipAddress' => '192.168.1.1', 'username' => 'user@example.com'],
+            ['id' => 5, 'ipAddress' => '192.168.1.1', 'username' => 'usér@example.com'],
+            ['id' => 2, 'ipAddress' => '192.168.1.1', 'username' => 'user@example.com'],
+            ['id' => 6, 'ipAddress' => '192.168.1.1', 'username' => 'User@example.com'],
+            ['id' => 7, 'ipAddress' => '192.168.1.1', 'username' => 'user@example.com '],
+            ['id' => 3, 'ipAddress' => '192.168.1.1', 'username' => 'user@example.com'],
+        ]);
         $query->expects($this->once())->method('execute')->willReturn(3);
 
         $this->queryBuilder->expects($this->once())->method('delete')->willReturnSelf();
-        $this->queryBuilder->expects($this->once())->method('where')->with('la.ipAddress = :ipAddress')->willReturnSelf();
+        $where = [];
+        $this->queryBuilder->expects($this->exactly(2))->method('where')->willReturnCallback(function (string $predicate) use (&$where): QueryBuilder {
+            $where[] = $predicate;
+
+            return $this->queryBuilder;
+        });
         $this->queryBuilder->expects($this->once())->method('andWhere')->with('la.username = :username')->willReturnSelf();
-        $this->queryBuilder->expects($this->exactly(2))->method('setParameter')->willReturnSelf();
-        $this->queryBuilder->expects($this->once())->method('getQuery')->willReturn($query);
+        $parameters = [];
+        $this->queryBuilder->expects($this->exactly(3))->method('setParameter')->willReturnCallback(function (string $key, mixed $value) use (&$parameters): QueryBuilder {
+            $parameters[$key] = $value;
+
+            return $this->queryBuilder;
+        });
+        $this->queryBuilder->expects($this->exactly(2))->method('getQuery')->willReturn($query);
 
         $deleted = $this->repository->clearAttempts('192.168.1.1', 'user@example.com');
 
         $this->assertSame(3, $deleted);
+        $this->assertSame(['la.ipAddress = :ipAddress', 'la.id IN (:ids)'], $where);
+        $this->assertSame([1, 2, 3], $parameters['ids']);
+    }
+
+    public function testClearAttemptsWithoutAnExactRowDeletesNothing(): void
+    {
+        $query = $this->createQueryMock();
+        $query->expects($this->once())->method('getArrayResult')->willReturn([
+            ['id' => 5, 'ipAddress' => '192.168.1.1', 'username' => 'alicé@example.com'],
+        ]);
+        $query->expects($this->never())->method('execute');
+        $this->queryBuilder->method('where')->willReturnSelf();
+        $this->queryBuilder->method('andWhere')->willReturnSelf();
+        $this->queryBuilder->method('setParameter')->willReturnSelf();
+        $this->queryBuilder->expects($this->never())->method('delete');
+        $this->queryBuilder->method('getQuery')->willReturn($query);
+
+        $this->assertSame(0, $this->repository->clearAttempts('192.168.1.1', 'alice@example.com'));
     }
 
     public function testClearAttemptsWithNullUsername(): void
     {
         $query = $this->createQueryMock();
+        $query->expects($this->once())->method('getArrayResult')->willReturn([
+            ['id' => 4, 'ipAddress' => '10.0.0.1', 'username' => null],
+            ['id' => 8, 'ipAddress' => '10.0.0.1 ', 'username' => null],
+        ]);
         $query->expects($this->once())->method('execute')->willReturn(1);
 
         $this->queryBuilder->expects($this->once())->method('delete')->willReturnSelf();
-        $this->queryBuilder->expects($this->once())->method('where')->with('la.ipAddress = :ipAddress')->willReturnSelf();
+        $this->queryBuilder->method('where')->willReturnSelf();
         $this->queryBuilder->expects($this->once())->method('andWhere')->with('la.username IS NULL')->willReturnSelf();
-        $this->queryBuilder->expects($this->once())->method('setParameter')->with('ipAddress', '10.0.0.1')->willReturnSelf();
-        $this->queryBuilder->expects($this->once())->method('getQuery')->willReturn($query);
+        $parameters = [];
+        $this->queryBuilder->expects($this->exactly(2))->method('setParameter')->willReturnCallback(function (string $key, mixed $value) use (&$parameters): QueryBuilder {
+            $parameters[$key] = $value;
 
-        $deleted = $this->repository->clearAttempts('10.0.0.1', null);
+            return $this->queryBuilder;
+        });
+        $this->queryBuilder->method('getQuery')->willReturn($query);
+
+        $deleted = $this->repository->clearAttempts('10.0.0.1', '');
 
         $this->assertSame(1, $deleted);
+        $this->assertSame(['ipAddress' => '10.0.0.1', 'ids' => [4]], $parameters);
     }
 
     public function testEntityFreeReadsMapGetAttempts(): void
@@ -399,7 +449,9 @@ final class LoginAttemptRepositoryTest extends TestCase
         (new \ReflectionProperty(LoginAttempt::class, 'createdAt'))->setValue($oldest, new \DateTimeImmutable('2026-11-10 09:00:00'));
 
         $query = $this->createQueryMock();
-        $query->method('getResult')->willReturnOnConsecutiveCalls([$newest, $oldest], [$newest, $oldest], []);
+        $lookAlike = new LoginAttempt('192.168.1.1', 'Alice');
+        $otherIp = new LoginAttempt('192.168.1.1 ', 'alice');
+        $query->method('getResult')->willReturnOnConsecutiveCalls([$newest, $lookAlike, $otherIp, $oldest], [$newest, $oldest, $lookAlike], []);
         $this->queryBuilder->method('where')->willReturnSelf();
         $this->queryBuilder->method('andWhere')->willReturnSelf();
         $this->queryBuilder->method('setParameter')->willReturnSelf();

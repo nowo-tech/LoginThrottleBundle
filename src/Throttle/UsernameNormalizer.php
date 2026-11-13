@@ -33,8 +33,24 @@ final class UsernameNormalizer
      */
     public const USERNAME_KEYS = ['_username', 'username', 'email'];
 
+    /** Longest username kept, in characters (the `username` column is VARCHAR(255)). */
+    public const MAX_LENGTH = 255;
+
     /**
-     * Normalise a submitted username (trim + lower-case); non-string or blank values yield null.
+     * Control (`Cc`, tabs and line breaks included), format (`Cf`: ZWSP, BOM, bidi marks) and line / paragraph separator
+     * characters, and every space separator except the ASCII space (NBSP, ideographic space…).
+     */
+    private const UNUSABLE = '/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]|(?! )\p{Zs}/u';
+
+    /**
+     * Normalise a submitted username: edge ASCII spaces trimmed, then lower-cased (`mb_strtolower`), so `Admin` and
+     * ` admin ` share one bucket.
+     *
+     * Non-string, blank and unusable values yield null (REQ-SEC-006 item 1, 3.10.2): invalid UTF-8, control or format
+     * characters anywhere (`bob\n`, `bob\t`, ZWSP, BOM, bidi marks), non-ASCII spaces (NBSP) and values longer than
+     * {@see MAX_LENGTH} once normalised. They are refused rather than cleaned, so `bob\n` or `bob` + ZWSP never share
+     * (or clear) the bucket of `bob`. A request without a usable username is throttled on its IP alone, the stricter
+     * bucket, and its successful login clears nothing.
      *
      * @param mixed $value Raw value
      *
@@ -42,13 +58,13 @@ final class UsernameNormalizer
      */
     public static function normalize(mixed $value): ?string
     {
-        if (!\is_string($value)) {
+        if (!\is_string($value) || !mb_check_encoding($value, 'UTF-8') || 1 === preg_match(self::UNUSABLE, $value)) {
             return null;
         }
 
-        $normalized = mb_strtolower(trim($value));
+        $normalized = mb_strtolower(trim($value, ' '));
 
-        return '' === $normalized ? null : $normalized;
+        return '' === $normalized || mb_strlen($normalized) > self::MAX_LENGTH ? null : $normalized;
     }
 
     /**

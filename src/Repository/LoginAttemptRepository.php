@@ -53,7 +53,7 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
     public function countAttempts(string $ipAddress, ?string $username, int $seconds): int
     {
         $qb = $this->createQueryBuilder('la')
-            ->select('COUNT(la.id)')
+            ->select('la.ipAddress AS ipAddress', 'la.username AS username')
             ->where('la.ipAddress = :ipAddress')
             ->andWhere('la.createdAt >= :since')
             ->setParameter('ipAddress', $ipAddress)
@@ -64,7 +64,7 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
                 ->setParameter('username', $username);
         }
 
-        return (int) $qb->getQuery()->getSingleScalarResult();
+        return $this->countExact($qb, $ipAddress, $username);
     }
 
     /**
@@ -78,13 +78,13 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
     public function countAttemptsByIp(string $ipAddress, int $seconds): int
     {
         $qb = $this->createQueryBuilder('la')
-            ->select('COUNT(la.id)')
+            ->select('la.ipAddress AS ipAddress')
             ->where('la.ipAddress = :ipAddress')
             ->andWhere('la.createdAt >= :since')
             ->setParameter('ipAddress', $ipAddress)
             ->setParameter('since', $this->secondsAgo($seconds));
 
-        return (int) $qb->getQuery()->getSingleScalarResult();
+        return $this->countExact($qb, $ipAddress, null);
     }
 
     /**
@@ -98,13 +98,13 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
     public function countAttemptsByUsername(string $username, int $seconds): int
     {
         $qb = $this->createQueryBuilder('la')
-            ->select('COUNT(la.id)')
+            ->select('la.username AS username')
             ->where('la.username = :username')
             ->andWhere('la.createdAt >= :since')
             ->setParameter('username', $username)
             ->setParameter('since', $this->secondsAgo($seconds));
 
-        return (int) $qb->getQuery()->getSingleScalarResult();
+        return $this->countExact($qb, null, $username);
     }
 
     /**
@@ -202,6 +202,10 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
      *
      * When username is null or empty, only rows with a null username are removed.
      *
+     * Selects first, keeps the rows whose IP and username are byte-identical (`===`, REQ-SEC-006), then deletes those
+     * rows by primary key: on a folding MySQL / MariaDB collation `alicé@` = `alice@` = `Alice@ `, so a delete by
+     * username alone let a successful login on a look-alike account wipe another account's failed attempts.
+     *
      * @param string      $ipAddress IP address
      * @param string|null $username  Username (optional)
      *
@@ -209,19 +213,37 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
      */
     public function clearAttempts(string $ipAddress, ?string $username): int
     {
+        $username = '' === $username ? null : $username;
         $qb = $this->createQueryBuilder('la')
-            ->delete()
+            ->select('la.id AS id', 'la.ipAddress AS ipAddress', 'la.username AS username')
             ->where('la.ipAddress = :ipAddress')
             ->setParameter('ipAddress', $ipAddress);
 
-        if (null === $username || '' === $username) {
+        if (null === $username) {
             $qb->andWhere('la.username IS NULL');
         } else {
             $qb->andWhere('la.username = :username')
                 ->setParameter('username', $username);
         }
 
-        return (int) $qb->getQuery()->execute();
+        $ids = [];
+        foreach ($this->rows($qb) as $row) {
+            if (self::isExact($row, $ipAddress, $username, true)) {
+                $ids[] = $row['id'];
+            }
+        }
+
+        $deleted = 0;
+        foreach (array_chunk($ids, self::CLEANUP_BATCH_SIZE) as $chunk) {
+            $deleted += (int) $this->createQueryBuilder('la')
+                ->delete()
+                ->where('la.id IN (:ids)')
+                ->setParameter('ids', $chunk)
+                ->getQuery()
+                ->execute();
+        }
+
+        return $deleted;
     }
 
     /**
@@ -311,13 +333,18 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
                 ->setParameter('username', $username);
         }
 
-        /** @var list<LoginAttempt> $result */
-        $result = $qb->getQuery()->getResult();
+        /** @var list<LoginAttempt> $found */
+        $found = $qb->getQuery()->getResult();
 
         $entityManager = $this->getEntityManager();
-        foreach ($result as $attempt) {
+        $result = [];
+        foreach ($found as $attempt) {
             if ($entityManager->contains($attempt)) {
                 $entityManager->detach($attempt);
+            }
+            // REQ-SEC-006: the SQL filter may fold (case, accents, trailing spaces); keep byte-identical rows only
+            if (('' === $ipAddress || $attempt->getIpAddress() === $ipAddress) && (null === $username || $attempt->getUsername() === $username)) {
+                $result[] = $attempt;
             }
         }
 
@@ -418,6 +445,61 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
         }
 
         return true;
+    }
+
+    /**
+     * Rows of $qb (scalar columns selected by alias) whose IP and username are byte-identical to the requested ones.
+     *
+     * The count happens in PHP after the SQL filter (REQ-SEC-006): a MySQL / MariaDB column on a folding collation
+     * (the default before the `ALTER` of UPGRADING 3.10.2) also returns look-alike rows (`Alice`, `alicé`,
+     * `alice `), which must neither count for nor against another username. No LIMIT is involved, so no exact row is
+     * ever hidden by a look-alike.
+     *
+     * @param string|null $ipAddress Required IP (null: the query does not select it)
+     * @param string|null $username  Required username (null: the query does not filter on it)
+     */
+    private function countExact(QueryBuilder $qb, ?string $ipAddress, ?string $username): int
+    {
+        $count = 0;
+        foreach ($this->rows($qb) as $row) {
+            if (self::isExact($row, $ipAddress, $username, false)) {
+                ++$count;
+            }
+        }
+
+        return $count;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function rows(QueryBuilder $qb): array
+    {
+        /** @var list<array<string, mixed>> $rows */
+        $rows = $qb->getQuery()->getArrayResult();
+
+        return $rows;
+    }
+
+    /**
+     * Whether a row read back is the requested IP / username byte for byte (`===`).
+     *
+     * @param array<string, mixed> $row         Row with the selected `ipAddress` / `username` aliases
+     * @param string|null          $ipAddress   Required IP (null: not checked)
+     * @param string|null          $username    Required username (null: not checked, unless $nullIsValue)
+     * @param bool                 $nullIsValue A null $username requires a null username in the row
+     */
+    private static function isExact(array $row, ?string $ipAddress, ?string $username, bool $nullIsValue): bool
+    {
+        if (null !== $ipAddress && ($row['ipAddress'] ?? null) !== $ipAddress) {
+            return false;
+        }
+
+        if (null === $username && !$nullIsValue) {
+            return true;
+        }
+
+        return ($row['username'] ?? null) === $username;
     }
 
     /**
