@@ -99,9 +99,19 @@ php bin/console doctrine:migrations:diff
 php bin/console doctrine:migrations:migrate
 ```
 
-Or manually create the table (MySQL 8.0.17+; on MariaDB use `utf8mb4_nopad_bin` for the two key columns):
+Or create the table by hand. `username` and `ip_address` are identity columns, so they need a **binary** collation
+(REQ-SEC-006) — and so does the table default, otherwise a column added later silently folds again:
+
+| Engine | Collation | Notes |
+| --- | --- | --- |
+| MySQL >= 8.0.17 (8.4 included) | `utf8mb4_0900_bin` | binary, NO PAD |
+| MariaDB (10.2+, 11.4 included) | `utf8mb4_nopad_bin` | binary, NO PAD |
+| MySQL 5.7 only | `utf8mb4_bin` | binary but **PAD SPACE**: `bob` and `bob ` still compare equal, so the bundle's PHP re-check is what keeps them apart |
+
+Never a `*_ci` / `*_ai_*` collation on those two columns: it folds case, accents and (PAD SPACE) trailing spaces.
 
 ```sql
+-- MySQL >= 8.0.17; MariaDB: utf8mb4_nopad_bin, MySQL 5.7: utf8mb4_bin (PAD SPACE)
 CREATE TABLE login_attempts (
     id INT AUTO_INCREMENT NOT NULL,
     ip_address VARCHAR(45) CHARACTER SET utf8mb4 NOT NULL COLLATE `utf8mb4_0900_bin`,
@@ -113,7 +123,7 @@ CREATE TABLE login_attempts (
     INDEX idx_username_created_at (username, created_at),
     INDEX idx_ip_created_at (ip_address, created_at),
     PRIMARY KEY(id)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB;
+) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_0900_bin` ENGINE = InnoDB;
 ```
 
 ### Step 4: Configure Security
@@ -167,8 +177,10 @@ When `storage: 'database'` is configured:
 3. Each failed login attempt is recorded with IP address, username, and timestamp
 4. Username: when Symfony's `login_throttling` listener calls the limiter, the identifier it authenticates (the passport `UserBadge` identifier, stored as `LAST_USERNAME`) is used whenever the request submitted a username field (3.10.2), so an extra `login_form[_username]` field can never point the bucket at another account. The POST fields (`login_form[_username]`, …, `_username`, `username`, `email`; the first non-blank one) only decide when the limiter is called without that attribute. Requests without a username field (e.g. `json_login`) stay IP-only unless `username_from_passport: true`
 5. The username is trimmed (edge ASCII spaces) and lower-cased before it is stored, so `Admin` and `admin` are the same account: a successful login as `Admin` clears the attempts of `admin` from that IP. Usernames with control or format characters (`\n`, ZWSP, BOM, bidi marks), non-ASCII spaces (NBSP), invalid UTF-8 or more than 255 characters are refused and only counted on the IP bucket (3.10.2). **Counting** uses a folded skeleton over the IP's attempts (compatibility decomposition, accents and case folded): `bób`, `ｂob` or `bo\u0301b` count in the bucket of `bob`, so spelling variants never add guesses. **Clearing** compares the stored username byte for byte (`===`) and `username` / `ip_address` use a NO PAD binary collation on MySQL / MariaDB, so a look-alike (`bób@`, or rows written by an older version such as `bob@ `) never clears `bob@`'s attempts (REQ-SEC-006)
-6. The rate limiter blocks when either the IP + username count reaches `max_count_attempts` **or** the IP-only count (all usernames) reaches `max_count_attempts_per_ip` (default `5 × max_count_attempts`)
-7. On **successful** login, Symfony calls `reset()` and the limiter **clears** that IP + username's attempts (exact username): since 3.10.2 they are not deleted, their username is set to NULL, so the next failure starts a fresh per-username window while the rows keep counting for the IP until `timeout`. Whatever a successful login clears, the per-IP cap still bounds the guesses from that IP. Without a username (IP-only key) nothing is cleared (3.9, KF-L-M1)
+6. The rate limiter blocks when either the IP + username count reaches `max_count_attempts` **or** the IP-only count (all usernames) reaches `max_count_attempts_per_ip` (default `5 × max_count_attempts`). A request without a usable username has no bucket of its own: it is bounded by the per-IP cap alone (3.10.2)
+
+   > **The per-IP cap counts the client IP Symfony reports.** Behind a load balancer, a reverse proxy or a CDN, that is the proxy's address unless `framework.trusted_proxies` / `trusted_headers` are configured — every visitor then shares one bucket and the cap locks all of them out together. Check `Request::getClientIp()` on a real request before relying on the cap. Even configured correctly, visitors behind one NAT (an office egress, carrier-grade NAT) do share an address: size `max_count_attempts_per_ip` for the busiest minute of such a site.
+7. On **successful** login, Symfony calls `reset()` and the limiter **clears** that IP + username's attempts (exact username). Since 3.10.2 clearing is in two parts: the attempt the successful request itself recorded is **deleted**, so a successful login never spends the per-IP budget; the earlier failures of that bucket keep their row but **lose the username**, so the next failure starts a fresh per-username window while those rows keep counting for the IP until `timeout`. Whatever a successful login clears, the per-IP cap still bounds the guesses from that IP. Without a username (IP-only key) nothing is cleared (3.9, KF-L-M1)
 8. After the timeout period, remaining attempts are no longer counted (and old rows can be pruned with `cleanup()`)
 
 ## Manual Security Configuration

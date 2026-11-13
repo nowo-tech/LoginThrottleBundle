@@ -366,11 +366,11 @@ final class LoginAttemptRepositoryTest extends TestCase
         $this->assertSame(4, $count);
     }
 
-    public function testClearAttemptsWithUsernameDeletesOnlyTheExactRowsById(): void
+    public function testClearAttemptsDeletesTheNewestExactRowAndUnnamesTheRest(): void
     {
         $query = $this->createQueryMock();
-        // REQ-SEC-006: the folding SQL also returned look-alike rows (5, 6, 7); only 1, 2 and 3 are cleared (3.10.2:
-        // username set to NULL, so they keep counting for the IP)
+        // REQ-SEC-006: the folding SQL also returned look-alike rows (5, 6, 7); only 1, 2 and 3 are cleared. Newest
+        // first: 1 is the attempt the successful request recorded itself and is deleted, 2 and 3 lose the username.
         $query->expects($this->once())->method('getArrayResult')->willReturn([
             ['id' => 1, 'ipAddress' => '192.168.1.1', 'username' => 'user@example.com'],
             ['id' => 5, 'ipAddress' => '192.168.1.1', 'username' => 'usér@example.com'],
@@ -379,31 +379,55 @@ final class LoginAttemptRepositoryTest extends TestCase
             ['id' => 7, 'ipAddress' => '192.168.1.1', 'username' => 'user@example.com '],
             ['id' => 3, 'ipAddress' => '192.168.1.1', 'username' => 'user@example.com'],
         ]);
-        $query->expects($this->once())->method('execute')->willReturn(3);
+        $query->expects($this->exactly(2))->method('execute')->willReturn(1, 2);
 
-        $this->queryBuilder->expects($this->never())->method('delete');
+        $this->queryBuilder->expects($this->once())->method('delete')->willReturnSelf();
         $this->queryBuilder->expects($this->once())->method('update')->willReturnSelf();
         $this->queryBuilder->expects($this->once())->method('set')->with('la.username', 'NULL')->willReturnSelf();
+        $this->queryBuilder->expects($this->once())->method('orderBy')->with('la.createdAt', \SortDirection::Descending)->willReturnSelf();
+        $this->queryBuilder->expects($this->once())->method('addOrderBy')->with('la.id', \SortDirection::Descending)->willReturnSelf();
         $where = [];
-        $this->queryBuilder->expects($this->exactly(2))->method('where')->willReturnCallback(function (string $predicate) use (&$where): QueryBuilder {
+        $this->queryBuilder->expects($this->exactly(3))->method('where')->willReturnCallback(function (string $predicate) use (&$where): QueryBuilder {
             $where[] = $predicate;
 
             return $this->queryBuilder;
         });
         $this->queryBuilder->expects($this->once())->method('andWhere')->with('la.username = :username')->willReturnSelf();
-        $parameters = [];
-        $this->queryBuilder->expects($this->exactly(3))->method('setParameter')->willReturnCallback(function (string $key, mixed $value) use (&$parameters): QueryBuilder {
-            $parameters[$key] = $value;
+        $ids = [];
+        $this->queryBuilder->expects($this->exactly(4))->method('setParameter')->willReturnCallback(function (string $key, mixed $value) use (&$ids): QueryBuilder {
+            if ('ids' === $key) {
+                $ids[] = $value;
+            }
 
             return $this->queryBuilder;
         });
-        $this->queryBuilder->expects($this->exactly(2))->method('getQuery')->willReturn($query);
+        $this->queryBuilder->expects($this->exactly(3))->method('getQuery')->willReturn($query);
 
-        $deleted = $this->repository->clearAttempts('192.168.1.1', 'user@example.com');
+        $cleared = $this->repository->clearAttempts('192.168.1.1', 'user@example.com');
 
-        $this->assertSame(3, $deleted);
-        $this->assertSame(['la.ipAddress = :ipAddress', 'la.id IN (:ids)'], $where);
-        $this->assertSame([1, 2, 3], $parameters['ids']);
+        $this->assertSame(3, $cleared);
+        $this->assertSame(['la.ipAddress = :ipAddress', 'la.id IN (:ids)', 'la.id IN (:ids)'], $where);
+        $this->assertSame([[1], [2, 3]], $ids);
+    }
+
+    public function testClearAttemptsOnlyDeletesWhenTheBucketHoldsOneRow(): void
+    {
+        $query = $this->createQueryMock();
+        $query->expects($this->once())->method('getArrayResult')->willReturn([
+            ['id' => 9, 'ipAddress' => '192.168.1.1', 'username' => 'user@example.com'],
+        ]);
+        $query->expects($this->once())->method('execute')->willReturn(1);
+
+        $this->queryBuilder->expects($this->once())->method('delete')->willReturnSelf();
+        $this->queryBuilder->expects($this->never())->method('update');
+        $this->queryBuilder->method('where')->willReturnSelf();
+        $this->queryBuilder->method('andWhere')->willReturnSelf();
+        $this->queryBuilder->method('orderBy')->willReturnSelf();
+        $this->queryBuilder->method('addOrderBy')->willReturnSelf();
+        $this->queryBuilder->method('setParameter')->willReturnSelf();
+        $this->queryBuilder->method('getQuery')->willReturn($query);
+
+        $this->assertSame(1, $this->repository->clearAttempts('192.168.1.1', 'user@example.com'));
     }
 
     public function testClearAttemptsWithoutAnExactRowDeletesNothing(): void
@@ -415,8 +439,11 @@ final class LoginAttemptRepositoryTest extends TestCase
         $query->expects($this->never())->method('execute');
         $this->queryBuilder->method('where')->willReturnSelf();
         $this->queryBuilder->method('andWhere')->willReturnSelf();
+        $this->queryBuilder->method('orderBy')->willReturnSelf();
+        $this->queryBuilder->method('addOrderBy')->willReturnSelf();
         $this->queryBuilder->method('setParameter')->willReturnSelf();
         $this->queryBuilder->expects($this->never())->method('delete');
+        $this->queryBuilder->expects($this->never())->method('update');
         $this->queryBuilder->method('getQuery')->willReturn($query);
 
         $this->assertSame(0, $this->repository->clearAttempts('192.168.1.1', 'alice@example.com'));
@@ -432,7 +459,10 @@ final class LoginAttemptRepositoryTest extends TestCase
         $query->expects($this->once())->method('execute')->willReturn(1);
 
         $this->queryBuilder->expects($this->once())->method('delete')->willReturnSelf();
+        $this->queryBuilder->expects($this->never())->method('update');
         $this->queryBuilder->method('where')->willReturnSelf();
+        $this->queryBuilder->method('orderBy')->willReturnSelf();
+        $this->queryBuilder->method('addOrderBy')->willReturnSelf();
         $this->queryBuilder->expects($this->once())->method('andWhere')->with('la.username IS NULL')->willReturnSelf();
         $parameters = [];
         $this->queryBuilder->expects($this->exactly(2))->method('setParameter')->willReturnCallback(function (string $key, mixed $value) use (&$parameters): QueryBuilder {

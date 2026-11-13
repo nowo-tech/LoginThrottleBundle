@@ -80,8 +80,9 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
         $ipAddress = $request->getClientIp() ?? 'unknown';
         $username = $this->extractUsername($request);
 
-        // Check if already blocked (IP + username first, then the IP-only cap)
-        $isBlocked = $this->repository->isBlocked($ipAddress, $username, $this->maxAttempts, $this->timeoutSeconds);
+        // Check if already blocked (IP + username first, then the IP-only cap). Without a username the bucket is the
+        // IP itself, so only the cap applies (3.10.2): those are the rows the cap counts anyway.
+        $isBlocked = null !== $username && $this->repository->isBlocked($ipAddress, $username, $this->maxAttempts, $this->timeoutSeconds);
         $isIpBlocked = !$isBlocked && $this->repository->countAttemptsByIp($ipAddress, $this->timeoutSeconds) >= $this->maxAttemptsPerIp;
 
         if ($isBlocked || $isIpBlocked) {
@@ -95,10 +96,11 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
             // Count current attempts
             $count = $this->repository->countAttempts($ipAddress, $username, $this->timeoutSeconds);
             $ipCount = $this->repository->countAttemptsByIp($ipAddress, $this->timeoutSeconds);
-            $remaining = max(0, min($this->maxAttempts - $count, $this->maxAttemptsPerIp - $ipCount));
+            $limit = $this->rules->limitFor($username);
+            $remaining = max(0, min($limit - $count, $this->maxAttemptsPerIp - $ipCount));
 
             // Check if this attempt exceeded either limit
-            if ($count >= $this->maxAttempts) {
+            if (null !== $username && $count >= $limit) {
                 $retryAfter = $this->calculateRetryAfter($ipAddress, $username);
                 $accepted = false;
             } elseif ($ipCount >= $this->maxAttemptsPerIp) {

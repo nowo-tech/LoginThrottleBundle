@@ -217,17 +217,24 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
      *
      * When username is null or empty, only rows with a null username are removed.
      *
-     * With a username, selects first, keeps the rows whose IP and username are byte-identical (`===`, REQ-SEC-006)
-     * and clears them by primary key: on a folding MySQL / MariaDB collation `alicé@` = `alice@` = `Alice@ `, so a
-     * delete by username alone let a successful login on a look-alike account wipe another account's failed attempts.
-     * Since 3.10.2 the cleared rows are not deleted: their username is set to NULL, so they leave the username's bucket
-     * but keep counting for the IP until they expire; whatever key a successful login clears, the per-IP cap still
-     * bounds the guesses made from that IP.
+     * With a username, selects first and keeps the rows whose IP and username are byte-identical (`===`,
+     * REQ-SEC-006): on a folding MySQL / MariaDB collation `alicé@` = `alice@` = `Alice@ `, so a delete by username
+     * alone let a successful login on a look-alike account wipe another account's failed attempts.
+     *
+     * Of those rows (3.10.2), the newest is deleted and the older ones keep the row but lose the username (set to
+     * NULL):
+     * - the newest is the attempt the successful request itself just recorded (Symfony's limiter consumes a token on
+     *   every attempt, successful ones included), so deleting it keeps a successful login from spending the per-IP
+     *   budget — otherwise a shared IP (office NAT, CGNAT) would lock itself out after `max_count_attempts_per_ip`
+     *   logins;
+     * - the older ones are real failures. They leave the username's bucket, so the next failure starts a fresh
+     *   window, and still count for the per-IP cap until they expire, which bounds any confusion about which bucket a
+     *   successful login clears.
      *
      * @param string      $ipAddress IP address
      * @param string|null $username  Username (optional)
      *
-     * @return int Number of cleared (username) or deleted (no username) records
+     * @return int Number of cleared records (the deleted one included)
      */
     public function clearAttempts(string $ipAddress, ?string $username): int
     {
@@ -235,6 +242,8 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
         $qb = $this->createQueryBuilder('la')
             ->select('la.id AS id', 'la.ipAddress AS ipAddress', 'la.username AS username')
             ->where('la.ipAddress = :ipAddress')
+            ->orderBy('la.createdAt', \SortDirection::Descending)
+            ->addOrderBy('la.id', \SortDirection::Descending)
             ->setParameter('ipAddress', $ipAddress);
 
         if (null === $username) {
@@ -251,22 +260,14 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
             }
         }
 
-        $changed = 0;
-        foreach (array_chunk($ids, self::CLEANUP_BATCH_SIZE) as $chunk) {
-            $qb = $this->createQueryBuilder('la');
-            if (null === $username) {
-                $qb->delete();
-            } else {
-                $qb->update()->set('la.username', 'NULL');
-            }
-            $changed += (int) $qb
-                ->where('la.id IN (:ids)')
-                ->setParameter('ids', $chunk)
-                ->getQuery()
-                ->execute();
+        if ([] === $ids) {
+            return 0;
         }
 
-        return $changed;
+        // newest first: the row the successful request recorded itself goes, the older failures only lose the username
+        $newest = [array_shift($ids)];
+
+        return $this->deleteByIds($newest) + (null === $username ? $this->deleteByIds($ids) : $this->forgetUsernameOf($ids));
     }
 
     /**
@@ -474,6 +475,45 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
         }
 
         return true;
+    }
+
+    /**
+     * Deletes the attempts of $ids (by primary key, in batches).
+     *
+     * @param list<mixed> $ids
+     */
+    private function deleteByIds(array $ids): int
+    {
+        return $this->byIds($ids, static fn (QueryBuilder $qb): QueryBuilder => $qb->delete());
+    }
+
+    /**
+     * Takes the username off the attempts of $ids (by primary key, in batches): the row leaves its username's bucket
+     * and keeps counting for the IP.
+     *
+     * @param list<mixed> $ids
+     */
+    private function forgetUsernameOf(array $ids): int
+    {
+        return $this->byIds($ids, static fn (QueryBuilder $qb): QueryBuilder => $qb->update()->set('la.username', 'NULL'));
+    }
+
+    /**
+     * @param list<mixed>                          $ids
+     * @param callable(QueryBuilder): QueryBuilder $statement
+     */
+    private function byIds(array $ids, callable $statement): int
+    {
+        $changed = 0;
+        foreach (array_chunk($ids, self::CLEANUP_BATCH_SIZE) as $chunk) {
+            $changed += (int) $statement($this->createQueryBuilder('la'))
+                ->where('la.id IN (:ids)')
+                ->setParameter('ids', $chunk)
+                ->getQuery()
+                ->execute();
+        }
+
+        return $changed;
     }
 
     /**

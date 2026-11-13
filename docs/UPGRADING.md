@@ -62,9 +62,18 @@ nothing.
 - With Symfony's `login_throttling`, the bucket is the identifier Symfony authenticates (`LAST_USERNAME`) whenever the
   request submitted a username field, not the first POST field: an extra `login_form[_username]` can no longer point
   the bucket (and its reset) at another account. `json_login` without `username_from_passport` stays IP-only.
-- A successful login clears only the byte-identical username's attempts, and it no longer deletes them: their username
-  is set to NULL, so they keep counting for the IP until `timeout`. A shared IP (office NAT) therefore reaches
-  `max_count_attempts_per_ip` a little sooner after many failed-then-successful logins.
+- A successful login clears only the byte-identical username's attempts. The attempt the successful request itself
+  recorded is deleted (Symfony's limiter consumes a token on every attempt), so successes never spend the per-IP
+  budget, exactly as before 3.10.2. The earlier failures of that bucket keep their row without the username: they
+  leave the username's bucket and keep counting for the IP until `timeout`, which bounds any confusion about which
+  bucket a success clears. On a shared IP (office NAT, CGNAT) those leftover failures make
+  `max_count_attempts_per_ip` the binding limit a little sooner; raise it if your site has many people behind one
+  address.
+- A request without a usable username (an unusable one, or `json_login` without `username_from_passport`) is now
+  bounded by `max_count_attempts_per_ip` instead of `max_count_attempts`. It is the same set of rows either way, so
+  nothing is less bounded; a handful of other people's failures from a shared IP no longer refuses those requests.
+  `ThrottleStatus::$maxAttempts` reports the per-IP cap for that bucket, and `LoginThrottleInfoService` now reads the
+  same bucket as the limiter.
 - Per-IP username counts fold case, accents and width (`bób`, `ｂob` count for `bob`), so spelling variants never add
   guesses; clearing stays exact. Usernames with control or format characters, non-ASCII spaces, invalid UTF-8 or more
 than 255 characters are no longer recorded under a username: they are throttled on the IP bucket. Plain lower-case

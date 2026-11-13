@@ -96,8 +96,9 @@ final class LookAlikeUsernameTest extends TestCase
     }
 
     /**
-     * F2: a successful login on a look-alike account clears only that account's own attempts, never the owner's; and
-     * cleared attempts keep counting for the IP (3.10.2).
+     * F2: a successful login on a look-alike account clears only that account's own attempts, never the owner's.
+     * Clearing deletes the newest row of the bucket (the successful request's own attempt) and takes the username off
+     * the older ones, which keep counting for the IP (3.10.2).
      */
     #[DataProvider('platforms')]
     public function testClearingALookAlikeKeepsTheOwnersAttempts(string $source, bool $exactCollation): void
@@ -109,10 +110,13 @@ final class LookAlikeUsernameTest extends TestCase
         }
         $this->assertSame(0, $repository->clearAttempts(self::IP, 'bóB@example.com'));
 
+        // each look-alike bucket held one row: its newest row is that row, so it is gone
+        $this->assertSame(3, $repository->countAttemptsByIp(self::IP, 600));
+
         $this->assertSame(3, $repository->countAttempts(self::IP, self::OWNER, 600));
         $this->assertSame(3, $repository->clearAttempts(self::IP, self::OWNER));
         $this->assertSame(0, $repository->countAttempts(self::IP, self::OWNER, 600));
-        $this->assertSame(3 + \count(self::LOOK_ALIKES), $repository->countAttemptsByIp(self::IP, 600), 'cleared attempts still count for the IP');
+        $this->assertSame(2, $repository->countAttemptsByIp(self::IP, 600), 'the two older attempts still count for the IP');
         $this->assertSame(1, $repository->countAttemptsByIp(self::IP . ' ', 600));
         $this->assertSame(1, $repository->countAttempts(self::IP . ' ', self::OWNER, 600));
     }
@@ -154,6 +158,58 @@ final class LookAlikeUsernameTest extends TestCase
         }
 
         $this->assertSame(2, $accepted);
+    }
+
+    /**
+     * Audit F-LT-6: a successful login must not spend the per-IP budget. Symfony's limiter consumes a token on every
+     * attempt, successful ones included, so the attempt a successful request records is deleted when it resets.
+     */
+    #[DataProvider('platforms')]
+    public function testSuccessfulLoginsNeverExhaustThePerIpCap(string $source, bool $exactCollation): void
+    {
+        $repository = new LoginAttemptRepository($this->registry($this->entityManager($source, $exactCollation)));
+        $limiter = new DatabaseRateLimiter($repository, 3, 600); // per-IP cap 15
+        $accepted = 0;
+
+        // one office behind a single NAT address: 20 different people log in successfully within the window
+        for ($i = 0; $i < 20; ++$i) {
+            $login = self::login('user' . $i . '@example.com');
+            $accepted += $limiter->consume($login)->isAccepted() ? 1 : 0;
+            $limiter->reset($login);
+        }
+
+        $this->assertSame(20, $accepted);
+        $this->assertSame(0, $repository->countAttemptsByIp(self::IP, 600));
+    }
+
+    /**
+     * The same with a failure before each success: the failures keep counting for the IP (the cap bounds any reset
+     * confusion), but a request whose username is unusable is bounded by that cap, not by `max_count_attempts`.
+     */
+    #[DataProvider('platforms')]
+    public function testFailuresBeforeASuccessOnlyCountForTheIpCap(string $source, bool $exactCollation): void
+    {
+        $repository = new LoginAttemptRepository($this->registry($this->entityManager($source, $exactCollation)));
+        $limiter = new DatabaseRateLimiter($repository, 3, 600);
+        $unusable = static fn (): Request => self::login("attacker\t");
+
+        for ($i = 0; $i < 4; ++$i) {
+            $user = 'user' . $i . '@example.com';
+            $this->assertTrue($limiter->consume(self::login($user))->isAccepted(), 'the failed attempt');
+            $login = self::login($user);
+            $this->assertTrue($limiter->consume($login)->isAccepted(), 'the successful attempt');
+            $limiter->reset($login);
+            $this->assertSame(0, $repository->countAttempts(self::IP, $user, 600));
+        }
+
+        // 4 failures left, each without a username now: more than max_count_attempts (3), well under the cap (15)
+        $this->assertSame(4, $repository->countAttemptsByIp(self::IP, 600));
+        $this->assertTrue($limiter->consume($unusable())->isAccepted(), 'an unusable username is bounded by the cap');
+
+        // KF-L-M1: a successful login without a usable username clears nothing
+        $before = $repository->countAttemptsByIp(self::IP, 600);
+        $limiter->reset($unusable());
+        $this->assertSame($before, $repository->countAttemptsByIp(self::IP, 600));
     }
 
     /**
