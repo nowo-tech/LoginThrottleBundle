@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[3.13.0] - 2026-11-14](#3130---2026-11-14)
 - [[3.12.0] - 2026-11-13](#3120---2026-11-13)
 - [[3.11.0] - 2026-11-13](#3110---2026-11-13)
 - [[3.10.1] - 2026-11-10](#3101---2026-11-10)
@@ -53,6 +54,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.13.0] - 2026-11-14
+
 Target 3.13.0.
 
 ### Added
@@ -95,6 +98,8 @@ Target 3.13.0.
   account lock out other accounts behind the same IP (NAT, offices). Keep a multiple (default 5×).
 - UPGRADING "To 3.11.0" and CONFIGURATION: the username-less bound now points to `max_count_attempts_without_username`
   instead of saying there is no separate setting.
+
+[3.13.0]: https://github.com/nowo-tech/LoginThrottleBundle/releases/tag/v3.13.0
 
 ## [3.12.0] - 2026-11-13
 
