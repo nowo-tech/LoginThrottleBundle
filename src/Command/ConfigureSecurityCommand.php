@@ -292,7 +292,7 @@ final class ConfigureSecurityCommand extends Command
             // Use database rate limiter if storage is database and no custom rate limiter is set
             // Use the same logic as the extension to generate shared service IDs
             // Generate human-readable service ID based on configuration values
-            // Format: nowo_login_throttle.database_rate_limiter.shared_{max}_{timeout}s_{watch}s[_ip{n}]
+            // Format: nowo_login_throttle.database_rate_limiter.shared_{max}_{timeout}s_{watch}s[_ip{n}][_nu{n}]
             // Example: nowo_login_throttle.database_rate_limiter.shared_5_300s_3600s
             // This makes it easy to identify the configuration by looking at the service name
             if ('database' === $storage && null === $rateLimiter) {
@@ -300,7 +300,8 @@ final class ConfigureSecurityCommand extends Command
                     $maxAttempts,
                     $timeout,
                     $watchPeriod,
-                    $firewallConfig['max_count_attempts_per_ip'] ?? null
+                    $firewallConfig['max_count_attempts_per_ip'] ?? null,
+                    $firewallConfig['max_count_attempts_without_username'] ?? null,
                 );
             }
 

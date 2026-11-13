@@ -71,16 +71,18 @@ final class NowoLoginThrottleExtension extends Extension implements PrependExten
      * Returns the shared database rate limiter service ID for a multiple-firewalls configuration tuple.
      *
      * Format: {@code nowo_login_throttle.database_rate_limiter.shared_{max}_{timeout}s_{watch}s}, with an
-     * {@code _ip{n}} suffix only when {@code max_count_attempts_per_ip} is set explicitly.
+     * {@code _ip{n}} suffix only when {@code max_count_attempts_per_ip} is set explicitly, then a {@code _nu{n}} suffix
+     * only when {@code max_count_attempts_without_username} is (3.13.0).
      *
-     * @param int      $maxAttempts      Maximum attempts
-     * @param int      $timeout          Timeout in seconds
-     * @param int      $watchPeriod      Watch period in seconds
-     * @param int|null $maxAttemptsPerIp Explicit per-IP maximum (null: default multiplier)
+     * @param int      $maxAttempts                Maximum attempts
+     * @param int      $timeout                    Timeout in seconds
+     * @param int      $watchPeriod                Watch period in seconds
+     * @param int|null $maxAttemptsPerIp           Explicit per-IP maximum (null: default multiplier)
+     * @param int|null $maxAttemptsWithoutUsername Explicit maximum without a username (null: the per-IP cap)
      *
      * @return string The shared service ID
      */
-    public static function sharedDatabaseRateLimiterServiceId(int $maxAttempts, int $timeout, int $watchPeriod, ?int $maxAttemptsPerIp = null): string
+    public static function sharedDatabaseRateLimiterServiceId(int $maxAttempts, int $timeout, int $watchPeriod, ?int $maxAttemptsPerIp = null, ?int $maxAttemptsWithoutUsername = null): string
     {
         $serviceId = \sprintf(
             '%s.shared_%d_%ds_%ds',
@@ -90,7 +92,11 @@ final class NowoLoginThrottleExtension extends Extension implements PrependExten
             $watchPeriod
         );
 
-        return null === $maxAttemptsPerIp ? $serviceId : \sprintf('%s_ip%d', $serviceId, $maxAttemptsPerIp);
+        if (null !== $maxAttemptsPerIp) {
+            $serviceId = \sprintf('%s_ip%d', $serviceId, $maxAttemptsPerIp);
+        }
+
+        return null === $maxAttemptsWithoutUsername ? $serviceId : \sprintf('%s_nu%d', $serviceId, $maxAttemptsWithoutUsername);
     }
 
     /**
@@ -145,6 +151,7 @@ final class NowoLoginThrottleExtension extends Extension implements PrependExten
                     'timeout' => $config['timeout'],
                     'watch_period' => $config['watch_period'] ?? 3600,
                     'max_count_attempts_per_ip' => $config['max_count_attempts_per_ip'] ?? null,
+                    'max_count_attempts_without_username' => $config['max_count_attempts_without_username'] ?? null,
                 ], $config['firewall']);
             }
 
@@ -160,6 +167,7 @@ final class NowoLoginThrottleExtension extends Extension implements PrependExten
                     'storage' => $config['storage'],
                     'firewall' => $config['firewall'],
                     'max_attempts_per_ip' => $config['max_count_attempts_per_ip'] ?? null,
+                    'max_attempts_without_username' => $config['max_count_attempts_without_username'] ?? null,
                 ],
             ]);
         }
@@ -371,7 +379,8 @@ final class NowoLoginThrottleExtension extends Extension implements PrependExten
                     $firewallConfig['max_count_attempts'],
                     $firewallConfig['timeout'],
                     $firewallConfig['watch_period'] ?? 3600,
-                    $firewallConfig['max_count_attempts_per_ip'] ?? null
+                    $firewallConfig['max_count_attempts_per_ip'] ?? null,
+                    $firewallConfig['max_count_attempts_without_username'] ?? null,
                 );
             }
         }
@@ -390,13 +399,15 @@ final class NowoLoginThrottleExtension extends Extension implements PrependExten
                 $timeout = $firewallConfig['timeout'];
                 $watchPeriod = $firewallConfig['watch_period'] ?? 3600;
                 $maxAttemptsPerIp = $firewallConfig['max_count_attempts_per_ip'] ?? null;
+                $maxAttemptsWithoutUsername = $firewallConfig['max_count_attempts_without_username'] ?? null;
 
                 $sharedServiceId = $this->resolveSharedLimiterServiceId(
                     $sharedLimiters,
                     $maxAttempts,
                     $timeout,
                     $watchPeriod,
-                    $maxAttemptsPerIp
+                    $maxAttemptsPerIp,
+                    $maxAttemptsWithoutUsername,
                 );
 
                 // Register the limiter only once (multiple firewalls with same config share the same service)
@@ -407,6 +418,7 @@ final class NowoLoginThrottleExtension extends Extension implements PrependExten
                         'timeout' => $timeout,
                         'watch_period' => $watchPeriod,
                         'max_count_attempts_per_ip' => $maxAttemptsPerIp,
+                        'max_count_attempts_without_username' => $maxAttemptsWithoutUsername,
                     ]);
                     $registeredLimiters[$sharedServiceId] = true;
                 }
@@ -423,6 +435,7 @@ final class NowoLoginThrottleExtension extends Extension implements PrependExten
                 'lock_factory' => $firewallConfig['lock_factory'] ?? null,
                 'storage' => $firewallConfig['storage'],
                 'max_attempts_per_ip' => $firewallConfig['max_count_attempts_per_ip'] ?? null,
+                'max_attempts_without_username' => $firewallConfig['max_count_attempts_without_username'] ?? null,
             ];
         }
 
@@ -459,7 +472,7 @@ final class NowoLoginThrottleExtension extends Extension implements PrependExten
      *
      * @param ContainerBuilder     $container The container builder
      * @param string               $serviceId The service ID to use
-     * @param array<string, mixed> $config    The processed configuration (must contain max_count_attempts, timeout, watch_period; optional max_count_attempts_per_ip)
+     * @param array<string, mixed> $config    The processed configuration (must contain max_count_attempts, timeout, watch_period; optional max_count_attempts_per_ip, max_count_attempts_without_username)
      */
     private function registerDatabaseRateLimiterByServiceId(ContainerBuilder $container, string $serviceId, array $config): void
     {
@@ -478,6 +491,7 @@ final class NowoLoginThrottleExtension extends Extension implements PrependExten
                 $config['max_count_attempts_per_ip'] ?? null,
                 new Reference(ClockInterface::class, ContainerInterface::NULL_ON_INVALID_REFERENCE),
                 '%nowo_login_throttle.username_from_passport%',
+                $config['max_count_attempts_without_username'] ?? null,
             ])
             ->setPublic(true); // Must be public to be used as a rate limiter service
     }
@@ -485,20 +499,21 @@ final class NowoLoginThrottleExtension extends Extension implements PrependExten
     /**
      * Resolves or creates a shared database rate limiter service ID for a configuration tuple.
      *
-     * @param array<string, string> $sharedLimiters   Shared limiter registry keyed by config hash
-     * @param int                   $maxAttempts      Maximum attempts
-     * @param int                   $timeout          Timeout in seconds
-     * @param int                   $watchPeriod      Watch period in seconds
-     * @param int|null              $maxAttemptsPerIp Explicit per-IP maximum (null: default multiplier)
+     * @param array<string, string> $sharedLimiters             Shared limiter registry keyed by config hash
+     * @param int                   $maxAttempts                Maximum attempts
+     * @param int                   $timeout                    Timeout in seconds
+     * @param int                   $watchPeriod                Watch period in seconds
+     * @param int|null              $maxAttemptsPerIp           Explicit per-IP maximum (null: default multiplier)
+     * @param int|null              $maxAttemptsWithoutUsername Explicit maximum without a username (null: the per-IP cap)
      *
      * @return string The shared service ID
      */
-    private function resolveSharedLimiterServiceId(array &$sharedLimiters, int $maxAttempts, int $timeout, int $watchPeriod, ?int $maxAttemptsPerIp = null): string
+    private function resolveSharedLimiterServiceId(array &$sharedLimiters, int $maxAttempts, int $timeout, int $watchPeriod, ?int $maxAttemptsPerIp = null, ?int $maxAttemptsWithoutUsername = null): string
     {
-        $limiterKey = \sprintf('db-%d-%d-%d-%s', $maxAttempts, $timeout, $watchPeriod, $maxAttemptsPerIp ?? 'default');
+        $limiterKey = \sprintf('db-%d-%d-%d-%s-%s', $maxAttempts, $timeout, $watchPeriod, $maxAttemptsPerIp ?? 'default', $maxAttemptsWithoutUsername ?? 'default');
 
         if (!isset($sharedLimiters[$limiterKey])) {
-            $sharedLimiters[$limiterKey] = self::sharedDatabaseRateLimiterServiceId($maxAttempts, $timeout, $watchPeriod, $maxAttemptsPerIp);
+            $sharedLimiters[$limiterKey] = self::sharedDatabaseRateLimiterServiceId($maxAttempts, $timeout, $watchPeriod, $maxAttemptsPerIp, $maxAttemptsWithoutUsername);
         }
 
         return $sharedLimiters[$limiterKey];

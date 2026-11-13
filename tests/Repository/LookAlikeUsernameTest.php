@@ -8,6 +8,7 @@ use Doctrine\Common\EventManager;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\DBAL\Platforms\AbstractMySQLPlatform;
 use Doctrine\DBAL\Tools\DsnParser;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\ORMSetup;
 use Doctrine\ORM\Tools\SchemaTool;
@@ -19,6 +20,7 @@ use Nowo\LoginThrottleBundle\RateLimiter\DatabaseRateLimiter;
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepository;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Security\Http\SecurityRequestAttributes;
 
@@ -249,6 +251,77 @@ final class LookAlikeUsernameTest extends TestCase
         }
 
         $this->assertLessThan(15, $accepted, 'before 3.11.0: 20 of 20');
+    }
+
+    /**
+     * 3.13.0: the username-less reads count only this IP's rows without a username (byte-exact IP, as the per-IP
+     * cap), cleared failures included; named and look-alike rows never count.
+     */
+    #[DataProvider('platforms')]
+    public function testUsernameLessReadsCountOnlyRowsWithoutUsername(string $source, bool $exactCollation): void
+    {
+        $clock = new class implements ClockInterface {
+            public \DateTimeImmutable $now;
+
+            public function now(): \DateTimeImmutable
+            {
+                return $this->now;
+            }
+        };
+        $clock->now = new \DateTimeImmutable('2026-11-13 09:10:00');
+        $entityManager = $this->entityManager($source, $exactCollation);
+        $repository = new LoginAttemptRepository($this->registry($entityManager), $clock);
+        $insert = static function (string $ip, ?string $username, string $at) use ($entityManager): void {
+            $entityManager->getConnection()->insert(
+                'login_attempts',
+                ['ip_address' => $ip, 'username' => $username, 'created_at' => new \DateTimeImmutable($at), 'blocked' => false],
+                ['created_at' => Types::DATETIME_IMMUTABLE, 'blocked' => Types::BOOLEAN],
+            );
+        };
+
+        $this->assertSame(0, $repository->countAttemptsWithoutUsername(self::IP, 600));
+        $this->assertNull($repository->findOldestAttemptWithoutUsernameAt(self::IP, 600));
+
+        $insert(self::IP, null, '2026-11-13 08:59:00'); // outside the window
+        $insert(self::IP, null, '2026-11-13 09:01:00');
+        $insert(self::IP, self::OWNER, '2026-11-13 09:00:30');
+        foreach (self::LOOK_ALIKES as $lookAlike) {
+            $insert(self::IP, $lookAlike, '2026-11-13 09:02:00');
+        }
+        $insert(self::IP . ' ', null, '2026-11-13 09:00:10');
+        $insert('10.0.0.2', null, '2026-11-13 09:00:10');
+        $insert(self::IP, null, '2026-11-13 09:05:00');
+
+        $this->assertSame(2, $repository->countAttemptsWithoutUsername(self::IP, 600));
+        $this->assertEquals(new \DateTimeImmutable('2026-11-13 09:01:00'), $repository->findOldestAttemptWithoutUsernameAt(self::IP, 600));
+        $this->assertSame(1, $repository->countAttemptsWithoutUsername(self::IP . ' ', 600));
+        $this->assertEquals(new \DateTimeImmutable('2026-11-13 09:00:10'), $repository->findOldestAttemptWithoutUsernameAt(self::IP . ' ', 600));
+        $this->assertSame(1, $repository->countAttemptsWithoutUsername(self::IP, 600 - 70));
+
+        // a cleared failure keeps its row without the username: it counts too
+        $insert(self::IP, self::OWNER, '2026-11-13 09:06:00');
+        $repository->clearAttempts(self::IP, self::OWNER);
+        $this->assertSame(3, $repository->countAttemptsWithoutUsername(self::IP, 600));
+    }
+
+    /**
+     * 3.13.0 end to end: with a shared IP's generous cap, username-less requests get their own tight bound.
+     */
+    #[DataProvider('platforms')]
+    public function testTheUsernameLessBoundOnARealStore(string $source, bool $exactCollation): void
+    {
+        $repository = new LoginAttemptRepository($this->registry($this->entityManager($source, $exactCollation)));
+        $limiter = new DatabaseRateLimiter($repository, 3, 600, 50, null, false, 3);
+        $anonymous = static fn (): Request => Request::create('/login', 'POST', ['_username' => ' '], server: ['REMOTE_ADDR' => self::IP]);
+
+        $accepted = 0;
+        for ($i = 0; $i < 5; ++$i) {
+            $accepted += $limiter->consume($anonymous())->isAccepted() ? 1 : 0;
+            $accepted += $limiter->consume(self::login('user' . $i . '@example.com'))->isAccepted() ? 10 : 0;
+        }
+
+        $this->assertSame(2 + 50, $accepted, 'two username-less attempts, every named one');
+        $this->assertSame(3, $repository->countAttemptsWithoutUsername(self::IP, 600));
     }
 
     /**

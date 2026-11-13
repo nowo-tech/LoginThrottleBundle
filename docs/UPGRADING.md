@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 3.13.0](#to-3130)
 - [To 3.12.0](#to-3120)
 - [To 3.11.0](#to-3110)
 - [To 3.10.1](#to-3101)
@@ -56,6 +57,56 @@
 - [Notes](#notes)
 
 ## Unreleased
+
+## To 3.13.0
+
+From **3.12.0**:
+
+```bash
+composer update nowo-tech/login-throttle-bundle
+```
+
+Nothing to do: the new option defaults to `null`, which keeps the 3.12.0 behaviour.
+
+**New option `max_count_attempts_without_username`** (`storage: database`, at the root and per firewall). Until now a
+request without a usable username (missing, blank or unusable username in every field the bundle recognises) was
+bounded by `max_count_attempts_per_ip` alone, the same option that caps all accounts behind one IP, so tightening
+one loosened nothing and tightened both. The new option bounds those requests separately:
+
+```yaml
+nowo_login_throttle:
+    storage: database
+    max_count_attempts: 3
+    max_count_attempts_per_ip: 60              # generous: many people behind one office NAT
+    max_count_attempts_without_username: 5     # tight: requests that carry no usable username
+```
+
+- It counts only the IP's attempts **without a username** within `timeout`; named attempts never count for it. The
+  per-IP cap still applies on top. Like `max_count_attempts`, the attempt that reaches the bound is refused, so `5`
+  lets 4 username-less attempts through per window.
+- `null` (default) = the effective per-IP cap, i.e. 3.12.0 behaviour. A value above the effective per-IP cap
+  (`max_count_attempts_per_ip`, or 5 × `max_count_attempts` when that is null) is a **configuration error**, not a
+  silent clamp: the cap would make it unreachable. Classes built by hand (`ThrottleRules`, `DatabaseRateLimiter`)
+  clamp it to 1 .. the per-IP cap instead.
+- "Without a username" is a NULL username in the store. That includes failures a successful login cleared (3.11.0:
+  they keep their row without the username), so on a busy shared IP those leftovers count against this bound too.
+  Size it for that.
+- **It is not a hard bound per address.** Requests are username-less only when no field the bundle recognises (`_username`, `username`, `email`, also nested under `login_form`) holds a username. A client that sends one of those fields is keyed on the passport identifier Symfony authenticates and never counts toward this bound, so an attacker can step around it on `form_login` with a custom `username_parameter`, on custom authenticators, and on `json_login` (a urlencoded body can carry `_username`): those requests just fall back to the 3.12.0 limits (`max_count_attempts` per identifier, the per-IP cap per address). The per-IP cap remains the only hard bound per address. This option tightens honest username-less traffic; for `json_login` and custom authenticators, `username_from_passport: true` is the setting to use.
+- Honest `json_login` clients without `username_from_passport` send no recognised field, so their attempts are
+  username-less: successful ones included (`reset()` clears nothing without a username, KF-L-M1), they count for this
+  bound. Enable `username_from_passport` before you set a low value.
+- **Login pages.** The IP-only status (`LoginThrottleStatusProvider::status()` / `LoginThrottleInfoService::getAttemptInfo()` without a username, e.g. on the login page before a username is typed) now reports this bound, so it can say "blocked" while named logins from the same address are still accepted. Do not disable the login form on that status alone: show it as a notice, or check the status again once the username is known.
+- `storage: cache` ignores it: Symfony's `login_throttling` limiters have no username-less bucket to bound.
+
+**Custom stores.** The bound reads the store through the new optional port
+`LoginAttemptWithoutUsernameReaderInterface` (`countAttemptsWithoutUsername()`,
+`findOldestAttemptWithoutUsernameAt()`), which `LoginAttemptRepository` implements. A host store that does not
+implement it keeps working: the bundle then filters `getAttemptViews()` (or the deprecated `getAttempts()`) for rows
+without a username itself. Nothing is read through it unless the option is set below the per-IP cap.
+
+**Shared limiter IDs.** With multiple firewalls, a firewall that sets the option gets its own shared database limiter,
+whose service ID ends in `_nu{n}` (after `_ip{n}` when that is set). If you reference generated IDs in
+`security.yaml` by hand, re-run `nowo:login-throttle:configure-security` or update them.
 
 ## To 3.12.0
 
@@ -116,9 +167,10 @@ attempts through than 3.10.1 did.**
   user (or one attacker) can lock out everybody behind the same NAT or office egress. Keep the cap at a multiple of
   `max_count_attempts` (the default is 5×) and size it for the busiest minute of the shared addresses you expect.
 
-  The trade-off: the username-less bound and the cap across all accounts are the same option, so a lower value
-  tightens requests without a username but also makes shared IPs easier to lock out; a higher value does the
-  opposite. There is no separate setting for the username-less bound.
+  The trade-off: in 3.11.0 and 3.12.0 the username-less bound and the cap across all accounts are the same option,
+  so a lower value tightens requests without a username but also makes shared IPs easier to lock out; a higher value
+  does the opposite. Since 3.13.0, `max_count_attempts_without_username` bounds requests without a username
+  separately (see [To 3.13.0](#to-3130)): keep the per-IP cap generous for shared IPs and set that option instead.
 
   For `json_login`, prefer `username_from_passport: true`: each identifier then gets its own `max_count_attempts`
   bucket and the cap keeps bounding the address.

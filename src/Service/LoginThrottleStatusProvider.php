@@ -13,8 +13,8 @@ use Nowo\LoginThrottleBundle\Throttle\UsernameNormalizer;
  * Default {@see LoginThrottleStatusProviderInterface} (3.9).
  *
  * For {@code storage: database} firewalls it reads the store with {@see ThrottleRules}, the same rules the database
- * limiter applies (IP + username bucket, per-IP cap, retry time). For other firewalls the figures are unknown:
- * {@see ThrottleStatus::$tracked} is false.
+ * limiter applies (IP + username bucket, per-IP cap, bound without a username, retry time). For other firewalls the
+ * figures are unknown: {@see ThrottleStatus::$tracked} is false.
  *
  * @author Héctor Franco Aceituno <hectorfranco@nowo.tech>
  * @copyright 2025 Nowo.tech
@@ -48,11 +48,13 @@ final readonly class LoginThrottleStatusProvider implements LoginThrottleStatusP
         }
 
         $maxPerIp = $config['max_attempts_per_ip'] ?? null;
+        $maxWithoutUsername = $config['max_attempts_without_username'] ?? null;
         $rules = new ThrottleRules(
             $this->repository,
             $maxAttempts,
             $this->intOr($config['timeout'] ?? null, 600),
             \is_int($maxPerIp) ? $maxPerIp : null,
+            \is_int($maxWithoutUsername) ? $maxWithoutUsername : null,
         );
 
         return $rules->status($ipAddress, $username);
