@@ -52,6 +52,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `LoginAttemptRecorderInterface` (REQ-ARCH-001 rule 1): the entity-free twin of
+  `LoginAttemptRepositoryInterface::recordAttempt()`. `recordAttemptView(string $ipAddress, ?string $username)`
+  returns the readonly `LoginAttemptView` of the recorded row instead of the Doctrine `LoginAttempt` entity.
+  `LoginAttemptRepository` implements it, and the database limiter records through it whenever the configured store
+  implements it, so with a store that offers both twins no Doctrine type crosses the port in either direction.
+
+### Deprecated
+
+- `LoginAttemptRepositoryInterface::recordAttempt()` (use `LoginAttemptRecorderInterface::recordAttemptView()`) and
+  `LoginAttemptRepositoryInterface::getAttempts()` (use `LoginAttemptViewRepositoryInterface::getAttemptViews()`).
+  Documentation only: no runtime deprecation is triggered, both methods keep their signatures and stay part of
+  `LoginAttemptRepositoryInterface` until 4.0, so every existing store remains valid.
+
 ## [3.11.0] - 2026-11-13
 
 Identifiers are matched byte for byte, so a look-alike account (`alicé@` for `alice@`) can no longer clear or inflate

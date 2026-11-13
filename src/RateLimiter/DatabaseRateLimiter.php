@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\LoginThrottleBundle\RateLimiter;
 
 use Nowo\LoginThrottleBundle\Entity\LoginAttempt;
+use Nowo\LoginThrottleBundle\Repository\LoginAttemptRecorderInterface;
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface;
 use Nowo\LoginThrottleBundle\Throttle\ThrottleRules;
 use Nowo\LoginThrottleBundle\Throttle\UsernameNormalizer;
@@ -27,6 +28,8 @@ use Symfony\Component\RateLimiter\RateLimit;
  * With {@code username_from_passport: true} (3.9), a request without those fields (json_login, custom
  * authenticators) is keyed on the passport identifier Symfony stores on the request, like form_login.
  * The rules live in {@see ThrottleRules}, shared with the status provider.
+ * Attempts are recorded through {@see LoginAttemptRecorderInterface} when the store implements it (3.12), so no
+ * Doctrine entity crosses the port; otherwise through the deprecated {@see LoginAttemptRepositoryInterface::recordAttempt()}.
  * On successful login, {@see reset()} clears that IP + username's {@see LoginAttempt} rows (3.11.0: username set to NULL, so they keep counting for the IP); the username is the identifier Symfony authenticates ({@see UsernameNormalizer::forLimiter()}).
  *
  * @author Héctor Franco Aceituno <hectorfranco@nowo.tech>
@@ -93,7 +96,7 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
             $accepted = false;
         } else {
             // Record the attempt
-            $this->repository->recordAttempt($ipAddress, $username);
+            $this->record($ipAddress, $username);
 
             // Count current attempts
             $count = $this->repository->countAttempts($ipAddress, $username, $this->timeoutSeconds);
@@ -149,6 +152,28 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
 
         // @igor-ignore - Mutates attached request-scoped or value object; not worker singleton cache
         $this->repository->clearAttempts($ipAddress, $username);
+    }
+
+    /**
+     * Records one failed attempt.
+     *
+     * Through {@see LoginAttemptRecorderInterface::recordAttemptView()} when the store implements it (3.12), so the
+     * limiter handles no Doctrine entity; otherwise through the deprecated
+     * {@see LoginAttemptRepositoryInterface::recordAttempt()}. Neither return value is used: the counts below are
+     * read back from the store.
+     *
+     * @param string      $ipAddress IP address
+     * @param string|null $username  Normalised username, null for the IP-only bucket
+     */
+    private function record(string $ipAddress, ?string $username): void
+    {
+        if ($this->repository instanceof LoginAttemptRecorderInterface) {
+            $this->repository->recordAttemptView($ipAddress, $username);
+
+            return;
+        }
+
+        $this->repository->recordAttempt($ipAddress, $username);
     }
 
     /**

@@ -10,7 +10,8 @@ namespace Nowo\LoginThrottleBundle\Repository;
  * Implemented by {@see LoginAttemptRepository}. A host store that implements {@see LoginAttemptRepositoryInterface}
  * can implement this one too; the limiter and the status provider then use it instead of {@see
  * LoginAttemptRepositoryInterface::getAttempts()} (which returns entities). Kept separate so existing implementations
- * of {@see LoginAttemptRepositoryInterface} stay valid.
+ * of {@see LoginAttemptRepositoryInterface} stay valid. Its write-side counterpart is
+ * {@see LoginAttemptRecorderInterface} (3.12).
  *
  * @author Héctor Franco Aceituno <hectorfranco@nowo.tech>
  * @copyright 2025 Nowo.tech
