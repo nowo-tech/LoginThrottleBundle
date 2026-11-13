@@ -9,6 +9,12 @@ use Nowo\LoginThrottleBundle\Entity\LoginAttempt;
 /**
  * Contract for persisting and querying login attempts.
  *
+ * Two of its methods return the Doctrine entity {@see LoginAttempt} ({@see recordAttempt()},
+ * {@see getAttempts()}): they are deprecated in favour of the entity-free twins
+ * {@see LoginAttemptRecorderInterface::recordAttemptView()} and
+ * {@see LoginAttemptViewRepositoryInterface::getAttemptViews()} (REQ-ARCH-001 rule 1), and stay here until 4.0 so
+ * existing stores keep working. A store that implements the twins is used through them by the bundle itself.
+ *
  * @author Héctor Franco Aceituno <hectorfranco@nowo.tech>
  * @copyright 2025 Nowo.tech
  */
@@ -64,6 +70,8 @@ interface LoginAttemptRepositoryInterface
      * @param string|null $username  Username (optional)
      *
      * @return LoginAttempt The created attempt
+     *
+     * @deprecated since 3.12, implement {@see LoginAttemptRecorderInterface::recordAttemptView()} instead; removed in 4.0
      */
     public function recordAttempt(string $ipAddress, ?string $username): LoginAttempt;
 
@@ -105,6 +113,8 @@ interface LoginAttemptRepositoryInterface
      * @param int         $seconds   Time period in seconds
      *
      * @return list<LoginAttempt>
+     *
+     * @deprecated since 3.12, implement {@see LoginAttemptViewRepositoryInterface::getAttemptViews()} instead; removed in 4.0
      */
     public function getAttempts(string $ipAddress, ?string $username, int $seconds): array;
 }

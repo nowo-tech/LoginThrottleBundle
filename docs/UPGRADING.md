@@ -56,6 +56,21 @@
 
 ## Unreleased
 
+Nothing to do: the change is additive (REQ-ARCH-001 rule 1).
+
+**New port.** `Nowo\LoginThrottleBundle\Repository\LoginAttemptRecorderInterface` —
+`recordAttemptView(string $ipAddress, ?string $username): LoginAttemptView` — is the entity-free twin of
+`LoginAttemptRepositoryInterface::recordAttempt()`, the write-side counterpart of the read twin
+`LoginAttemptViewRepositoryInterface` (3.9). Your own `LoginAttemptRepositoryInterface` store can implement it; the
+database limiter then records through it and never handles the Doctrine `LoginAttempt` entity. Nothing is registered
+or aliased for you: alias the interface to your store yourself if you want to autowire it.
+
+**Deprecated, still working.** `LoginAttemptRepositoryInterface::recordAttempt()` and
+`LoginAttemptRepositoryInterface::getAttempts()` are marked `@deprecated` in their docblocks and will be removed in
+4.0, when the twins replace them in the interface. Until then they are still declared, so a store implementing
+`LoginAttemptRepositoryInterface` must keep implementing both, and the bundle still calls them as the fallback when a
+store offers no twin. No runtime deprecation is triggered.
+
 ## To 3.11.0
 
 From **3.10.1**, `storage: database` (REQ-SEC-006). The schema part is MySQL / MariaDB only; PostgreSQL and SQLite

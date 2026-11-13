@@ -23,7 +23,7 @@ use Psr\Clock\ClockInterface;
  * @author Héctor Franco Aceituno <hectorfranco@nowo.tech>
  * @copyright 2025 Nowo.tech
  */
-final class LoginAttemptRepository extends ServiceEntityRepository implements LoginAttemptRepositoryInterface, LoginAttemptViewRepositoryInterface
+final class LoginAttemptRepository extends ServiceEntityRepository implements LoginAttemptRecorderInterface, LoginAttemptRepositoryInterface, LoginAttemptViewRepositoryInterface
 {
     /** Rows per DELETE statement in {@see cleanup()}. */
     public const CLEANUP_BATCH_SIZE = 1000;
@@ -151,6 +151,8 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
      * @param string|null $username  Username (optional)
      *
      * @return LoginAttempt The created attempt (not managed, its id set)
+     *
+     * @deprecated since 3.12, use {@see recordAttemptView()} ({@see LoginAttemptRecorderInterface}); removed in 4.0
      */
     public function recordAttempt(string $ipAddress, ?string $username): LoginAttempt
     {
@@ -339,6 +341,8 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
      * @param int         $seconds   Time period in seconds
      *
      * @return list<LoginAttempt>
+     *
+     * @deprecated since 3.12, use {@see getAttemptViews()} ({@see LoginAttemptViewRepositoryInterface}); removed in 4.0
      */
     public function getAttempts(string $ipAddress, ?string $username, int $seconds): array
     {
@@ -393,6 +397,20 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
     public function getAttemptViews(string $ipAddress, ?string $username, int $seconds): array
     {
         return array_map(LoginAttemptView::fromEntity(...), $this->getAttempts($ipAddress, $username, $seconds));
+    }
+
+    /**
+     * Records a failed login attempt and returns its read-only view (3.12): the entity-free twin of
+     * {@see recordAttempt()}, so the limiter never handles the Doctrine entity on the write path.
+     *
+     * @param string      $ipAddress IP address
+     * @param string|null $username  Username (null for the IP-only bucket)
+     *
+     * @return LoginAttemptView The recorded attempt, its id set
+     */
+    public function recordAttemptView(string $ipAddress, ?string $username): LoginAttemptView
+    {
+        return LoginAttemptView::fromEntity($this->recordAttempt($ipAddress, $username));
     }
 
     /**

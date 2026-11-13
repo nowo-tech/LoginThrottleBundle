@@ -94,7 +94,8 @@ Worker demo: `demo/symfony8/docker/frankenphp/Caddyfile` declares a `worker` blo
 - Commit the bundle config file (W-02) and do not rely on runtime generation in containers.
 - Configure `framework.trusted_proxies` / `trusted_headers` for the FrankenPHP / Caddy setup so `getClientIp()` returns the real client IP.
 - Run the cleanup of old rows (`LoginAttemptRepository::cleanup()`) from a scheduled CLI job, not from an HTTP request.
-- Custom `LoginAttemptRepositoryInterface` implementations or decorators of `DatabaseRateLimiter` must not cache counts or attempts in properties (that would mix users between requests) unless they implement `ResetInterface` and the cache is keyed by IP + username with a short TTL.
+- Custom `LoginAttemptRepositoryInterface` implementations (with or without the entity-free twins
+  `LoginAttemptViewRepositoryInterface` / `LoginAttemptRecorderInterface`) or decorators of `DatabaseRateLimiter` must not cache counts or attempts in properties (that would mix users between requests) unless they implement `ResetInterface` and the cache is keyed by IP + username with a short TTL.
 - If the application cannot guarantee scenario A for *its own* services, set FrankenPHP `max_requests` (or `FRANKENPHP_LOOP_MAX` with the Symfony runtime) so workers are recycled.
 
 ## Re-audit triggers
