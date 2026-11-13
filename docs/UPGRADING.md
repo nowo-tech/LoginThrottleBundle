@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 3.12.0](#to-3120)
 - [To 3.11.0](#to-3110)
 - [To 3.10.1](#to-3101)
 - [To 3.10.0](#to-3100)
@@ -55,6 +56,14 @@
 - [Notes](#notes)
 
 ## Unreleased
+
+## To 3.12.0
+
+From **3.11.0**:
+
+```bash
+composer update nowo-tech/login-throttle-bundle
+```
 
 Nothing to do: the change is additive (REQ-ARCH-001 rule 1).
 

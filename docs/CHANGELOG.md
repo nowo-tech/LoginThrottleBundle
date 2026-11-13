@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[3.12.0] - 2026-11-13](#3120---2026-11-13)
 - [[3.11.0] - 2026-11-13](#3110---2026-11-13)
 - [[3.10.1] - 2026-11-10](#3101---2026-11-10)
 - [[3.10.0] - 2026-11-10](#3100---2026-11-10)
@@ -52,6 +53,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.12.0] - 2026-11-13
+
 ### Added
 
 - `LoginAttemptRecorderInterface` (REQ-ARCH-001 rule 1): the entity-free twin of
@@ -66,6 +69,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `LoginAttemptRepositoryInterface::getAttempts()` (use `LoginAttemptViewRepositoryInterface::getAttemptViews()`).
   Documentation only: no runtime deprecation is triggered, both methods keep their signatures and stay part of
   `LoginAttemptRepositoryInterface` until 4.0, so every existing store remains valid.
+
+[3.12.0]: https://github.com/nowo-tech/LoginThrottleBundle/releases/tag/v3.12.0
 
 ## [3.11.0] - 2026-11-13
 
@@ -143,7 +148,6 @@ authenticates.
 ## [3.10.1] - 2026-11-10
 
 Savepoints are unique per recorded attempt, so a host savepoint with the same name is never replaced. See [UPGRADING](https://github.com/nowo-tech/LoginThrottleBundle/blob/v3.10.1/docs/UPGRADING.md#to-3101).
-
 
 ### Fixed
 
