@@ -54,6 +54,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Target 3.13.1.
+
+### Fixed
+
+- `ThrottleRules::status()` (and so `LoginThrottleStatusProvider` and `LoginThrottleInfoService`)
+  applies the bound for attempts without a usable username only when `max_count_attempts_without_username` is set
+  below the per-IP cap, as the limiter does. A host store whose `countAttempts($ip, null)` returned more than
+  `countAttemptsByIp($ip)` could make the IP-only status report "blocked" while the limiter still accepted. The
+  bundle's own stores always gave the same answer, so nothing changes for them.
+- With `max_count_attempts_without_username` set, a host store without `LoginAttemptWithoutUsernameReaderInterface`
+  that stores `''` instead of null for "no username" now has those attempts counted. Before, the bound counted none of
+  them and so never refused (the per-IP cap still applied). The bundle's own stores never write `''`.
+
 ## [3.13.0] - 2026-11-14
 
 Target 3.13.0.

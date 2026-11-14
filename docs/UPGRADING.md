@@ -59,6 +59,14 @@
 
 ## Unreleased
 
+Target 3.13.1. Nothing to do with the bundle's own stores. Only a **custom host store** (your own
+`LoginAttemptRepositoryInterface`) can notice a difference:
+
+- If it stores `''` for "no username" and you set `max_count_attempts_without_username`, those attempts now count
+  for that bound, so username-less requests from one IP are refused once the bound is reached, as intended.
+- The IP-only status no longer reports "blocked" from `countAttempts($ip, null)` when the option is unset; only the
+  per-IP cap (`countAttemptsByIp()`) decides, as the limiter does.
+
 ## To 3.13.0
 
 From **3.12.0**:
