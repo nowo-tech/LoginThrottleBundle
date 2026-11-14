@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[3.14.0] - 2026-11-14](#3140---2026-11-14)
 - [[3.13.1] - 2026-11-14](#3131---2026-11-14)
 - [[3.13.0] - 2026-11-14](#3130---2026-11-14)
 - [[3.12.0] - 2026-11-13](#3120---2026-11-13)
@@ -55,6 +56,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.14.0] - 2026-11-14
+
 Target 3.14.0 (minor: new public API, no change for existing hosts).
 
 ### Added
@@ -96,6 +99,8 @@ Target 3.14.0 (minor: new public API, no change for existing hosts).
 - `DatabaseRateLimiter`, `DatabaseRateLimiterFactory`, `ThrottleRules`, `LoginThrottleStatusProvider`,
   `LoginThrottleInfoService::setRepository()` and `CleanupLoginAttemptsCommand` accept
   `LoginAttemptStoreInterface|LoginAttemptRepositoryInterface` (widened parameter types; callers are unaffected).
+
+[3.14.0]: https://github.com/nowo-tech/LoginThrottleBundle/releases/tag/v3.14.0
 
 ## [3.13.1] - 2026-11-14
 
