@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Nowo\LoginThrottleBundle\Repository;
 
+use Nowo\LoginThrottleBundle\Testing\LoginAttemptStoreContractTestCase;
+
 /**
  * The login attempt store without any Doctrine type (3.14, REQ-ARCH-001 rules 1 and 3).
  *
@@ -68,13 +70,19 @@ interface LoginAttemptStoreInterface extends LoginAttemptRecorderInterface, Logi
     public function isBlocked(string $ipAddress, ?string $username, int $maxAttempts, int $timeoutSeconds): bool;
 
     /**
-     * Clear the attempts of an IP + username after a successful login (same contract as
-     * {@see LoginAttemptRepositoryInterface::clearAttempts()}: the bundle's store keeps them counting for the IP).
+     * Clear the attempts of an IP + username after a successful login.
+     *
+     * Binding for every store (the 3.11.0 rule the per-IP cap relies on): of the rows whose IP and username are
+     * byte-identical to the arguments, delete only the newest one (the attempt the successful login recorded itself)
+     * and keep the older ones, with a NULL username, so they still count in {@see countAttemptsByIp()} and
+     * {@see countAttemptsWithoutUsername()} until they leave the window. Never delete them all: a successful login on an
+     * attacker's own account would then refill the per-IP cap. With a null or empty username, delete the IP's rows
+     * without a username. {@see LoginAttemptStoreContractTestCase} checks it.
      *
      * @param string      $ipAddress IP address
      * @param string|null $username  Username (null or empty: only rows without a username)
      *
-     * @return int Number of affected records
+     * @return int Number of affected records (the deleted one included)
      */
     public function clearAttempts(string $ipAddress, ?string $username): int;
 

@@ -66,33 +66,51 @@ there is no relation to your `User` entity, no `resolve_target_entities` and not
 
 | Need | Use |
 | --- | --- |
-| Your own attempt store, bundle rules | Implement `Nowo\LoginThrottleBundle\Repository\LoginAttemptStoreInterface` (since 3.14; scalars, `DateTimeImmutable` and the readonly `LoginAttemptView` only, no Doctrine type) and alias it. The database limiter, status provider, info service and cleanup command use it; `doctrine.register_mapping: false` is then allowed with `storage: database`. It wins over the deprecated `LoginAttemptRepositoryInterface` when both are aliased. |
+| Your own attempt store, bundle rules | Implement `Nowo\LoginThrottleBundle\Repository\LoginAttemptStoreInterface` (since 3.14; scalars, `DateTimeImmutable` and the readonly `LoginAttemptView` only, no Doctrine type) and alias it. The database limiter, status provider, info service and cleanup command use it; `doctrine.register_mapping: false` is then allowed with `storage: database`. It wins over the deprecated `LoginAttemptRepositoryInterface` when both are aliased or decorated. Its `clearAttempts()` contract is binding (see below); check your store with `Nowo\LoginThrottleBundle\Testing\LoginAttemptStoreContractTestCase`. |
 | Your own throttling rules | Implement `Symfony\Component\HttpFoundation\RateLimiter\RequestRateLimiterInterface` and set `rate_limiter: <service id>` (or `firewalls.<name>.rate_limiter`). The bundle then registers no database limiter for that firewall. This is Symfony's own seam (it takes a `Request`); prefer the store port above when the bundle's rules suit you. |
-| React to a lockout (audit, notification) | Listen to `Nowo\LoginThrottleBundle\Event\LoginThrottledEvent` (since 3.14, `storage: database`): `ipAddress`, normalised `username`, `scope` (`username` / `ip` / `without_username`), `limit`, `retryAfter`, `lockoutStarted` (true once per lockout: the attempt that reached the limit), `firewallName`. Dispatched after the attempt was written. `LoginAttemptsClearedEvent` follows a successful login that cleared the bucket. With `storage: cache`, listen to Symfony's `LoginFailureEvent` and check `TooManyLoginAttemptsAuthenticationException`. |
+| React to a lockout (audit, notification) | Listen to `Nowo\LoginThrottleBundle\Event\LoginThrottledEvent` (since 3.14, `storage: database`): `ipAddress`, normalised `username`, `scope` (`username` / `ip` / `without_username`), `limit`, `retryAfter`, `lockoutStarted` (true for the attempt that reached the limit, which was written before the event; false for attempts refused while the bucket is locked, which write nothing), `firewallName`. `LoginAttemptsClearedEvent` follows a successful login that cleared the bucket. With `storage: cache`, listen to Symfony's `LoginFailureEvent` and check `TooManyLoginAttemptsAuthenticationException`. |
 | Show remaining attempts on the login page | `LoginThrottleStatusProviderInterface::status(string $firewall, string $ipAddress, ?string $username = null): ThrottleStatus` (since 3.9; HTTP-free, typed, same rules as the database limiter: normalised username, IP + username bucket, per-IP cap). `LoginThrottleInfoService::getAttemptInfo()` returns the same figures as an array. |
 | Read the attempt store without the Doctrine entity | `LoginAttemptViewRepositoryInterface` (since 3.9, implemented by `LoginAttemptRepository`): `getAttemptViews()` returns readonly `LoginAttemptView` DTOs, `findOldestAttemptAt()` a `DateTimeImmutable`. |
 | Record an attempt without the Doctrine entity | `LoginAttemptRecorderInterface` (since 3.12, implemented by `LoginAttemptRepository`): `recordAttemptView()` returns the readonly `LoginAttemptView` of the stored row. A store that implements it is the one the database limiter records through. |
 | `json_login` / custom authenticators with `storage: database` | Set `username_from_passport: true` (since 3.9): without `_username` / `username` / `email` POST fields, attempts are keyed on the identifier the visitor submitted (the passport `UserBadge` identifier, never the resolved user), like `form_login`. |
 | Testable time | Register a `Psr\Clock\ClockInterface` service. The database limiter and the repository use it when present. |
 
+**Using the events safely**
+
+- `username` is what the visitor typed (normalised: lower-case, at most 255 characters, no control or format
+  characters), not a verified account. It can be anyone's e-mail address, markup, or a password typed into the wrong
+  field. Resolve it through your user provider before acting on an account, and never send mail to the submitted
+  string.
+- `lockoutStarted` is true once per bucket each time it locks: again when the sliding window lets one more attempt in,
+  once per IP for the same username (1,000 IPs give 1,000 events for one account), and possibly more under concurrent
+  requests. Rate-limit notifications per account (for example one per account per hour), not per event.
+- IP address and username are personal data: keep them only as long as you need them, and redact the username in logs
+  (or log a hash of it).
+- Listeners run synchronously in the refused (or, for `LoginAttemptsClearedEvent`, the successful) login request.
+  They must not throw (an exception ends the request with an error; a refused attempt stays refused) and should hand
+  slow work (mail, HTTP calls) to Messenger.
+
 Example adapter that turns a lockout into an application command (no Symfony type reaches your application layer):
 
 ```php
 use Nowo\LoginThrottleBundle\Event\LoginThrottledEvent;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
+use Symfony\Component\Messenger\MessageBusInterface;
 
 #[AsEventListener]
 final class LoginLockoutListener
 {
-    public function __construct(private readonly RecordLoginLockout $recordLoginLockout) {} // your application port
+    public function __construct(private readonly MessageBusInterface $bus) {}
 
     public function __invoke(LoginThrottledEvent $event): void
     {
-        if (!$event->lockoutStarted) {
-            return; // one notification per lockout, not per refused attempt
+        if (!$event->lockoutStarted || LoginThrottledEvent::SCOPE_USERNAME !== $event->scope || null === $event->username) {
+            return; // only the attempt that locked a username bucket, not every refused attempt
         }
 
-        ($this->recordLoginLockout)($event->firewallName, $event->ipAddress, $event->username, $event->retryAfter);
+        // your handler resolves the account through the user provider (unknown names do nothing), rate-limits per
+        // account, and never mails or logs the raw string
+        $this->bus->dispatch(new RecordLoginLockout($event->username, $event->firewallName, $event->retryAfter));
     }
 }
 ```
@@ -110,6 +128,23 @@ nowo_login_throttle:
 services:
     Nowo\LoginThrottleBundle\Repository\LoginAttemptStoreInterface: '@App\Infrastructure\Security\RedisLoginAttemptStore'
 ```
+
+Your store's `clearAttempts()` must follow the 3.11.0 rule the per-IP cap relies on: delete only the newest row of
+that IP + username (the one the successful login recorded itself) and keep the older ones, with a NULL username, so
+they still count for the IP. Deleting them all lets a successful login on an attacker's own account refill the per-IP
+cap. Extend `Nowo\LoginThrottleBundle\Testing\LoginAttemptStoreContractTestCase` in your tests to check it:
+
+```php
+final class RedisLoginAttemptStoreTest extends LoginAttemptStoreContractTestCase
+{
+    protected function createStore(): LoginAttemptStoreInterface { /* a fresh, empty store */ }
+    protected function advance(int $seconds): void { /* move the store's clock forward */ }
+}
+```
+
+Decorating a port (`decorates:` / `#[AsDecorator]` on `LoginAttemptStoreInterface` or `LoginAttemptRepositoryInterface`)
+works like aliasing it: the decorator is what the bundle uses. Aliasing a port to a service that does not exist fails
+the container build.
 
 Standard Symfony hosts need none of this: the bundle's Doctrine repository is the default store.
 

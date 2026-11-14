@@ -76,12 +76,16 @@ install: same defaults, same table, same decisions. With no listener, the new ev
       Nowo\LoginThrottleBundle\Repository\LoginAttemptStoreInterface: '@App\Security\MyLoginAttemptStore'
   ```
 
-  If you alias both interfaces to your own services, `LoginAttemptStoreInterface` wins.
+  If you alias both interfaces to your own services, `LoginAttemptStoreInterface` wins. Decorators of either interface
+  keep applying. Make sure your `clearAttempts()` deletes only the newest matching row and keeps the older ones
+  counting for the IP (now a binding contract; extend `Nowo\LoginThrottleBundle\Testing\LoginAttemptStoreContractTestCase`
+  to check it).
 - **No bundle table**: with your own store aliased, `doctrine.register_mapping: false` now works with
   `storage: database`. Without one, the build fails as before (same message, now from a compiler pass).
 - **Lockout notifications**: listen to `Nowo\LoginThrottleBundle\Event\LoginThrottledEvent` instead of checking
   `LoginFailureEvent` for `TooManyLoginAttemptsAuthenticationException` (that still works). Only `storage: database`
-  dispatches it.
+  dispatches it. Its `username` is what the client typed: resolve the account before acting, never mail the raw
+  string, rate-limit notifications per account, and do not throw from the listener (USAGE, "Using the events safely").
 - **Code that builds `DatabaseRateLimiter` / `DatabaseRateLimiterFactory` itself**: unchanged; pass an event dispatcher
   as the new last argument to get the events.
 

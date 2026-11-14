@@ -10,6 +10,8 @@ services:
       - '../../DependencyInjection/'
       - '../../Event/'
       - '../../NowoLoginThrottleBundle.php'
+      # PHPUnit base class for host store tests; PHPUnit is not a runtime dependency
+      - '../../Testing/'
       - '../../Throttle/'
       - '../../Repository/LoginAttemptView.php'
 

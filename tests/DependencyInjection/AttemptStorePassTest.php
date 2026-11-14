@@ -26,7 +26,8 @@ final class AttemptStorePassTest extends TestCase
 
         (new AttemptStorePass())->process($container);
 
-        self::assertSame(LoginAttemptRepository::class, $this->resolved($container));
+        self::assertSame(LoginAttemptStoreInterface::class, $this->resolved($container));
+        self::assertSame(LoginAttemptRepository::class, $this->target($container));
     }
 
     public function testHostLegacyPortKeepsWorking(): void
@@ -37,7 +38,7 @@ final class AttemptStorePassTest extends TestCase
 
         (new AttemptStorePass())->process($container);
 
-        self::assertSame('app.legacy_store', $this->resolved($container));
+        self::assertSame(LoginAttemptRepositoryInterface::class, $this->resolved($container));
     }
 
     public function testHostEntityFreePortIsUsed(): void
@@ -48,7 +49,8 @@ final class AttemptStorePassTest extends TestCase
 
         (new AttemptStorePass())->process($container);
 
-        self::assertSame('app.store', $this->resolved($container));
+        self::assertSame(LoginAttemptStoreInterface::class, $this->resolved($container));
+        self::assertSame('app.store', $this->target($container));
     }
 
     public function testEntityFreePortWinsWhenBothAreAliased(): void
@@ -61,7 +63,8 @@ final class AttemptStorePassTest extends TestCase
 
         (new AttemptStorePass())->process($container);
 
-        self::assertSame('app.store', $this->resolved($container));
+        self::assertSame(LoginAttemptStoreInterface::class, $this->resolved($container));
+        self::assertSame('app.store', $this->target($container));
     }
 
     public function testServiceRegisteredUnderTheInterfaceIdAndAliasChains(): void
@@ -120,15 +123,75 @@ final class AttemptStorePassTest extends TestCase
         $container->setAlias(LoginAttemptRepositoryInterface::class, 'app.factory');
 
         (new AttemptStorePass())->process($container);
-        self::assertSame('app.parameterised', $this->resolved($container));
+        self::assertSame(LoginAttemptStoreInterface::class, $this->resolved($container));
 
         $container->setAlias(LoginAttemptStoreInterface::class, 'app.unknown');
         (new AttemptStorePass())->process($container);
-        self::assertSame('app.unknown', $this->resolved($container));
+        self::assertSame(LoginAttemptStoreInterface::class, $this->resolved($container));
 
         $container->removeAlias(LoginAttemptStoreInterface::class);
         (new AttemptStorePass())->process($container);
-        self::assertSame('app.factory', $this->resolved($container));
+        self::assertSame(LoginAttemptRepositoryInterface::class, $this->resolved($container));
+    }
+
+    /**
+     * Audit PN M-1: a decorated port counts as host-provided and the alias keeps the interface id, so the decorator
+     * applies once DecoratorServicePass ran.
+     */
+    public function testDecoratedLegacyPortWinsOverTheDefaultStore(): void
+    {
+        $container = $this->bundleDefaults();
+        $container->register('app.decorator', EntityFreeLoginAttemptStore::class)->setDecoratedService(LoginAttemptRepositoryInterface::class);
+
+        (new AttemptStorePass())->process($container);
+
+        self::assertSame(LoginAttemptRepositoryInterface::class, $this->resolved($container));
+    }
+
+    public function testDecoratedEntityFreePortWins(): void
+    {
+        $container = $this->bundleDefaults();
+        $container->register('app.legacy_store', InMemoryLoginAttemptStore::class);
+        $container->setAlias(LoginAttemptRepositoryInterface::class, 'app.legacy_store');
+        $container->register('app.decorator', EntityFreeLoginAttemptStore::class)->setDecoratedService(LoginAttemptStoreInterface::class);
+
+        (new AttemptStorePass())->process($container);
+
+        self::assertSame(LoginAttemptStoreInterface::class, $this->resolved($container));
+    }
+
+    public function testDecoratedPortWithoutServiceBehindItIsStillUsed(): void
+    {
+        $container = new ContainerBuilder();
+        $container->register('app.decorator', EntityFreeLoginAttemptStore::class)->setDecoratedService(LoginAttemptStoreInterface::class);
+
+        (new AttemptStorePass())->process($container);
+
+        self::assertSame(LoginAttemptStoreInterface::class, $this->resolved($container));
+    }
+
+    /**
+     * Audit PN L-1: a port aliased to a missing service fails the build instead of falling back.
+     */
+    public function testPortAliasedToAMissingServiceFails(): void
+    {
+        $container = $this->bundleDefaults();
+        $container->setAlias(LoginAttemptRepositoryInterface::class, 'app.typo_store');
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('is aliased to "app.typo_store", which does not exist');
+
+        (new AttemptStorePass())->process($container);
+    }
+
+    private function target(ContainerBuilder $container): string
+    {
+        $id = AttemptStorePass::STORE_SERVICE_ID;
+        while ($container->hasAlias($id)) {
+            $id = (string) $container->getAlias($id);
+        }
+
+        return $id;
     }
 
     private function bundleDefaults(): ContainerBuilder

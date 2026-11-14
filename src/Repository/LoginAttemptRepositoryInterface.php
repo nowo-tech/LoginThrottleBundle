@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\LoginThrottleBundle\Repository;
 
 use Nowo\LoginThrottleBundle\Entity\LoginAttempt;
+use Nowo\LoginThrottleBundle\Testing\LoginAttemptStoreContractTestCase;
 
 /**
  * Contract for persisting and querying login attempts.
@@ -82,9 +83,14 @@ interface LoginAttemptRepositoryInterface
     public function recordAttempt(string $ipAddress, ?string $username): LoginAttempt;
 
     /**
-     * Clear login attempts for a given IP and username (e.g. after successful login); since 3.11.0 the bundle repository keeps them for the per-IP count.
+     * Clear login attempts for a given IP and username (e.g. after successful login).
      *
-     * When username is null or empty, only rows with a null username are removed.
+     * Binding for every store (the 3.11.0 rule the per-IP cap relies on): of the rows whose IP and username are
+     * byte-identical to the arguments, delete only the newest one (the attempt the successful login recorded itself)
+     * and keep the older ones, with a NULL username, so they still count in {@see countAttemptsByIp()} and
+     * {@see countAttemptsWithoutUsername()} until they leave the window. Never delete them all: a successful login on an
+     * attacker's own account would then refill the per-IP cap. With a null or empty username, delete the IP's rows
+     * without a username. {@see LoginAttemptStoreContractTestCase} checks it.
      *
      * @param string      $ipAddress IP address
      * @param string|null $username  Username (optional)

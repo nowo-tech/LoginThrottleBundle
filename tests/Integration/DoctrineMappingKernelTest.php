@@ -12,11 +12,13 @@ use Nowo\LoginThrottleBundle\DependencyInjection\NowoLoginThrottleExtension;
 use Nowo\LoginThrottleBundle\Entity\LoginAttempt;
 use Nowo\LoginThrottleBundle\Event\LoginThrottledEvent;
 use Nowo\LoginThrottleBundle\RateLimiter\DatabaseRateLimiter;
+use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepository;
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface;
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptStoreInterface;
 use Nowo\LoginThrottleBundle\Service\LoginThrottleStatusProvider;
 use Nowo\LoginThrottleBundle\Service\LoginThrottleStatusProviderInterface;
 use Nowo\LoginThrottleBundle\Tests\Integration\Kernel\MappingTestKernel;
+use Nowo\LoginThrottleBundle\Tests\Support\DenyAllStore;
 use Nowo\LoginThrottleBundle\Tests\Support\EntityFreeLoginAttemptStore;
 use Nowo\LoginThrottleBundle\Tests\Support\InMemoryLoginAttemptStore;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -205,6 +207,70 @@ final class DoctrineMappingKernelTest extends TestCase
         $tester = new CommandTester($application->find('nowo:login-throttle:cleanup'));
         self::assertSame(0, $tester->execute([]));
         self::assertSame(0, $store->countAttemptsByIp('10.0.0.1', 100000), 'the cleanup command pruned the host store');
+    }
+
+    /**
+     * @return iterable<string, array{class-string}>
+     */
+    public static function decoratedPorts(): iterable
+    {
+        yield 'deprecated port' => [LoginAttemptRepositoryInterface::class];
+        yield 'entity-free port' => [LoginAttemptStoreInterface::class];
+        yield 'bundle repository id' => [LoginAttemptRepository::class];
+    }
+
+    /**
+     * Audit PN M-1: a host decorator of a store port (or of the repository id) drives the limiter and the status
+     * provider, as in 3.13.1. A stricter decorator must keep refusing.
+     *
+     * @param class-string $decorated
+     */
+    #[DataProvider('decoratedPorts')]
+    public function testHostDecoratorOfTheStoreIsApplied(string $decorated): void
+    {
+        $config = ['storage' => 'database', 'max_count_attempts' => 3];
+        $this->kernel = new MappingTestKernel($config, 'decorator-' . md5($decorated), static function (ContainerBuilder $container) use ($decorated): void {
+            $container->register('app.deny_all', DenyAllStore::class)->setDecoratedService($decorated);
+            $container->setAlias(LoginThrottleStatusProviderInterface::class, LoginThrottleStatusProvider::class)->setPublic(true);
+        });
+        $this->kernel->boot();
+
+        $limiter = $this->container()->get(NowoLoginThrottleExtension::DATABASE_RATE_LIMITER_SERVICE_ID);
+        self::assertInstanceOf(DatabaseRateLimiter::class, $limiter);
+        $request = Request::create('/login', 'POST', ['_username' => 'alice'], server: ['REMOTE_ADDR' => '10.0.0.1']);
+        self::assertFalse($limiter->consume($request)->isAccepted(), 'the stricter decorator refuses the first attempt');
+
+        $status = $this->container()->get(LoginThrottleStatusProviderInterface::class);
+        self::assertInstanceOf(LoginThrottleStatusProviderInterface::class, $status);
+        self::assertTrue($status->status('main', '10.0.0.1', 'alice')->blocked);
+    }
+
+    /**
+     * Audit PN L-1: a port aliased to a service that does not exist fails the build (3.13.1 did), instead of falling
+     * back to another store.
+     *
+     * @return iterable<string, array{class-string}>
+     */
+    public static function ports(): iterable
+    {
+        yield 'deprecated port' => [LoginAttemptRepositoryInterface::class];
+        yield 'entity-free port' => [LoginAttemptStoreInterface::class];
+    }
+
+    /**
+     * @param class-string $port
+     */
+    #[DataProvider('ports')]
+    public function testPortAliasedToAMissingServiceFailsTheBuild(string $port): void
+    {
+        $this->kernel = new MappingTestKernel(['storage' => 'database'], 'typo-' . md5($port), static function (ContainerBuilder $container) use ($port): void {
+            $container->setAlias($port, 'app.typo_store');
+        });
+
+        $this->expectException(\Throwable::class);
+        $this->expectExceptionMessageMatches('/app\.typo_store/');
+
+        $this->kernel->boot();
     }
 
     public function testFalseWithDatabaseStorageFailsAtContainerBuild(): void

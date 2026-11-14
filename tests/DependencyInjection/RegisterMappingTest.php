@@ -101,7 +101,8 @@ final class RegisterMappingTest extends TestCase
 
         (new AttemptStorePass())->process($container);
 
-        self::assertSame('app.attempt_store', (string) $container->getAlias(AttemptStorePass::STORE_SERVICE_ID));
+        self::assertSame(LoginAttemptStoreInterface::class, (string) $container->getAlias(AttemptStorePass::STORE_SERVICE_ID));
+        self::assertSame('app.attempt_store', (string) $container->getAlias(LoginAttemptStoreInterface::class));
         self::assertFalse($container->hasDefinition(LoginAttemptRepository::class));
     }
 

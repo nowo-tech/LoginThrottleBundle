@@ -9,9 +9,16 @@ namespace Nowo\LoginThrottleBundle\Event;
  *
  * Carries scalars and an immutable date only (no request, no entity, no Symfony type), so a DDD host can map it to its
  * own command (audit, notification). One event per refused attempt: {@see $lockoutStarted} is true for the attempt
- * that reached the limit (it was recorded) and false for the following ones refused while the lock lasts (not
- * recorded). Dispatched after the attempt was written: the bundle's store writes with an autocommitted DBAL insert,
- * never through the host's EntityManager.
+ * that reached the limit (it was recorded, and the event follows the write: the bundle's store writes with an
+ * autocommitted DBAL insert, never through the host's EntityManager) and false for the following ones refused while
+ * the lock lasts (nothing is written for them). It is true once per bucket each time the bucket locks: again when the
+ * sliding window lets one more attempt in, once per IP for the same username, and possibly more than once under
+ * concurrent requests. It is not "once per account".
+ *
+ * {@see $username} is what the client typed (normalised), not a verified account: it can be any address, markup or a
+ * password typed into the wrong field. Treat it and {@see $ipAddress} as personal data; never send mail to it or log
+ * it unredacted. Listeners run synchronously in the refused request and must not throw (an exception ends the request
+ * with an error; the attempt is still refused).
  *
  * Only {@code storage: database} dispatches it; with {@code storage: cache} Symfony's own limiter decides and the
  * bundle sees nothing (listen to Symfony's {@code LoginFailureEvent} there).

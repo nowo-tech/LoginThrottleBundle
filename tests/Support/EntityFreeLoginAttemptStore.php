@@ -58,16 +58,39 @@ final class EntityFreeLoginAttemptStore implements LoginAttemptStoreInterface
         return $this->view($row);
     }
 
+    /**
+     * The binding store contract (3.11.0 rule): the newest matching row is deleted, the older ones lose their
+     * username and keep counting for the IP. Without a username, the IP's rows without one are deleted.
+     */
     public function clearAttempts(string $ipAddress, ?string $username): int
     {
         $key = '' === $username ? null : $username;
-        $before = \count($this->rows);
-        $this->rows = array_values(array_filter(
-            $this->rows,
-            static fn (array $row): bool => $row['ip'] !== $ipAddress || $row['username'] !== $key,
-        ));
+        $matching = [];
+        foreach ($this->rows as $index => $row) {
+            if ($row['ip'] === $ipAddress && $row['username'] === $key) {
+                $matching[] = $index;
+            }
+        }
 
-        return $before - \count($this->rows);
+        if ([] === $matching) {
+            return 0;
+        }
+
+        // newest first: by time, then by insertion order
+        usort($matching, fn (int $a, int $b): int => [$this->rows[$b]['at'], $this->rows[$b]['id']] <=> [$this->rows[$a]['at'], $this->rows[$a]['id']]);
+        $newest = array_shift($matching);
+        foreach ($matching as $index) {
+            if (null === $key) {
+                unset($this->rows[$index]);
+
+                continue;
+            }
+            $this->rows[$index]['username'] = null;
+        }
+        unset($this->rows[$newest]);
+        $this->rows = array_values($this->rows);
+
+        return \count($matching) + 1;
     }
 
     public function cleanup(int $watchPeriodSeconds): int
