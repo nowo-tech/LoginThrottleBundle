@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 3.13.1](#to-3131)
 - [To 3.13.0](#to-3130)
 - [To 3.13.0](#to-3130-1)
 - [To 3.12.0](#to-3120)
@@ -58,6 +59,14 @@
 - [Notes](#notes)
 
 ## Unreleased
+
+## To 3.13.1
+
+From **3.13.0**:
+
+```bash
+composer update nowo-tech/login-throttle-bundle
+```
 
 Target 3.13.1. Nothing to do with the bundle's own stores. Only a **custom host store** (your own
 `LoginAttemptRepositoryInterface`) can notice a difference:

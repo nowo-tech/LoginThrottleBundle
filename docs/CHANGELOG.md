@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[3.13.1] - 2026-11-14](#3131---2026-11-14)
 - [[3.13.0] - 2026-11-14](#3130---2026-11-14)
 - [[3.12.0] - 2026-11-13](#3120---2026-11-13)
 - [[3.11.0] - 2026-11-13](#3110---2026-11-13)
@@ -54,6 +55,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.13.1] - 2026-11-14
+
 Target 3.13.1.
 
 ### Fixed
@@ -66,6 +69,8 @@ Target 3.13.1.
 - With `max_count_attempts_without_username` set, a host store without `LoginAttemptWithoutUsernameReaderInterface`
   that stores `''` instead of null for "no username" now has those attempts counted. Before, the bound counted none of
   them and so never refused (the per-IP cap still applied). The bundle's own stores never write `''`.
+
+[3.13.1]: https://github.com/nowo-tech/LoginThrottleBundle/releases/tag/v3.13.1
 
 ## [3.13.0] - 2026-11-14
 
