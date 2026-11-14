@@ -32,6 +32,7 @@
     "require": {
         "php": ">=8.2 <8.6",
         "psr/clock": "^1.0",
+        "psr/event-dispatcher": "^1.0",
         "symfony/framework-bundle": "^7.4 || ^8.0",
         "symfony/security-bundle": "^7.4 || ^8.0",
         "symfony/polyfill-intl-normalizer": "^1.27",
@@ -40,7 +41,8 @@
         "doctrine/doctrine-bundle": "^2.10 || ^3.0"
     },
     "suggest": {
-        "symfony/translation": "Required for internationalization support (i18n)"
+        "symfony/translation": "Required for internationalization support (i18n)",
+        "phpunit/phpunit": "Dev dependency of your project, to extend Testing\\LoginAttemptStoreContractTestCase for your own login attempt store"
     },
     "require-dev": {
         "friendsofphp/php-cs-fixer": "^3.0",

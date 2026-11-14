@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\LoginThrottleBundle\Repository;
 
 use Nowo\LoginThrottleBundle\Entity\LoginAttempt;
+use Nowo\LoginThrottleBundle\Testing\LoginAttemptStoreContractTestCase;
 
 /**
  * Contract for persisting and querying login attempts.
@@ -14,6 +15,12 @@ use Nowo\LoginThrottleBundle\Entity\LoginAttempt;
  * {@see LoginAttemptRecorderInterface::recordAttemptView()} and
  * {@see LoginAttemptViewRepositoryInterface::getAttemptViews()} (REQ-ARCH-001 rule 1), and stay here until 4.0 so
  * existing stores keep working. A store that implements the twins is used through them by the bundle itself.
+ *
+ * Since 3.14 the whole port has an entity-free twin, {@see LoginAttemptStoreInterface}: implement and alias that one
+ * for a new store. This interface keeps working for existing stores (the bundle accepts either) and is removed in
+ * 4.0. When a host aliases both to its own services, {@see LoginAttemptStoreInterface} wins.
+ *
+ * @deprecated since 3.14, implement {@see LoginAttemptStoreInterface} instead; removed in 4.0
  *
  * @author Héctor Franco Aceituno <hectorfranco@nowo.tech>
  * @copyright 2025 Nowo.tech
@@ -76,9 +83,14 @@ interface LoginAttemptRepositoryInterface
     public function recordAttempt(string $ipAddress, ?string $username): LoginAttempt;
 
     /**
-     * Clear login attempts for a given IP and username (e.g. after successful login); since 3.11.0 the bundle repository keeps them for the per-IP count.
+     * Clear login attempts for a given IP and username (e.g. after successful login).
      *
-     * When username is null or empty, only rows with a null username are removed.
+     * Binding for every store (the 3.11.0 rule the per-IP cap relies on): of the rows whose IP and username are
+     * byte-identical to the arguments, delete only the newest one (the attempt the successful login recorded itself)
+     * and keep the older ones, with a NULL username, so they still count in {@see countAttemptsByIp()} and
+     * {@see countAttemptsWithoutUsername()} until they leave the window. Never delete them all: a successful login on an
+     * attacker's own account would then refill the per-IP cap. With a null or empty username, delete the IP's rows
+     * without a username. {@see LoginAttemptStoreContractTestCase} checks it.
      *
      * @param string      $ipAddress IP address
      * @param string|null $username  Username (optional)

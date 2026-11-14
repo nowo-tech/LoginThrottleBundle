@@ -4,18 +4,19 @@ declare(strict_types=1);
 
 namespace Nowo\LoginThrottleBundle\DependencyInjection;
 
+use Nowo\LoginThrottleBundle\DependencyInjection\Compiler\AttemptStorePass;
 use Nowo\LoginThrottleBundle\Doctrine\ExactCollationListener;
 use Nowo\LoginThrottleBundle\Doctrine\TablePrefixListener;
 use Nowo\LoginThrottleBundle\RateLimiter\DatabaseRateLimiter;
 use Nowo\LoginThrottleBundle\RateLimiter\DatabaseRateLimiterFactory;
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepository;
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface;
+use Nowo\LoginThrottleBundle\Repository\LoginAttemptStoreInterface;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Config\Definition\Processor;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\ContainerInterface;
-use Symfony\Component\DependencyInjection\Exception\InvalidArgumentException;
 use Symfony\Component\DependencyInjection\Extension\Extension;
 use Symfony\Component\DependencyInjection\Extension\PrependExtensionInterface;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
@@ -185,7 +186,10 @@ final class NowoLoginThrottleExtension extends Extension implements PrependExten
 
         if (!$mappingEnabled) {
             // Unmapped entity: the services built on it would fail at runtime. Consumers take the repository as optional.
+            // A host store aliased to LoginAttemptStoreInterface (or the deprecated LoginAttemptRepositoryInterface)
+            // still drives storage=database (3.14); AttemptStorePass fails the build when there is none.
             $container->removeAlias(LoginAttemptRepositoryInterface::class);
+            $container->removeAlias(LoginAttemptStoreInterface::class);
             $container->removeDefinition(LoginAttemptRepository::class);
             $container->removeDefinition(DatabaseRateLimiterFactory::class);
             $container->removeDefinition(ExactCollationListener::class);
@@ -266,19 +270,16 @@ final class NowoLoginThrottleExtension extends Extension implements PrependExten
     /**
      * Resolves doctrine.register_mapping: true / false / "auto" (mapped only when a firewall uses storage=database).
      *
+     * {@code false} with a {@code storage: database} firewall is accepted here since 3.14: the host may alias
+     * {@see LoginAttemptStoreInterface} to its own store. {@see AttemptStorePass} fails the build when it does not.
+     *
      * @param bool|string $registerMapping     Configured value
      * @param bool        $usesDatabaseStorage Whether a firewall uses storage=database
-     *
-     * @throws InvalidArgumentException When register_mapping is false while a firewall uses storage=database
      */
     private function resolveRegisterMapping(bool|string $registerMapping, bool $usesDatabaseStorage): bool
     {
         if (Configuration::REGISTER_MAPPING_AUTO === $registerMapping) {
             return $usesDatabaseStorage;
-        }
-
-        if (false === $registerMapping && $usesDatabaseStorage) {
-            throw new InvalidArgumentException('"nowo_login_throttle.doctrine.register_mapping: false" requires storage "cache" on every firewall: storage "database" needs the LoginAttempt entity (login_attempts table). Use "auto" or true.');
         }
 
         return (bool) $registerMapping;
@@ -484,15 +485,19 @@ final class NowoLoginThrottleExtension extends Extension implements PrependExten
         // Register the database rate limiter service
         $container->register($serviceId, DatabaseRateLimiter::class)
             ->setArguments([
-                // the port, so a host store aliased to LoginAttemptRepositoryInterface drives the limiter too
-                new Reference(LoginAttemptRepositoryInterface::class),
+                // the resolved store (AttemptStorePass, 3.14): a host store aliased to LoginAttemptStoreInterface or to
+                // the deprecated LoginAttemptRepositoryInterface drives the limiter too
+                new Reference(AttemptStorePass::STORE_SERVICE_ID),
                 $config['max_count_attempts'],
                 $config['timeout'],
                 $config['max_count_attempts_per_ip'] ?? null,
                 new Reference(ClockInterface::class, ContainerInterface::NULL_ON_INVALID_REFERENCE),
                 '%nowo_login_throttle.username_from_passport%',
                 $config['max_count_attempts_without_username'] ?? null,
+                // LoginThrottledEvent / LoginAttemptsClearedEvent (3.14); no listener, no effect
+                new Reference('event_dispatcher', ContainerInterface::NULL_ON_INVALID_REFERENCE),
             ])
+            ->addTag(AttemptStorePass::DATABASE_LIMITER_TAG)
             ->setPublic(true); // Must be public to be used as a rate limiter service
     }
 

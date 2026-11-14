@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\LoginThrottleBundle\Command;
 
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface;
+use Nowo\LoginThrottleBundle\Repository\LoginAttemptStoreInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -22,7 +23,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 final class CleanupLoginAttemptsCommand extends Command
 {
     public function __construct(
-        private readonly ?LoginAttemptRepositoryInterface $repository = null,
+        private readonly LoginAttemptRepositoryInterface|LoginAttemptStoreInterface|null $repository = null,
         private readonly int $defaultWatchPeriod = 3600,
     ) {
         parent::__construct();
@@ -44,7 +45,7 @@ final class CleanupLoginAttemptsCommand extends Command
     {
         $io = new SymfonyStyle($input, $output);
 
-        if (!$this->repository instanceof LoginAttemptRepositoryInterface) {
+        if (null === $this->repository) {
             $io->warning('Login attempt repository is not available (database storage may be disabled). Nothing to clean.');
 
             return self::SUCCESS;

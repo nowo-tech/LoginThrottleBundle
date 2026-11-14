@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Nowo\LoginThrottleBundle\RateLimiter;
 
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface;
+use Nowo\LoginThrottleBundle\Repository\LoginAttemptStoreInterface;
+use Psr\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Factory for creating DatabaseRateLimiter instances.
@@ -20,20 +22,22 @@ final class DatabaseRateLimiterFactory
     /**
      * Constructor.
      *
-     * @param LoginAttemptRepositoryInterface $repository                 The login attempt repository
-     * @param int                             $maxAttempts                Maximum number of attempts per IP + username
-     * @param int                             $timeoutSeconds             Timeout period in seconds
-     * @param int|null                        $maxAttemptsPerIp           Maximum number of attempts per IP (null: 5 × maxAttempts)
-     * @param bool                            $usernameFromPassport       Fall back to the passport identifier when no POST field holds a username (3.9, option {@code username_from_passport})
-     * @param int|null                        $maxAttemptsWithoutUsername Maximum number of attempts per IP without a usable username (3.13.0, option {@code max_count_attempts_without_username}; null: the per-IP cap)
+     * @param LoginAttemptRepositoryInterface|LoginAttemptStoreInterface $repository                 The login attempt store ({@see LoginAttemptStoreInterface} since 3.14)
+     * @param int                                                        $maxAttempts                Maximum number of attempts per IP + username
+     * @param int                                                        $timeoutSeconds             Timeout period in seconds
+     * @param int|null                                                   $maxAttemptsPerIp           Maximum number of attempts per IP (null: 5 × maxAttempts)
+     * @param bool                                                       $usernameFromPassport       Fall back to the passport identifier when no POST field holds a username (3.9, option {@code username_from_passport})
+     * @param int|null                                                   $maxAttemptsWithoutUsername Maximum number of attempts per IP without a usable username (3.13.0, option {@code max_count_attempts_without_username}; null: the per-IP cap)
+     * @param EventDispatcherInterface|null                              $eventDispatcher            Passed to the limiters it creates (3.14; no events when null)
      */
     public function __construct(
-        private readonly LoginAttemptRepositoryInterface $repository,
+        private readonly LoginAttemptRepositoryInterface|LoginAttemptStoreInterface $repository,
         private readonly int $maxAttempts,
         private readonly int $timeoutSeconds,
         private readonly ?int $maxAttemptsPerIp = null,
         private readonly bool $usernameFromPassport = false,
         private readonly ?int $maxAttemptsWithoutUsername = null,
+        private readonly ?EventDispatcherInterface $eventDispatcher = null,
     ) {
     }
 
@@ -52,6 +56,7 @@ final class DatabaseRateLimiterFactory
             null,
             $this->usernameFromPassport,
             $this->maxAttemptsWithoutUsername,
+            $this->eventDispatcher,
         );
     }
 }

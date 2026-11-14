@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace Nowo\LoginThrottleBundle\Tests\DependencyInjection;
 
+use Nowo\LoginThrottleBundle\DependencyInjection\Compiler\AttemptStorePass;
 use Nowo\LoginThrottleBundle\DependencyInjection\NowoLoginThrottleExtension;
 use Nowo\LoginThrottleBundle\Doctrine\TablePrefixListener;
 use Nowo\LoginThrottleBundle\RateLimiter\DatabaseRateLimiterFactory;
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepository;
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface;
+use Nowo\LoginThrottleBundle\Repository\LoginAttemptStoreInterface;
+use Nowo\LoginThrottleBundle\Tests\Support\EntityFreeLoginAttemptStore;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
@@ -50,6 +53,7 @@ final class RegisterMappingTest extends TestCase
         self::assertSame($mapped, $container->getParameter(NowoLoginThrottleExtension::MAPPING_ENABLED_PARAMETER));
         self::assertSame($mapped, $container->hasDefinition(LoginAttemptRepository::class));
         self::assertSame($mapped, $container->hasAlias(LoginAttemptRepositoryInterface::class));
+        self::assertSame($mapped, $container->hasAlias(LoginAttemptStoreInterface::class));
         self::assertSame($mapped, $container->hasDefinition(DatabaseRateLimiterFactory::class));
     }
 
@@ -75,10 +79,31 @@ final class RegisterMappingTest extends TestCase
     #[DataProvider('falseWithDatabaseCases')]
     public function testFalseRejectsDatabaseStorage(array $config): void
     {
+        $container = $this->load(['doctrine' => ['register_mapping' => false]] + $config);
+
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('"nowo_login_throttle.doctrine.register_mapping: false" requires storage "cache"');
 
-        $this->load(['doctrine' => ['register_mapping' => false]] + $config);
+        (new AttemptStorePass())->process($container);
+    }
+
+    /**
+     * 3.14: without the bundle's table, a host store on the entity-free port drives storage=database.
+     *
+     * @param array<string, mixed> $config
+     */
+    #[DataProvider('falseWithDatabaseCases')]
+    public function testFalseWithDatabaseStorageAcceptsAHostStore(array $config): void
+    {
+        $container = $this->load(['doctrine' => ['register_mapping' => false]] + $config);
+        $container->register('app.attempt_store', EntityFreeLoginAttemptStore::class);
+        $container->setAlias(LoginAttemptStoreInterface::class, 'app.attempt_store');
+
+        (new AttemptStorePass())->process($container);
+
+        self::assertSame(LoginAttemptStoreInterface::class, (string) $container->getAlias(AttemptStorePass::STORE_SERVICE_ID));
+        self::assertSame('app.attempt_store', (string) $container->getAlias(LoginAttemptStoreInterface::class));
+        self::assertFalse($container->hasDefinition(LoginAttemptRepository::class));
     }
 
     public function testRejectsUnknownValue(): void

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\LoginThrottleBundle\Service;
 
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface;
+use Nowo\LoginThrottleBundle\Repository\LoginAttemptStoreInterface;
 use Nowo\LoginThrottleBundle\Throttle\ThrottleRules;
 use Nowo\LoginThrottleBundle\Throttle\ThrottleStatus;
 use Nowo\LoginThrottleBundle\Throttle\UsernameNormalizer;
@@ -22,12 +23,12 @@ use Nowo\LoginThrottleBundle\Throttle\UsernameNormalizer;
 final readonly class LoginThrottleStatusProvider implements LoginThrottleStatusProviderInterface
 {
     /**
-     * @param array<string, mixed>                 $firewalls  The {@code nowo_login_throttle.firewalls} parameter
-     * @param LoginAttemptRepositoryInterface|null $repository The attempt store (null when the mapping is off)
+     * @param array<string, mixed>                                            $firewalls  The {@code nowo_login_throttle.firewalls} parameter
+     * @param LoginAttemptRepositoryInterface|LoginAttemptStoreInterface|null $repository The attempt store ({@see LoginAttemptStoreInterface} since 3.14; null when there is none)
      */
     public function __construct(
         private array $firewalls,
-        private ?LoginAttemptRepositoryInterface $repository = null,
+        private LoginAttemptRepositoryInterface|LoginAttemptStoreInterface|null $repository = null,
     ) {
     }
 
@@ -43,7 +44,7 @@ final readonly class LoginThrottleStatusProvider implements LoginThrottleStatusP
 
         $maxAttempts = $this->intOr($config['max_attempts'] ?? null, 3);
 
-        if ('database' !== ($config['storage'] ?? 'cache') || !$this->repository instanceof LoginAttemptRepositoryInterface) {
+        if ('database' !== ($config['storage'] ?? 'cache') || null === $this->repository) {
             return new ThrottleStatus(0, $maxAttempts, 0, false, null, $trackingType, tracked: false);
         }
 

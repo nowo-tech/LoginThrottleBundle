@@ -5,11 +5,15 @@ declare(strict_types=1);
 namespace Nowo\LoginThrottleBundle\RateLimiter;
 
 use Nowo\LoginThrottleBundle\Entity\LoginAttempt;
+use Nowo\LoginThrottleBundle\Event\LoginAttemptsClearedEvent;
+use Nowo\LoginThrottleBundle\Event\LoginThrottledEvent;
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptRecorderInterface;
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface;
+use Nowo\LoginThrottleBundle\Repository\LoginAttemptStoreInterface;
 use Nowo\LoginThrottleBundle\Throttle\ThrottleRules;
 use Nowo\LoginThrottleBundle\Throttle\UsernameNormalizer;
 use Psr\Clock\ClockInterface;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\RateLimiter\RequestRateLimiterInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\RateLimiter\RateLimit;
@@ -32,6 +36,9 @@ use Symfony\Component\RateLimiter\RateLimit;
  * The rules live in {@see ThrottleRules}, shared with the status provider.
  * Attempts are recorded through {@see LoginAttemptRecorderInterface} when the store implements it (3.12), so no
  * Doctrine entity crosses the port; otherwise through the deprecated {@see LoginAttemptRepositoryInterface::recordAttempt()}.
+ * Since 3.14 the store may be the entity-free {@see LoginAttemptStoreInterface} (or the deprecated
+ * {@see LoginAttemptRepositoryInterface}), and when an event dispatcher is given a refused attempt dispatches
+ * {@see LoginThrottledEvent} and a cleared bucket {@see LoginAttemptsClearedEvent} (scalars only, after the write).
  * On successful login, {@see reset()} clears that IP + username's {@see LoginAttempt} rows (3.11.0: username set to NULL, so they keep counting for the IP); the username is the identifier Symfony authenticates ({@see UsernameNormalizer::forLimiter()}).
  *
  * @author Héctor Franco Aceituno <hectorfranco@nowo.tech>
@@ -54,22 +61,24 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
     /**
      * Constructor.
      *
-     * @param LoginAttemptRepositoryInterface $repository                 The login attempt repository
-     * @param int                             $maxAttempts                Maximum number of attempts per IP + username
-     * @param int                             $timeoutSeconds             Timeout period in seconds
-     * @param int|null                        $maxAttemptsPerIp           Maximum number of attempts per IP (null: 5 × maxAttempts)
-     * @param ClockInterface|null             $clock                      Time source (system time when null; REQ-DI-001)
-     * @param bool                            $usernameFromPassport       Fall back to the passport identifier when no POST field holds a username (3.9)
-     * @param int|null                        $maxAttemptsWithoutUsername Maximum number of attempts per IP without a usable username (3.13.0; null: the per-IP cap)
+     * @param LoginAttemptRepositoryInterface|LoginAttemptStoreInterface $repository                 The login attempt store ({@see LoginAttemptStoreInterface} since 3.14)
+     * @param int                                                        $maxAttempts                Maximum number of attempts per IP + username
+     * @param int                                                        $timeoutSeconds             Timeout period in seconds
+     * @param int|null                                                   $maxAttemptsPerIp           Maximum number of attempts per IP (null: 5 × maxAttempts)
+     * @param ClockInterface|null                                        $clock                      Time source (system time when null; REQ-DI-001)
+     * @param bool                                                       $usernameFromPassport       Fall back to the passport identifier when no POST field holds a username (3.9)
+     * @param int|null                                                   $maxAttemptsWithoutUsername Maximum number of attempts per IP without a usable username (3.13.0; null: the per-IP cap)
+     * @param EventDispatcherInterface|null                              $eventDispatcher            Dispatches {@see LoginThrottledEvent} / {@see LoginAttemptsClearedEvent} (3.14; none when null)
      */
     public function __construct(
-        private readonly LoginAttemptRepositoryInterface $repository,
+        private readonly LoginAttemptRepositoryInterface|LoginAttemptStoreInterface $repository,
         private readonly int $maxAttempts,
         private readonly int $timeoutSeconds,
         ?int $maxAttemptsPerIp = null,
         private readonly ?ClockInterface $clock = null,
         private readonly bool $usernameFromPassport = false,
         ?int $maxAttemptsWithoutUsername = null,
+        private readonly ?EventDispatcherInterface $eventDispatcher = null,
     ) {
         $this->rules = new ThrottleRules($repository, $maxAttempts, $timeoutSeconds, $maxAttemptsPerIp, $maxAttemptsWithoutUsername);
         $this->maxAttemptsPerIp = $this->rules->maxAttemptsPerIp();
@@ -97,12 +106,21 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
         $isIpBlocked = !$isBlocked && $this->repository->countAttemptsByIp($ipAddress, $this->timeoutSeconds) >= $this->maxAttemptsPerIp;
         $isBlockedWithoutUsername = $boundsWithoutUsername && !$isIpBlocked && $this->rules->countBucket($ipAddress, null) >= $limit;
 
+        // which limit refused the attempt (3.14, for LoginThrottledEvent); null while accepted
+        $scope = null;
+        $lockoutStarted = false;
+
         if ($isBlocked || $isIpBlocked || $isBlockedWithoutUsername) {
             $remaining = 0;
             $retryAfter = $isBlockedWithoutUsername
                 ? $this->rules->retryAfterWithoutUsername($ipAddress)
                 : $this->calculateRetryAfter($ipAddress, $isBlocked ? $username : null);
             $accepted = false;
+            $scope = match (true) {
+                $isBlocked => LoginThrottledEvent::SCOPE_USERNAME,
+                $isIpBlocked => LoginThrottledEvent::SCOPE_IP,
+                default => LoginThrottledEvent::SCOPE_WITHOUT_USERNAME,
+            };
         } else {
             // Record the attempt
             $this->record($ipAddress, $username);
@@ -116,22 +134,39 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
             if (null !== $username && $count >= $limit) {
                 $retryAfter = $this->calculateRetryAfter($ipAddress, $username);
                 $accepted = false;
+                $scope = LoginThrottledEvent::SCOPE_USERNAME;
             } elseif ($ipCount >= $this->maxAttemptsPerIp) {
                 $retryAfter = $this->calculateRetryAfter($ipAddress, null);
                 $accepted = false;
+                $scope = LoginThrottledEvent::SCOPE_IP;
             } elseif ($boundsWithoutUsername && $count >= $limit) {
                 $retryAfter = $this->rules->retryAfterWithoutUsername($ipAddress);
                 $accepted = false;
+                $scope = LoginThrottledEvent::SCOPE_WITHOUT_USERNAME;
             } else {
                 // Not blocked, retry after is now (immediate retry allowed)
                 $retryAfter = $this->clock?->now() ?? new \DateTimeImmutable();
                 $accepted = true;
             }
+            $lockoutStarted = null !== $scope;
         }
 
         // Ensure retryAfter is never null
         if (!$retryAfter instanceof \DateTimeImmutable) {
             $retryAfter = $this->clock?->now() ?? new \DateTimeImmutable();
+        }
+
+        if (null !== $scope && $this->eventDispatcher instanceof EventDispatcherInterface) {
+            // after the attempt was written (autocommitted DBAL insert in the bundle's store), scalars only
+            $this->eventDispatcher->dispatch(new LoginThrottledEvent(
+                $ipAddress,
+                $username,
+                $scope,
+                LoginThrottledEvent::SCOPE_IP === $scope ? $this->maxAttemptsPerIp : $limit,
+                $retryAfter,
+                $lockoutStarted,
+                $this->firewallName($request),
+            ));
         }
 
         return new RateLimit(
@@ -163,7 +198,27 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
         }
 
         // @igor-ignore - Mutates attached request-scoped or value object; not worker singleton cache
-        $this->repository->clearAttempts($ipAddress, $username);
+        $cleared = $this->repository->clearAttempts($ipAddress, $username);
+
+        $this->eventDispatcher?->dispatch(new LoginAttemptsClearedEvent($ipAddress, $username, $cleared, $this->firewallName($request)));
+    }
+
+    /**
+     * The firewall Symfony's firewall map stored on the request ({@code _firewall_context}, e.g.
+     * {@code security.firewall.map.context.main} → {@code main}); null outside a firewall.
+     *
+     * @param Request $request The request
+     */
+    private function firewallName(Request $request): ?string
+    {
+        $context = $request->attributes->get('_firewall_context');
+        if (!\is_string($context) || '' === $context) {
+            return null;
+        }
+
+        $prefix = 'security.firewall.map.context.';
+
+        return str_starts_with($context, $prefix) ? substr($context, \strlen($prefix)) : $context;
     }
 
     /**

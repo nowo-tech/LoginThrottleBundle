@@ -55,6 +55,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Target 3.14.0 (minor: new public API, no change for existing hosts).
+
+### Added
+
+- `Repository\LoginAttemptStoreInterface` (REQ-ARCH-001 rules 1 and 3): the whole login attempt store without any
+  Doctrine type. It extends the entity-free twins (`LoginAttemptRecorderInterface`,
+  `LoginAttemptViewRepositoryInterface`, `LoginAttemptWithoutUsernameReaderInterface`) and adds the counts, checks and
+  deletions. `LoginAttemptRepository` implements it. Alias (or decorate) it and the database limiter, the status
+  provider, the info service and the cleanup command use your store, as does `DatabaseRateLimiterFactory` while the
+  entity is mapped (with `register_mapping: false` the factory is not registered). When both this interface and
+  `LoginAttemptRepositoryInterface` are provided by the host, this one wins. Decorators of either port apply, as in
+  3.13.1, and a port aliased to a service that does not exist fails the build.
+- `clearAttempts()` contract made binding for host stores: delete only the newest matching row and keep the older ones
+  counting for the IP with a NULL username (the 3.11.0 rule the per-IP cap relies on).
+- `Testing\LoginAttemptStoreContractTestCase`: an abstract PHPUnit test case hosts extend to check their store against
+  that contract (PHPUnit is needed only in the host's dev dependencies).
+- `doctrine.register_mapping: false` with `storage: database` is accepted when the host aliases
+  `LoginAttemptStoreInterface` (or the deprecated `LoginAttemptRepositoryInterface`) to its own store: no
+  `login_attempts` table in the host schema. Without such a store the build still fails with the same message, now
+  raised by the `AttemptStorePass` compiler pass instead of the extension.
+- `Event\LoginThrottledEvent` (REQ-ARCH-001 rule 4): dispatched by the database limiter for every refused attempt,
+  with scalars only (IP, normalised username, scope `username` / `ip` / `without_username`, limit, retry time,
+  `lockoutStarted`, firewall name). When `lockoutStarted` is true the event follows the write of that attempt; refusals
+  while the bucket is locked write nothing. The username is client-typed personal data: see "Using the events safely"
+  in USAGE.
+- `Event\LoginAttemptsClearedEvent`: dispatched after a successful login cleared the IP + username bucket (never for a
+  login without a usable username).
+- Optional last constructor argument `?Psr\EventDispatcher\EventDispatcherInterface $eventDispatcher` on
+  `DatabaseRateLimiter` and `DatabaseRateLimiterFactory`; the bundle wires `event_dispatcher`.
+- `psr/event-dispatcher` in `require` (already installed through Symfony).
+
+### Deprecated
+
+- `Repository\LoginAttemptRepositoryInterface`: implement `LoginAttemptStoreInterface` instead. Existing stores keep
+  working unchanged; removed in 4.0.
+
+### Changed
+
+- `DatabaseRateLimiter`, `DatabaseRateLimiterFactory`, `ThrottleRules`, `LoginThrottleStatusProvider`,
+  `LoginThrottleInfoService::setRepository()` and `CleanupLoginAttemptsCommand` accept
+  `LoginAttemptStoreInterface|LoginAttemptRepositoryInterface` (widened parameter types; callers are unaffected).
+
 ## [3.13.1] - 2026-11-14
 
 Target 3.13.1.
