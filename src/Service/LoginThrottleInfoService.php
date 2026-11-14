@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\LoginThrottleBundle\Service;
 
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface;
+use Nowo\LoginThrottleBundle\Repository\LoginAttemptStoreInterface;
 use Nowo\LoginThrottleBundle\Throttle\UsernameNormalizer;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Contracts\Service\Attribute\Required;
@@ -24,7 +25,7 @@ use Symfony\Contracts\Service\Attribute\Required;
  */
 final class LoginThrottleInfoService
 {
-    private ?LoginAttemptRepositoryInterface $repository = null;
+    private LoginAttemptRepositoryInterface|LoginAttemptStoreInterface|null $repository = null;
 
     /** @var array<string, mixed>|null */
     private ?array $firewallsConfig = null;
@@ -32,10 +33,10 @@ final class LoginThrottleInfoService
     /**
      * Set the login attempt repository (for database storage).
      *
-     * @param LoginAttemptRepositoryInterface|null $repository The repository
+     * @param LoginAttemptRepositoryInterface|LoginAttemptStoreInterface|null $repository The attempt store ({@see LoginAttemptStoreInterface} since 3.14)
      */
     #[Required]
-    public function setRepository(?LoginAttemptRepositoryInterface $repository): void
+    public function setRepository(LoginAttemptRepositoryInterface|LoginAttemptStoreInterface|null $repository): void
     {
         // @igor-ignore - Justified false positive for FrankenPHP worker audit
         $this->repository = $repository;
@@ -89,7 +90,7 @@ final class LoginThrottleInfoService
 
         if ('database' === $storage) {
             $repository = $this->repository;
-            if (!$repository instanceof LoginAttemptRepositoryInterface) {
+            if (null === $repository) {
                 // Repository not available, return default values
                 return [
                     'current_attempts' => 0,

@@ -8,6 +8,7 @@ services:
     resource: '../../'
     exclude:
       - '../../DependencyInjection/'
+      - '../../Event/'
       - '../../NowoLoginThrottleBundle.php'
       - '../../Throttle/'
       - '../../Repository/LoginAttemptView.php'
@@ -17,9 +18,11 @@ services:
     arguments:
       $projectDir: '%kernel.project_dir%'
 
+  # nowo_login_throttle.attempt_store: the store resolved by AttemptStorePass (3.14) — the host's
+  # LoginAttemptStoreInterface, else the host's deprecated LoginAttemptRepositoryInterface, else the bundle repository.
   Nowo\LoginThrottleBundle\Command\CleanupLoginAttemptsCommand:
     arguments:
-      $repository: '@?Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface'
+      $repository: '@?nowo_login_throttle.attempt_store'
       $defaultWatchPeriod: '%nowo_login_throttle.watch_period%'
 
   # REQ-ORM-002: removed by the extension when nowo_login_throttle.doctrine.table_prefix is empty.
@@ -43,13 +46,18 @@ services:
     arguments:
       $registry: '@doctrine'
 
+  # Entity-free store port (3.14); alias it to your own store. The deprecated interface below keeps working.
+  Nowo\LoginThrottleBundle\Repository\LoginAttemptStoreInterface: '@Nowo\LoginThrottleBundle\Repository\LoginAttemptRepository'
+
   Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface: '@Nowo\LoginThrottleBundle\Repository\LoginAttemptRepository'
 
   # Host code that gets the factory from the container receives the username_from_passport option (KF-L-I4);
   # the limits are still yours to bind.
   Nowo\LoginThrottleBundle\RateLimiter\DatabaseRateLimiterFactory:
     arguments:
+      $repository: '@nowo_login_throttle.attempt_store'
       $usernameFromPassport: '%nowo_login_throttle.username_from_passport%'
+      $eventDispatcher: '@?event_dispatcher'
 
   # Database rate limiter (registered conditionally in Extension when storage=database)
   # This service is registered dynamically in NowoLoginThrottleExtension::registerDatabaseRateLimiter()
@@ -60,15 +68,16 @@ services:
     calls:
       - method: setFirewallsConfig
         arguments: ['%nowo_login_throttle.firewalls%']
-    # Repository is optional - only needed for database storage
-    # It will be autowired if available
+      # optional - only needed for database storage
+      - method: setRepository
+        arguments: ['@?nowo_login_throttle.attempt_store']
 
 
   # HTTP-free status with the limiter's own rules (3.9)
   Nowo\LoginThrottleBundle\Service\LoginThrottleStatusProvider:
     arguments:
       $firewalls: '%nowo_login_throttle.firewalls%'
-      $repository: '@?Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface'
+      $repository: '@?nowo_login_throttle.attempt_store'
 
   Nowo\LoginThrottleBundle\Service\LoginThrottleStatusProviderInterface:
     alias: Nowo\LoginThrottleBundle\Service\LoginThrottleStatusProvider

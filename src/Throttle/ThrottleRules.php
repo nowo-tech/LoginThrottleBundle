@@ -6,6 +6,7 @@ namespace Nowo\LoginThrottleBundle\Throttle;
 
 use Nowo\LoginThrottleBundle\RateLimiter\DatabaseRateLimiter;
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface;
+use Nowo\LoginThrottleBundle\Repository\LoginAttemptStoreInterface;
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptViewRepositoryInterface;
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptWithoutUsernameReaderInterface;
 use Nowo\LoginThrottleBundle\Service\LoginThrottleStatusProvider;
@@ -33,14 +34,14 @@ final readonly class ThrottleRules
     private int $maxAttemptsWithoutUsername;
 
     /**
-     * @param LoginAttemptRepositoryInterface $repository                 The login attempt store
-     * @param int                             $maxAttempts                Maximum number of attempts per IP + username
-     * @param int                             $timeoutSeconds             Timeout window in seconds
-     * @param int|null                        $maxAttemptsPerIp           Maximum number of attempts per IP (null: 5 × maxAttempts)
-     * @param int|null                        $maxAttemptsWithoutUsername Maximum number of attempts per IP without a usable username (3.13.0; null: the per-IP cap). Clamped to 1 .. the per-IP cap, which applies on top anyway
+     * @param LoginAttemptRepositoryInterface|LoginAttemptStoreInterface $repository                 The login attempt store ({@see LoginAttemptStoreInterface} since 3.14)
+     * @param int                                                        $maxAttempts                Maximum number of attempts per IP + username
+     * @param int                                                        $timeoutSeconds             Timeout window in seconds
+     * @param int|null                                                   $maxAttemptsPerIp           Maximum number of attempts per IP (null: 5 × maxAttempts)
+     * @param int|null                                                   $maxAttemptsWithoutUsername Maximum number of attempts per IP without a usable username (3.13.0; null: the per-IP cap). Clamped to 1 .. the per-IP cap, which applies on top anyway
      */
     public function __construct(
-        private LoginAttemptRepositoryInterface $repository,
+        private LoginAttemptRepositoryInterface|LoginAttemptStoreInterface $repository,
         private int $maxAttempts,
         private int $timeoutSeconds,
         ?int $maxAttemptsPerIp = null,

@@ -376,12 +376,12 @@ nowo_login_throttle:
 |-------|---------------|-------|
 | `true` (default) | Always | Previous behaviour. |
 | `auto` | Only when the single-firewall `storage` or any entry of `firewalls` is `database` | Recommended for cache-only hosts. |
-| `false` | Never | Container build fails with an `InvalidArgumentException` if any firewall uses `storage: database`. |
+| `false` | Never | With `storage: database` on any firewall, alias `LoginAttemptStoreInterface` (or the deprecated `LoginAttemptRepositoryInterface`) to your own store (3.14); without one the container build fails with an `InvalidArgumentException`. |
 
 When the entity is not mapped:
 
 - the extension prepends `doctrine.orm.entity_managers.<manager>.mappings.NowoLoginThrottleBundle.mapping: false` on the auto-mapped entity manager (the one with `auto_mapping: true`, else `default_entity_manager`, else `default`). It does nothing when DoctrineBundle is not registered, when there is no `doctrine.orm` configuration, or when the host already declares a `NowoLoginThrottleBundle` mapping;
-- `LoginAttemptRepository`, its `LoginAttemptRepositoryInterface` alias, `DatabaseRateLimiterFactory` and `TablePrefixListener` are not registered; `nowo:login-throttle:cleanup` reports that there is nothing to clean and `LoginThrottleInfoService` uses the cache-storage defaults;
+- `LoginAttemptRepository`, its `LoginAttemptStoreInterface` / `LoginAttemptRepositoryInterface` aliases, `DatabaseRateLimiterFactory` and `TablePrefixListener` are not registered; unless the host aliases its own store, `nowo:login-throttle:cleanup` reports that there is nothing to clean and `LoginThrottleInfoService` uses the cache-storage defaults;
 - the boolean parameter `nowo_login_throttle.doctrine.mapping_enabled` (`NowoLoginThrottleExtension::MAPPING_ENABLED_PARAMETER`) is `false`.
 
 Hosts that switch an existing install to `auto` / `false` can drop the `login_attempts` table in a migration.

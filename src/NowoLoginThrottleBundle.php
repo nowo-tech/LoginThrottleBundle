@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Nowo\LoginThrottleBundle;
 
+use Nowo\LoginThrottleBundle\DependencyInjection\Compiler\AttemptStorePass;
 use Nowo\LoginThrottleBundle\DependencyInjection\Configuration;
 use Nowo\LoginThrottleBundle\DependencyInjection\NowoLoginThrottleExtension;
+use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\ExtensionInterface;
 use Symfony\Component\HttpKernel\Bundle\Bundle;
 
@@ -34,6 +36,16 @@ final class NowoLoginThrottleBundle extends Bundle
     public function __construct(
         private readonly string $sapi = \PHP_SAPI,
     ) {
+    }
+
+    /**
+     * Registers {@see AttemptStorePass} (3.14): resolves which login attempt store the bundle's services use.
+     */
+    public function build(ContainerBuilder $container): void
+    {
+        parent::build($container);
+
+        $container->addCompilerPass(new AttemptStorePass());
     }
 
     /**

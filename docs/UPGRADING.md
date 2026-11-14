@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+  - [To 3.14.0](#to-3140)
 - [To 3.13.1](#to-3131)
 - [To 3.13.0](#to-3130)
 - [To 3.13.0](#to-3130-1)
@@ -59,6 +60,30 @@
 - [Notes](#notes)
 
 ## Unreleased
+
+### To 3.14.0
+
+From **3.13.x**: `composer update nowo-tech/login-throttle-bundle`. Target 3.14.0. Nothing to do for a standard
+install: same defaults, same table, same decisions. With no listener, the new events change nothing.
+
+- **Custom store on `LoginAttemptRepositoryInterface`**: keeps working. The interface is deprecated (removed in 4.0):
+  implement `Nowo\LoginThrottleBundle\Repository\LoginAttemptStoreInterface` instead, which drops `recordAttempt():
+  LoginAttempt` and `getAttempts(): list<LoginAttempt>` for `recordAttemptView()`, `getAttemptViews()`,
+  `findOldestAttemptAt()`, `countAttemptsWithoutUsername()` and `findOldestAttemptWithoutUsernameAt()`, and alias it:
+
+  ```yaml
+  services:
+      Nowo\LoginThrottleBundle\Repository\LoginAttemptStoreInterface: '@App\Security\MyLoginAttemptStore'
+  ```
+
+  If you alias both interfaces to your own services, `LoginAttemptStoreInterface` wins.
+- **No bundle table**: with your own store aliased, `doctrine.register_mapping: false` now works with
+  `storage: database`. Without one, the build fails as before (same message, now from a compiler pass).
+- **Lockout notifications**: listen to `Nowo\LoginThrottleBundle\Event\LoginThrottledEvent` instead of checking
+  `LoginFailureEvent` for `TooManyLoginAttemptsAuthenticationException` (that still works). Only `storage: database`
+  dispatches it.
+- **Code that builds `DatabaseRateLimiter` / `DatabaseRateLimiterFactory` itself**: unchanged; pass an event dispatcher
+  as the new last argument to get the events.
 
 ## To 3.13.1
 

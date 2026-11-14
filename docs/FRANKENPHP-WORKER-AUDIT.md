@@ -53,9 +53,9 @@ Worker demo: `demo/symfony8/docker/frankenphp/Caddyfile` declares a `worker` blo
 
 | Service | Shared | Mutable state | Scenario A | Scenario B |
 |---------|--------|---------------|------------|------------|
-| `nowo_login_throttle.database_rate_limiter[.*]` (`RateLimiter\DatabaseRateLimiter`, registered in the extension, public) | yes | none (`readonly` repository, max attempts, timeout) | ✅ | ✅ |
+| `nowo_login_throttle.database_rate_limiter[.*]` (`RateLimiter\DatabaseRateLimiter`, registered in the extension, public) | yes | none (`readonly` store, max attempts, timeout, optional event dispatcher; 3.14 events are built per call from the request's own data) | ✅ | ✅ |
 | `RateLimiter\DatabaseRateLimiterFactory` | yes | none (`readonly`); `create()` returns a new limiter | ✅ | ✅ |
-| `Repository\LoginAttemptRepository` (+ `LoginAttemptRepositoryInterface` alias) | yes | `readonly` `ManagerRegistry` reference only (no cache) | ✅ | ✅ (W-01 resolved) |
+| `Repository\LoginAttemptRepository` (+ `LoginAttemptStoreInterface` / `LoginAttemptRepositoryInterface` aliases) | yes | `readonly` `ManagerRegistry` reference only (no cache) | ✅ | ✅ (W-01 resolved) |
 | `Service\LoginThrottleInfoService` | yes | `repository`, `firewallsConfig` (set once by `#[Required]` / `calls`, never per request) | ✅ | ✅ |
 | `Command\ConfigureSecurityCommand` | CLI only | not used by the HTTP worker | N/A | N/A |
 | `NowoLoginThrottleBundle::boot()` | once per kernel boot | none | ✅ (W-02 resolved) | ✅ (W-02 resolved) |
@@ -94,7 +94,7 @@ Worker demo: `demo/symfony8/docker/frankenphp/Caddyfile` declares a `worker` blo
 - Commit the bundle config file (W-02) and do not rely on runtime generation in containers.
 - Configure `framework.trusted_proxies` / `trusted_headers` for the FrankenPHP / Caddy setup so `getClientIp()` returns the real client IP.
 - Run the cleanup of old rows (`LoginAttemptRepository::cleanup()`) from a scheduled CLI job, not from an HTTP request.
-- Custom `LoginAttemptRepositoryInterface` implementations (with or without the entity-free twins
+- Custom `LoginAttemptStoreInterface` (3.14) or `LoginAttemptRepositoryInterface` implementations (with or without the entity-free twins
   `LoginAttemptViewRepositoryInterface` / `LoginAttemptRecorderInterface`) or decorators of `DatabaseRateLimiter` must not cache counts or attempts in properties (that would mix users between requests) unless they implement `ResetInterface` and the cache is keyed by IP + username with a short TTL.
 - If the application cannot guarantee scenario A for *its own* services, set FrankenPHP `max_requests` (or `FRANKENPHP_LOOP_MAX` with the Symfony runtime) so workers are recycled.
 

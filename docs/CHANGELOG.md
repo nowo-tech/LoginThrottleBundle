@@ -55,6 +55,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Target 3.14.0 (minor: new public API, no change for existing hosts).
+
+### Added
+
+- `Repository\LoginAttemptStoreInterface` (REQ-ARCH-001 rules 1 and 3): the whole login attempt store without any
+  Doctrine type. It extends the entity-free twins (`LoginAttemptRecorderInterface`,
+  `LoginAttemptViewRepositoryInterface`, `LoginAttemptWithoutUsernameReaderInterface`) and adds the counts, checks and
+  deletions. `LoginAttemptRepository` implements it. Alias it to your own store and the database limiter, the status
+  provider, the info service, the cleanup command and `DatabaseRateLimiterFactory` use it. When both this interface and
+  `LoginAttemptRepositoryInterface` are aliased to host services, this one wins.
+- `doctrine.register_mapping: false` with `storage: database` is accepted when the host aliases
+  `LoginAttemptStoreInterface` (or the deprecated `LoginAttemptRepositoryInterface`) to its own store: no
+  `login_attempts` table in the host schema. Without such a store the build still fails with the same message, now
+  raised by the `AttemptStorePass` compiler pass instead of the extension.
+- `Event\LoginThrottledEvent` (REQ-ARCH-001 rule 4): dispatched by the database limiter for every refused attempt,
+  with scalars only (IP, normalised username, scope `username` / `ip` / `without_username`, limit, retry time,
+  `lockoutStarted`, firewall name). Dispatched after the attempt was written.
+- `Event\LoginAttemptsClearedEvent`: dispatched after a successful login cleared the IP + username bucket (never for a
+  login without a usable username).
+- Optional last constructor argument `?Psr\EventDispatcher\EventDispatcherInterface $eventDispatcher` on
+  `DatabaseRateLimiter` and `DatabaseRateLimiterFactory`; the bundle wires `event_dispatcher`.
+- `psr/event-dispatcher` in `require` (already installed through Symfony).
+
+### Deprecated
+
+- `Repository\LoginAttemptRepositoryInterface`: implement `LoginAttemptStoreInterface` instead. Existing stores keep
+  working unchanged; removed in 4.0.
+
+### Changed
+
+- `DatabaseRateLimiter`, `DatabaseRateLimiterFactory`, `ThrottleRules`, `LoginThrottleStatusProvider`,
+  `LoginThrottleInfoService::setRepository()` and `CleanupLoginAttemptsCommand` accept
+  `LoginAttemptStoreInterface|LoginAttemptRepositoryInterface` (widened parameter types; callers are unaffected).
+
 ## [3.13.1] - 2026-11-14
 
 Target 3.13.1.

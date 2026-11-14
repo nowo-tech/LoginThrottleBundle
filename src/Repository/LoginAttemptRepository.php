@@ -23,7 +23,7 @@ use Psr\Clock\ClockInterface;
  * @author Héctor Franco Aceituno <hectorfranco@nowo.tech>
  * @copyright 2025 Nowo.tech
  */
-final class LoginAttemptRepository extends ServiceEntityRepository implements LoginAttemptRecorderInterface, LoginAttemptRepositoryInterface, LoginAttemptViewRepositoryInterface, LoginAttemptWithoutUsernameReaderInterface
+final class LoginAttemptRepository extends ServiceEntityRepository implements LoginAttemptRecorderInterface, LoginAttemptRepositoryInterface, LoginAttemptStoreInterface, LoginAttemptViewRepositoryInterface, LoginAttemptWithoutUsernameReaderInterface
 {
     /** Rows per DELETE statement in {@see cleanup()}. */
     public const CLEANUP_BATCH_SIZE = 1000;

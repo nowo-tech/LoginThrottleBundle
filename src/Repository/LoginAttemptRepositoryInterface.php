@@ -15,6 +15,12 @@ use Nowo\LoginThrottleBundle\Entity\LoginAttempt;
  * {@see LoginAttemptViewRepositoryInterface::getAttemptViews()} (REQ-ARCH-001 rule 1), and stay here until 4.0 so
  * existing stores keep working. A store that implements the twins is used through them by the bundle itself.
  *
+ * Since 3.14 the whole port has an entity-free twin, {@see LoginAttemptStoreInterface}: implement and alias that one
+ * for a new store. This interface keeps working for existing stores (the bundle accepts either) and is removed in
+ * 4.0. When a host aliases both to its own services, {@see LoginAttemptStoreInterface} wins.
+ *
+ * @deprecated since 3.14, implement {@see LoginAttemptStoreInterface} instead; removed in 4.0
+ *
  * @author Héctor Franco Aceituno <hectorfranco@nowo.tech>
  * @copyright 2025 Nowo.tech
  */
