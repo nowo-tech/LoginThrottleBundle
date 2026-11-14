@@ -96,7 +96,8 @@ final readonly class ThrottleRules
         $ipCount = $this->repository->countAttemptsByIp($ipAddress, $this->timeoutSeconds);
         $userBlocked = null !== $username && $this->repository->isBlocked($ipAddress, $username, $this->maxAttempts, $this->timeoutSeconds);
         $ipBlocked = $ipCount >= $this->maxAttemptsPerIp;
-        $withoutUsernameBlocked = null === $username && $count >= $limit;
+        // only a tighter bound refuses on this count (3.13.1, as the limiter does); otherwise the per-IP cap decides
+        $withoutUsernameBlocked = null === $username && $this->boundsAttemptsWithoutUsername() && $count >= $limit;
         $blocked = $userBlocked || $ipBlocked || $withoutUsernameBlocked;
 
         $retryAfter = null;
@@ -203,7 +204,8 @@ final readonly class ThrottleRules
 
     /**
      * Times of this IP's attempts without a username, for a store without
-     * {@see LoginAttemptWithoutUsernameReaderInterface}: its IP rows (entity-free when it can), filtered here.
+     * {@see LoginAttemptWithoutUsernameReaderInterface}: its IP rows (entity-free when it can), filtered here. A host
+     * store that writes `''` for "no username" is counted too (3.13.1); the bundle's own stores write null.
      *
      * @return list<\DateTimeImmutable>
      */
@@ -212,7 +214,7 @@ final readonly class ThrottleRules
         $times = [];
         if ($this->repository instanceof LoginAttemptViewRepositoryInterface) {
             foreach ($this->repository->getAttemptViews($ipAddress, null, $this->timeoutSeconds) as $view) {
-                if (null === $view->username && $view->ipAddress === $ipAddress) {
+                if ($this->isWithoutUsername($view->username) && $view->ipAddress === $ipAddress) {
                     $times[] = $view->createdAt;
                 }
             }
@@ -221,11 +223,19 @@ final readonly class ThrottleRules
         }
 
         foreach ($this->repository->getAttempts($ipAddress, null, $this->timeoutSeconds) as $attempt) {
-            if (null === $attempt->getUsername() && $attempt->getIpAddress() === $ipAddress) {
+            if ($this->isWithoutUsername($attempt->getUsername()) && $attempt->getIpAddress() === $ipAddress) {
                 $times[] = $attempt->getCreatedAt();
             }
         }
 
         return $times;
+    }
+
+    /**
+     * Whether a stored username means "no username": null, or `''` from a host store (3.13.1).
+     */
+    private function isWithoutUsername(?string $username): bool
+    {
+        return null === $username || '' === $username;
     }
 }
