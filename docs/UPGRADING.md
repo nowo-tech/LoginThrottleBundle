@@ -62,6 +62,28 @@
 
 ## Unreleased
 
+Target 3.15.0 (Beacon spec 239, load readiness). No configuration change, no migration, no BC break.
+
+1. **Composer.** The bundle now requires `nowo-tech/transaction-contract` ^1.0 and `nowo-tech/transaction-doctrine`
+   ^1.1 (small, no Symfony dependency).
+2. **Attempts are decided one after the other per IP address** (`storage: database`). Each decision and each reset takes
+   a lock of the IP address and runs in a short transaction of the bundle. Nothing to configure; see
+   [HIGH-LOAD](HIGH-LOAD.md). The lock waits up to 10 s, then the request fails closed.
+3. **Transient failures** (deadlock, lock wait timeout, lock not granted) while deciding an attempt are thrown as
+   `Nowo\TransactionContract\TransientStorageFailure` instead of the DBAL exception (now its `previous`). If you
+   caught `Doctrine\DBAL\Exception\RetryableException` around the login, catch `TransientStorageFailure` too. The
+   request still ends before the password check.
+4. **A transaction around the login.** If your application keeps a transaction open while Symfony authenticates
+   (transaction-per-request middleware, `auto_commit: false`, a listener), the attempt is written inside it and is
+   durable only when you commit: commit on failed logins too, or the failed attempts are not counted. Concurrent
+   attempts now wait for that commit (see [HIGH-LOAD](HIGH-LOAD.md#inside-a-transaction-of-your-application)).
+5. **`nowo:login-throttle:cleanup`** keeps the rows younger than the longest database `timeout`, whatever
+   `--watch-period` says. A cron with a shorter period now deletes fewer rows (the ones a limiter still counts stay).
+6. **Your own store** (`LoginAttemptStoreInterface`): nothing changes. Implement the new
+   `LoginAttemptLockInterface` to get the same per-IP serialisation (the limiter then reads and writes through the
+   store `withAttemptLock()` hands to the unit).
+7. **Read replicas:** keep the bundle's connection on the primary.
+
 ## To 3.14.0
 
 From **3.13.1**:

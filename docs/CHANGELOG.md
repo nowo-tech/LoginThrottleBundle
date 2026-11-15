@@ -56,6 +56,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Load readiness (Beacon spec 239): with `storage: database`, concurrent logins are decided one after the other per IP
+address, so the lockout starts at exactly the configured attempt and no race lets an attempt through past it. See
+[HIGH-LOAD](HIGH-LOAD.md) and [UPGRADING](UPGRADING.md#unreleased).
+
+### Added
+
+- **`LoginAttemptLockInterface`** (`withAttemptLock(string $ipAddress, callable $unit)`), implemented by
+  `LoginAttemptRepository`: each decision of `DatabaseRateLimiter::consume()` (read the counts, record, read them again)
+  and each `reset()` runs as one unit under a lock of the IP address (MySQL / MariaDB `GET_LOCK()`, PostgreSQL advisory
+  transaction lock, SQLite write lock), in one transaction of the bundle's runner (`Transaction\AttemptLockRunner`, on
+  nowo-tech/transaction-doctrine's DBAL runner). Events follow the unit. A host store may implement the interface too.
+- **`docs/HIGH-LOAD.md`**: units, locks, the races measured on 3.14.0, transactions of the host, failing closed.
+- CI job **Load readiness**: concurrent PHP processes on MySQL 8.4 and PostgreSQL 16, DBAL 4 and DBAL 3
+  (`tests/Database`, `--fail-on-skipped`). PhpStanFrankenPhp 1.4 with its load-readiness flags.
+
+### Fixed
+
+- **Under-count inside a transaction of the host.** An attempt recorded inside a transaction the application left open
+  was invisible to the next attempt of the same IP address until the commit, so both were let through (one attempt
+  past the threshold per open transaction). The next attempt now waits for that commit (PostgreSQL always; MySQL /
+  MariaDB when it runs inside a transaction too).
+- **Under-count on MySQL / MariaDB `REPEATABLE READ`.** Inside a transaction of the host that had already read, the
+  counts came from its snapshot and missed every attempt committed since, so the attempt was let through past the
+  threshold. The counts are now locking reads there.
+- **A successful login in the middle of a failed attempt's decision** deleted the failure's own row, which then read a
+  count of 0 and was let through. Resets now wait for the decisions of their IP address.
+- **Parallel attempts around the threshold** could all be refused (attempts below the threshold included) and more rows
+  than attempts up to the lockout were recorded; exactly `max - 1` attempts now reach the password check, for the
+  username bucket, the per-IP cap and the bound without a username.
+- **`nowo:login-throttle:cleanup`** never deletes rows a database limiter still counts: the age threshold is at least the
+  longest database `timeout` (a shorter `--watch-period` / `watch_period` cleared lockouts in progress).
+
+### Changed
+
+- A transient storage failure while deciding an attempt (deadlock, lock wait timeout, the IP address lock not granted
+  within 10 s) is thrown as `Nowo\TransactionContract\TransientStorageFailure` (the DBAL exception is its `previous`).
+  It still fails closed: the request ends before the password check, as any storage failure did.
+- Requires `nowo-tech/transaction-contract` ^1.0 and `nowo-tech/transaction-doctrine` ^1.1, and declares
+  `doctrine/dbal` ^3.8.2 || ^4.0 (already required through doctrine/orm).
+
 ## [3.14.0] - 2026-11-14
 
 Target 3.14.0 (minor: new public API, no change for existing hosts).

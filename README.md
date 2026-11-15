@@ -9,7 +9,7 @@ This bundle replaces deprecated bundles like `anyx/login-gate-bundle` by using S
 
 ![FrankenPHP Friendly Worker Mode](docs/images/frankenphp-friendly.png)
 
-This bundle is **FrankenPHP worker mode friendly**, including worker mode **without** kernel / services reset between requests (scenario B). See [FrankenPHP worker audit](docs/FRANKENPHP-WORKER-AUDIT.md).
+This bundle is **FrankenPHP worker mode friendly**, including worker mode **without** kernel / services reset between requests (scenario B). See [FrankenPHP worker audit](docs/FRANKENPHP-WORKER-AUDIT.md). Concurrent logins with `storage: database` are decided one after the other per IP address (lockout at exactly the configured attempt): see [High load](docs/HIGH-LOAD.md).
 
 ## Features
 
@@ -346,6 +346,7 @@ The GitHub Actions CI/CD pipeline automatically:
 - [PSR evaluation (REQ-CS-007)](docs/PSR.md)
 - [Demo with FrankenPHP](docs/DEMO-FRANKENPHP.md)
 - [FrankenPHP worker audit](docs/FRANKENPHP-WORKER-AUDIT.md)
+- [High load](docs/HIGH-LOAD.md)
 - [Database storage](docs/DATABASE_STORAGE.md)
 - [Migration from Anyx](docs/MIGRATION_FROM_ANYX.md)
 - [Translations](docs/TRANSLATIONS.md)

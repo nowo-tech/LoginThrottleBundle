@@ -205,10 +205,12 @@ The `max_attempts` and `interval` options in `login_throttling` are ignored when
 ## Cleanup
 
 Database storage accumulates login attempt records over time. You should set up a cleanup task to remove old records.
+Never delete rows younger than the longest `timeout`: a limiter still counts them (since 3.15 `nowo:login-throttle:cleanup`
+enforces it; see [High load](HIGH-LOAD.md#cleanup), which also covers concurrent logins).
 
 ### Using Symfony Scheduler
 
-The bundle **does not** register a cleanup console command. Create a command as in **Manual cleanup command** below (e.g. name it `app:cleanup-login-attempts`), then schedule it:
+The bundle registers `nowo:login-throttle:cleanup` (`--watch-period`, `--dry-run`); schedule it, or a command of your own as in **Manual cleanup command** below (e.g. `app:cleanup-login-attempts`):
 
 ```yaml
 # config/packages/scheduler.yaml (example — command name must match your app)
