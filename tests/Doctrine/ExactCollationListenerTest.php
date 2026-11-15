@@ -217,12 +217,10 @@ final class ExactCollationListenerTest extends TestCase
     /**
      * SQLitePlatform on DBAL 4, SqlitePlatform on DBAL 3 (CI job "Load readiness" runs the suite on both).
      */
-    private static function sqlitePlatform(): AbstractPlatform
+    private static function sqlitePlatform(): SQLitePlatform
     {
         $class = class_exists(SQLitePlatform::class) ? SQLitePlatform::class : 'Doctrine\\DBAL\\Platforms\\SqlitePlatform';
-        $platform = new $class();
-        \assert($platform instanceof AbstractPlatform);
 
-        return $platform;
+        return new $class();
     }
 }

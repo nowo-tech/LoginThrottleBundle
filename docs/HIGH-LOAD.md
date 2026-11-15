@@ -48,7 +48,7 @@ the bucket. Since 3.15 each of those is **one unit** of `Transaction\AttemptLock
    | Server | Lock |
    |--------|------|
    | MySQL / MariaDB | `GET_LOCK('nowo_login_throttle_<sha1(table, IP)>', 10)`: a user lock of the session, taken before the transaction starts and always released in `finally`, also after a failure. If the release itself fails outside a transaction of your application, the connection is closed, so the server drops the lock instead of a worker keeping it. |
-   | PostgreSQL | `pg_try_advisory_xact_lock(<64-bit key of (table, IP)>)`, polled (2 ms doubling up to 50 ms) for up to 10 s: held until the end of the transaction. No `lock_timeout` is set and no session setting changes, so a timeout never aborts a transaction of yours. |
+   | PostgreSQL | `pg_try_advisory_xact_lock(<64-bit key of (table, IP)>)`, polled (2 ms doubling up to 50 ms) for up to 10 s: held until the end of the transaction. The unit's own transaction is `READ COMMITTED` (set per transaction, whatever `default_transaction_isolation` says), so its reads see what the previous holder committed. No `lock_timeout` is set and no session setting changes, so a timeout never aborts a transaction of yours. |
    | SQLite | An empty `UPDATE` of the attempt table: the database write lock first, so the busy timeout queues the other writers (a plain read first would let two processes deadlock on the lock upgrade). SQLite serialises every attempt of the database, whatever the IP address. |
    | Other platforms | No lock (see [Your own store](#your-own-store) for what the limiter guarantees without one). |
 
@@ -92,7 +92,10 @@ before 3.15, so a failed insert never aborts your transaction, and a DBAL 3 host
 transaction marked rollback-only):
 
 - **PostgreSQL:** the advisory lock lasts until **your** commit or rollback. Every other attempt of the same IP address
-  waits for it, then counts the attempt (or not, if you rolled back).
+  waits for it, then counts the attempt (or not, if you rolled back). The unit reads with your transaction's isolation:
+  under `READ COMMITTED` (PostgreSQL's default) it sees every committed attempt; a `REPEATABLE READ` or `SERIALIZABLE`
+  transaction of yours that had already read something hides the attempts committed since (do not authenticate inside
+  one).
 - **MySQL / MariaDB:** the user lock is released after the unit, and the unit's reads are **locking reads**: they see
   every attempt committed since your snapshot, and they wait for an attempt that another open transaction has recorded
   but not committed yet. An attempt decided **outside** any transaction of yours does not wait for such an uncommitted

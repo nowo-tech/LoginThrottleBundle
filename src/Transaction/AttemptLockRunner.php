@@ -21,7 +21,8 @@ use Nowo\TransactionDoctrine\DoctrineTransactionRunner;
  *   - MySQL / MariaDB: `GET_LOCK()` (a user lock of the session, taken before the transaction starts and always released
  *     in `finally`, also after a failure; when the release itself fails outside a transaction of the host, the
  *     connection is closed so the server drops the lock rather than a worker keeping it, audit lesson QG-M2);
- *   - PostgreSQL: `pg_try_advisory_xact_lock()`, polled until it is granted: held until the end of the transaction, so
+ *   - PostgreSQL: `pg_try_advisory_xact_lock()`, polled until it is granted (the unit's own transaction is READ
+ *     COMMITTED, so its reads see what the previous holder committed): held until the end of the transaction, so
  *     inside a transaction the host left open it serialises the host's attempts until the host commits. It never
  *     waits on `lock_timeout` (which would abort the host's transaction on PostgreSQL) and changes no setting;
  *   - SQLite: an empty `UPDATE` of the attempt table, which takes the database's write lock first (a plain read first
@@ -101,8 +102,14 @@ final readonly class AttemptLockRunner
             }
         }
 
-        $locked = function () use ($connection, $platform, $table, $ipAddress, $unit): mixed {
+        $locked = function () use ($connection, $platform, $table, $ipAddress, $unit, $nested): mixed {
             if ($platform instanceof PostgreSQLPlatform) {
+                if (!$nested) {
+                    // the unit's own transaction reads what was committed before each statement, whatever the server's
+                    // default_transaction_isolation: under REPEATABLE READ the first lock poll would fix a snapshot
+                    // taken before the previous holder committed
+                    $connection->executeStatement('SET TRANSACTION ISOLATION LEVEL READ COMMITTED');
+                }
                 $this->acquireAdvisoryLock($connection, self::lockKey($table, $ipAddress));
             } elseif ($platform instanceof SQLitePlatform) {
                 // the database write lock first: SQLite's busy timeout then queues the other writers

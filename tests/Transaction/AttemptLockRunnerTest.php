@@ -127,8 +127,8 @@ final class AttemptLockRunnerTest extends TestCase
             $this->log[] = 'unit';
         });
 
-        $this->assertSame(['begin', 'pg_try_advisory_xact_lock', 'pg_try_advisory_xact_lock', 'pg_try_advisory_xact_lock', 'unit', 'commit'], $this->statements());
-        $this->assertStringEndsWith(' ' . AttemptLockRunner::lockKey('login_attempts', '10.0.0.1'), $this->log[1]);
+        $this->assertSame(['begin', 'SET TRANSACTION ISOLATION LEVEL READ COMMITTED', 'pg_try_advisory_xact_lock', 'pg_try_advisory_xact_lock', 'pg_try_advisory_xact_lock', 'unit', 'commit'], $this->statements());
+        $this->assertStringEndsWith(' ' . AttemptLockRunner::lockKey('login_attempts', '10.0.0.1'), $this->log[2]);
     }
 
     public function testPostgreSqlInsideTheHostsTransactionKeepsTheLockInIt(): void
@@ -256,6 +256,11 @@ final class AttemptLockRunnerTest extends TestCase
         $connection->method('rollBack')->willReturnCallback(function () use (&$level): void {
             --$level;
             $this->log[] = 'rollBack';
+        });
+        $connection->method('executeStatement')->willReturnCallback(function (string $sql): int {
+            $this->log[] = $sql;
+
+            return 0;
         });
         $connection->method('fetchOne')->willReturnCallback(function (string $sql, array $parameters = []) use (&$answers): mixed {
             $this->log[] = trim($sql . ' ' . implode(' ', array_map(strval(...), $parameters)));
