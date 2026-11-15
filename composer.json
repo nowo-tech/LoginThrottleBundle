@@ -31,14 +31,17 @@
     ],
     "require": {
         "php": ">=8.2 <8.6",
+        "doctrine/dbal": "^3.8.2 || ^4.0",
+        "doctrine/doctrine-bundle": "^2.10 || ^3.0",
+        "doctrine/orm": "^3.7",
+        "nowo-tech/transaction-contract": "^1.0",
+        "nowo-tech/transaction-doctrine": "^1.1",
         "psr/clock": "^1.0",
         "psr/event-dispatcher": "^1.0",
         "symfony/framework-bundle": "^7.4 || ^8.0",
-        "symfony/security-bundle": "^7.4 || ^8.0",
         "symfony/polyfill-intl-normalizer": "^1.27",
         "symfony/rate-limiter": "^7.4 || ^8.0",
-        "doctrine/orm": "^3.7",
-        "doctrine/doctrine-bundle": "^2.10 || ^3.0"
+        "symfony/security-bundle": "^7.4 || ^8.0"
     },
     "suggest": {
         "symfony/translation": "Required for internationalization support (i18n)",
@@ -47,7 +50,7 @@
     "require-dev": {
         "friendsofphp/php-cs-fixer": "^3.0",
         "igor-php/igor-php": "^0.10.0",
-        "nowo-tech/phpstan-frankenphp": "^1.0",
+        "nowo-tech/phpstan-frankenphp": "^1.4",
         "phpstan/phpstan": "^2.0",
         "phpstan/phpstan-phpunit": "^2.0",
         "phpstan/phpstan-symfony": "^2.0",
