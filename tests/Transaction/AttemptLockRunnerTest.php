@@ -59,7 +59,7 @@ final class AttemptLockRunnerTest extends TestCase
             $this->log[] = 'unit';
         });
 
-        $this->assertSame(['GET_LOCK', 'unit', 'RELEASE_LOCK'], $this->statements());
+        $this->assertSame(['GET_LOCK', 'savepoint', 'unit', 'release savepoint', 'RELEASE_LOCK'], $this->statements(), 'a savepoint of its own, no transaction level');
     }
 
     public function testMySqlReleasesTheUserLockAfterAFailedUnit(): void
@@ -182,6 +182,34 @@ final class AttemptLockRunnerTest extends TestCase
         $this->assertStringEndsWith(' ' . AttemptLockRunner::lockKey('login_attempts', '10.0.0.1'), $this->log[2]);
     }
 
+    /**
+     * A failed unit inside the host's transaction keeps nothing, even if the host catches the failure and commits.
+     */
+    public function testAFailedUnitInsideTheHostsTransactionRollsBackItsSavepoint(): void
+    {
+        $connection = $this->connection(new MySQLPlatform(), true, ['GET_LOCK' => 1]);
+
+        try {
+            (new AttemptLockRunner())->run($connection, 'login_attempts', '10.0.0.1', static function (): never {
+                throw new TransientStorageFailure(1);
+            });
+            $this->fail('The failure must reach the caller.');
+        } catch (TransientStorageFailure) {
+        }
+
+        $this->assertSame(['GET_LOCK', 'savepoint', 'rollback savepoint', 'RELEASE_LOCK'], $this->statements());
+    }
+
+    public function testASavepointTheServerAlreadyDroppedReportsTheOriginalFailure(): void
+    {
+        $connection = $this->connection(new PostgreSQLPlatform(), true, ['pg_try_advisory_xact_lock' => [true], 'ROLLBACK TO SAVEPOINT' => new \RuntimeException('no such savepoint')]);
+
+        $this->expectExceptionMessage('deadlock');
+        (new AttemptLockRunner())->run($connection, 'login_attempts', '10.0.0.1', static function (): never {
+            throw new \RuntimeException('deadlock');
+        });
+    }
+
     public function testPostgreSqlInsideTheHostsTransactionKeepsTheLockInIt(): void
     {
         $connection = $this->connection(new PostgreSQLPlatform(), true, ['pg_try_advisory_xact_lock' => [true]]);
@@ -190,7 +218,7 @@ final class AttemptLockRunnerTest extends TestCase
             $this->log[] = 'unit';
         });
 
-        $this->assertSame(['pg_try_advisory_xact_lock', 'unit'], $this->statements());
+        $this->assertSame(['savepoint', 'pg_try_advisory_xact_lock', 'unit', 'release savepoint'], $this->statements());
     }
 
     public function testAnAdvisoryLockNotGrantedInTimeFailsTransiently(): void
@@ -312,6 +340,19 @@ final class AttemptLockRunnerTest extends TestCase
             $this->log[] = $sql;
 
             return 0;
+        });
+        $connection->method('createSavepoint')->willReturnCallback(function (string $name): void {
+            $this->assertStringStartsWith('nowo_login_throttle_unit_', $name);
+            $this->log[] = 'savepoint';
+        });
+        $connection->method('releaseSavepoint')->willReturnCallback(function (): void {
+            $this->log[] = 'release savepoint';
+        });
+        $connection->method('rollbackSavepoint')->willReturnCallback(function () use (&$answers): void {
+            $this->log[] = 'rollback savepoint';
+            if (($answers['ROLLBACK TO SAVEPOINT'] ?? null) instanceof \Throwable) {
+                throw $answers['ROLLBACK TO SAVEPOINT'];
+            }
         });
         $connection->method('fetchOne')->willReturnCallback(function (string $sql, array $parameters = []) use (&$answers): mixed {
             $this->log[] = trim($sql . ' ' . implode(' ', array_map(strval(...), $parameters)));

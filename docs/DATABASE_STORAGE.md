@@ -210,7 +210,7 @@ enforces it; see [High load](HIGH-LOAD.md#cleanup), which also covers concurrent
 
 ### Using Symfony Scheduler
 
-The bundle registers `nowo:login-throttle:cleanup` (`--watch-period`, `--dry-run`); schedule it, or a command of your own as in **Manual cleanup command** below (e.g. `app:cleanup-login-attempts`):
+The bundle registers `nowo:login-throttle:cleanup` (`--watch-period`, `--dry-run`), which never deletes rows a limiter still counts: schedule it (recommended), or a command of your own as in **Manual cleanup command** below (e.g. `app:cleanup-login-attempts`), which must keep at least the longest `timeout` itself:
 
 ```yaml
 # config/packages/scheduler.yaml (example — command name must match your app)
@@ -253,7 +253,8 @@ class CleanupLoginAttemptsCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $watchPeriod = 3600; // 1 hour - use the same value as watch_period
+        // never below the longest `timeout` of your database firewalls: younger rows still count (3.15)
+        $watchPeriod = max(3600, 600); // max(watch_period, longest timeout)
         $deleted = $this->repository->cleanup($watchPeriod);
         $output->writeln(sprintf('Cleaned up %d old login attempts', $deleted));
 

@@ -72,7 +72,8 @@ Every other attempt, and every reset, is **one unit** of `Transaction\AttemptLoc
    timeout, serialization failure) becomes `Nowo\TransactionContract\TransientStorageFailure` (Retry-After hint: 1 s).
 
 The events follow the unit: `LoginThrottledEvent` and `LoginAttemptsClearedEvent` are dispatched after it committed,
-never inside it. A unit makes one attempt: it is never replayed (a login is not worth a second try at the database;
+never inside it (inside a transaction of yours: after the unit's writes, before your commit; see
+[Inside a transaction of your application](#inside-a-transaction-of-your-application)). A unit makes one attempt: it is never replayed (a login is not worth a second try at the database;
 the client retries).
 
 The lock is held for the few statements of one attempt (a handful of milliseconds). Concurrent attempts of one IP
@@ -105,9 +106,11 @@ with DoctrineBundle `replicas:` the user lock can no longer be taken on a replic
 
 The bundle does not open a second connection. When your code (a listener, a transaction-per-request middleware, a
 transaction a previous request of the worker left open, `auto_commit: false`) has a transaction open on the bundle's
-connection when the login runs, the unit runs **inside your transaction** (the attempt keeps its own savepoint, as
-before 3.15, so a failed insert never aborts your transaction, and a DBAL 3 host without savepoints never sees its
-transaction marked rollback-only):
+connection when the login runs, the unit runs **inside your transaction**, in an explicit savepoint of its own: a failed
+unit rolls back to it and keeps nothing (even if you catch the failure and commit), a failed insert never aborts your
+transaction, and a DBAL 3 host without `use_savepoints` never sees its transaction marked rollback-only. The bundle
+commits nothing there: the attempt, and the events dispatched after the unit, follow the unit's writes, not a commit
+(your commit makes the attempt durable, your rollback discards it):
 
 - **PostgreSQL:** the advisory lock lasts until **your** commit or rollback. Every other attempt of the same IP address
   waits for it, then counts the attempt (or not, if you rolled back). The unit reads with your transaction's isolation:
@@ -216,8 +219,9 @@ it).
 ## Workers
 
 The runner, the repository and the limiter hold no state between requests: the lock is released (MySQL) or ended with
-the transaction (PostgreSQL) in every unit, the locking-read store is a copy made for one unit, and the transaction is
-closed before the unit returns, also after a failure. `tests/Integration/WorkerModeKeptAliveKernelTest.php` runs
+the transaction (PostgreSQL) in every unit, the locking-read store is a copy made for one unit, and the bundle's own
+transaction (or, inside a transaction of yours, its savepoint) is closed before the unit returns, also after a failure.
+A transaction of yours stays yours to end. `tests/Integration/WorkerModeKeptAliveKernelTest.php` runs
 1,200 logins through one kept-alive kernel. `composer igor` and PhpStanFrankenPhp's worker rules (with the
 load-readiness flags of 1.4) run in CI.
 

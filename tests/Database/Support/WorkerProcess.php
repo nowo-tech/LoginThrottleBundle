@@ -109,6 +109,14 @@ final class WorkerProcess
         if (\is_resource($this->output)) {
             fclose($this->output);
         }
+        // bounded: a worker still waiting in a statement or a lock does not read stdin
+        $deadline = microtime(true) + 5.0;
+        while (proc_get_status($this->process)['running'] && microtime(true) < $deadline) {
+            usleep(20_000);
+        }
+        if (proc_get_status($this->process)['running']) {
+            proc_terminate($this->process, 9);
+        }
         proc_close($this->process);
     }
 }

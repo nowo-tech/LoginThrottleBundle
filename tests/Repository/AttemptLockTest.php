@@ -94,6 +94,33 @@ final class AttemptLockTest extends TestCase
         $this->assertSame(2, $repository->countAttemptsByIp('10.0.0.1', 600), 'the host rolled the unit back with its own work');
     }
 
+    /**
+     * CodeRabbit (PR #30): a unit that fails after recording inside the host's transaction keeps nothing, even when the
+     * host catches the failure and commits.
+     */
+    public function testAFailedUnitInsideTheHostsTransactionKeepsNothingWhenTheHostCommits(): void
+    {
+        $entityManager = $this->entityManager();
+        $repository = $this->repository($entityManager);
+        $connection = $entityManager->getConnection();
+
+        $connection->beginTransaction();
+
+        try {
+            $repository->withAttemptLock('10.0.0.1', static function (LoginAttemptRepositoryInterface|LoginAttemptStoreInterface $store): never {
+                $store->recordAttemptView('10.0.0.1', 'alice');
+
+                throw new \DomainException('failed after the insert');
+            });
+            $this->fail('The failure must reach the caller.');
+        } catch (\DomainException) {
+        }
+        $this->assertSame(1, $connection->getTransactionNestingLevel());
+        $connection->commit();
+
+        $this->assertSame(0, $repository->countAttemptsByIp('10.0.0.1', 600));
+    }
+
     public function testTheLimiterDecidesAndResetsUnderTheLock(): void
     {
         $entityManager = $this->entityManager();

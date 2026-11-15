@@ -37,9 +37,9 @@ use Nowo\TransactionDoctrine\DoctrineTransactionRunner;
  *   no transaction of the bundle stays open; a transient failure (deadlock, lock wait timeout, serialization failure)
  *   becomes {@see TransientStorageFailure}.
  *
- * Inside a transaction the host left open the unit runs directly in it (no runner, no savepoint of its own: the
- * attempt keeps its own savepoint, as before 3.15, so a DBAL 3 host without savepoints never sees its transaction
- * marked rollback-only by a bundle failure). On MySQL / MariaDB the caller reads with locking reads there too
+ * Inside a transaction the host left open the unit runs in it, in an explicit savepoint of its own (no runner: the
+ * host's nesting level is unchanged, so a DBAL 3 host without `use_savepoints` never sees its transaction marked
+ * rollback-only by a bundle failure, and a failed unit keeps nothing even if the host commits afterwards). On MySQL / MariaDB the caller reads with locking reads there too
  * ({@see self::needsLockingReads()}): the host's snapshot may predate attempts that other requests committed. Under a
  * host REPEATABLE READ transaction those locking reads take gap locks that last until the host commits, so an attempt of
  * a neighbouring IP address may wait for that commit (docs/HIGH-LOAD.md, Known issues).
@@ -109,7 +109,7 @@ final readonly class AttemptLockRunner
 
             try {
                 if ($nested) {
-                    return $unit();
+                    return $this->inSavepoint($connection, $unit);
                 }
                 // audit QU-M2: the unit's own transaction is READ COMMITTED, so its locking reads take record locks only
                 // (no gap lock stalls another IP address) and wait for an attempt a host transaction has not committed
@@ -139,7 +139,41 @@ final readonly class AttemptLockRunner
             return $unit();
         };
 
-        return $nested ? $locked() : DoctrineTransactionRunner::forConnection($connection, self::RETRY_AFTER_SECONDS)->run($locked);
+        return $nested ? $this->inSavepoint($connection, $locked) : DoctrineTransactionRunner::forConnection($connection, self::RETRY_AFTER_SECONDS)->run($locked);
+    }
+
+    /**
+     * Runs a unit nested in the host's transaction inside a savepoint of its own, so a failed unit keeps nothing (an
+     * attempt it already recorded is rolled back with it) even when the host catches the failure and commits. Explicit
+     * savepoint calls: the host's nesting level is unchanged, whatever DBAL 3's `use_savepoints` says. The name is unique
+     * per call (on MySQL / MariaDB a SAVEPOINT with an existing name replaces it).
+     *
+     * @template T
+     *
+     * @param callable(): T $unit
+     *
+     * @return T
+     */
+    private function inSavepoint(Connection $connection, callable $unit): mixed
+    {
+        $savepoint = 'nowo_login_throttle_unit_' . bin2hex(random_bytes(6));
+        $connection->createSavepoint($savepoint);
+
+        try {
+            $result = $unit();
+        } catch (\Throwable $failure) {
+            try {
+                $connection->rollbackSavepoint($savepoint);
+            } catch (\Throwable) {
+                // a deadlock or lock wait timeout may already have rolled back the host's whole transaction (and the
+                // savepoint with it): the original failure is the one to report
+            }
+
+            throw $failure;
+        }
+        $connection->releaseSavepoint($savepoint);
+
+        return $result;
     }
 
     /**
