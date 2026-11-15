@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 3.15.0](#to-3150)
 - [To 3.14.0](#to-3140)
   - [To 3.14.0](#to-3140-1)
 - [To 3.13.1](#to-3131)
@@ -61,6 +62,14 @@
 - [Notes](#notes)
 
 ## Unreleased
+
+## To 3.15.0
+
+From **3.14.0**:
+
+```bash
+composer update nowo-tech/login-throttle-bundle
+```
 
 Target 3.15.0 (Beacon spec 239, load readiness). No configuration change, no migration, no BC break.
 

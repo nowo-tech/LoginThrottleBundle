@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[3.15.0] - 2026-11-15](#3150---2026-11-15)
 - [[3.14.0] - 2026-11-14](#3140---2026-11-14)
 - [[3.13.1] - 2026-11-14](#3131---2026-11-14)
 - [[3.13.0] - 2026-11-14](#3130---2026-11-14)
@@ -56,9 +57,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.15.0] - 2026-11-15
+
 Load readiness (Beacon spec 239): with `storage: database`, concurrent logins are decided one after the other per IP
 address, so the lockout starts at exactly the configured attempt and no race lets an attempt through past it. See
-[HIGH-LOAD](HIGH-LOAD.md) and [UPGRADING](UPGRADING.md#unreleased).
+[HIGH-LOAD](HIGH-LOAD.md) and [UPGRADING](UPGRADING.md#to-3150).
 
 ### Added
 
@@ -114,6 +117,8 @@ address, so the lockout starts at exactly the configured attempt and no race let
   It still fails closed: the request ends before the password check, as any storage failure did.
 - Requires `nowo-tech/transaction-contract` ^1.0 and `nowo-tech/transaction-doctrine` ^1.1, and declares
   `doctrine/dbal` ^3.8.2 || ^4.0 (already required through doctrine/orm).
+
+[3.15.0]: https://github.com/nowo-tech/LoginThrottleBundle/releases/tag/v3.15.0
 
 ## [3.14.0] - 2026-11-14
 
