@@ -9,8 +9,9 @@ use Nowo\LoginThrottleBundle\Repository\LoginAttemptStoreInterface;
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptView;
 
 /**
- * A host store with a lock (3.15) that hands its units ANOTHER store: every read or write outside a unit fails, so a
- * test proves that the limiter decides and resets through the store the unit received.
+ * A host store with a lock (3.15) that hands its units ANOTHER store: every write outside a unit fails, so a test
+ * proves that the limiter records and resets through the store the unit received. Reads outside a unit (the refusal
+ * fast path, audit QU-M1) go to the same rows.
  */
 final class LockingDelegateStore implements LoginAttemptLockInterface, LoginAttemptStoreInterface
 {
@@ -30,22 +31,22 @@ final class LockingDelegateStore implements LoginAttemptLockInterface, LoginAtte
 
     public function countAttempts(string $ipAddress, ?string $username, int $seconds): int
     {
-        throw $this->outside();
+        return $this->inner->countAttempts($ipAddress, $username, $seconds);
     }
 
     public function countAttemptsByIp(string $ipAddress, int $seconds): int
     {
-        throw $this->outside();
+        return $this->inner->countAttemptsByIp($ipAddress, $seconds);
     }
 
     public function countAttemptsByUsername(string $username, int $seconds): int
     {
-        throw $this->outside();
+        return $this->inner->countAttemptsByUsername($username, $seconds);
     }
 
     public function isBlocked(string $ipAddress, ?string $username, int $maxAttempts, int $timeoutSeconds): bool
     {
-        throw $this->outside();
+        return $this->inner->isBlocked($ipAddress, $username, $maxAttempts, $timeoutSeconds);
     }
 
     public function recordAttemptView(string $ipAddress, ?string $username): LoginAttemptView
@@ -65,27 +66,27 @@ final class LockingDelegateStore implements LoginAttemptLockInterface, LoginAtte
 
     public function countOlderThan(int $watchPeriodSeconds): int
     {
-        throw $this->outside();
+        return $this->inner->countOlderThan($watchPeriodSeconds);
     }
 
     public function getAttemptViews(string $ipAddress, ?string $username, int $seconds): array
     {
-        throw $this->outside();
+        return $this->inner->getAttemptViews($ipAddress, $username, $seconds);
     }
 
     public function findOldestAttemptAt(string $ipAddress, ?string $username, int $seconds): ?\DateTimeImmutable
     {
-        throw $this->outside();
+        return $this->inner->findOldestAttemptAt($ipAddress, $username, $seconds);
     }
 
     public function countAttemptsWithoutUsername(string $ipAddress, int $seconds): int
     {
-        throw $this->outside();
+        return $this->inner->countAttemptsWithoutUsername($ipAddress, $seconds);
     }
 
     public function findOldestAttemptWithoutUsernameAt(string $ipAddress, int $seconds): ?\DateTimeImmutable
     {
-        throw $this->outside();
+        return $this->inner->findOldestAttemptWithoutUsernameAt($ipAddress, $seconds);
     }
 
     private function outside(): \LogicException

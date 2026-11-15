@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nowo\LoginThrottleBundle\Tests\Database;
 
+use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Platforms\AbstractMySQLPlatform;
 use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\ORM\EntityManager;
@@ -97,7 +98,7 @@ final class LoadReadinessTest extends TestCase
     public function testAnAttemptBeingDecidedHoldsBackTheNextAttemptOfItsIp(): void
     {
         $this->seed('alice', 1);
-        $first = $this->worker('paused', 'alice', 3, 1000, ['3']);
+        $first = $this->worker('paused', 'alice', 3, 1000);
         $first->expect('PAUSED');
 
         $second = $this->worker('burst', 'alice', 3, 1000, ['1']);
@@ -164,7 +165,7 @@ final class LoadReadinessTest extends TestCase
     public function testAResetWaitsForTheAttemptBeingDecided(): void
     {
         $this->seed('alice', 1);
-        $failure = $this->worker('paused', 'alice', 2, 1000, ['3']);
+        $failure = $this->worker('paused', 'alice', 2, 1000);
         $failure->expect('PAUSED');
 
         $success = $this->worker('reset', 'alice', 2, 1000);
@@ -185,14 +186,7 @@ final class LoadReadinessTest extends TestCase
      */
     public function testALockNotGrantedInTimeFailsClosed(): void
     {
-        $holder = AttemptDatabase::entityManager($this->url)->getConnection();
-        $platform = $holder->getDatabasePlatform();
-        if ($platform instanceof AbstractMySQLPlatform) {
-            $this->assertSame(1, (int) $holder->fetchOne('SELECT GET_LOCK(?, 0)', [AttemptLockRunner::lockName('login_attempts', self::IP)]));
-        } else {
-            $holder->beginTransaction();
-            $holder->fetchOne('SELECT pg_advisory_xact_lock(?)', [AttemptLockRunner::lockKey('login_attempts', self::IP)]);
-        }
+        $holder = $this->holdLock(self::IP);
 
         $repository = new LoginAttemptRepository(AttemptDatabase::registry($this->entityManager), null, new AttemptLockRunner(1));
         $started = microtime(true);
@@ -210,6 +204,81 @@ final class LoadReadinessTest extends TestCase
         $this->assertSame(0, $this->rows('alice'));
         $this->assertFalse($this->entityManager->getConnection()->isTransactionActive());
         $this->assertTrue(AttemptDatabase::limiter($repository, 3, 1000)->consume(AttemptDatabase::request(self::IP, 'alice'))->isAccepted(), 'the lock is free again');
+    }
+
+    /**
+     * Audit QU-M1: once a limit refuses an IP address, a flood from it is refused without waiting for the lock of the IP
+     * address, so it never parks a worker and a connection per request (the lock is held elsewhere the whole time; on
+     * 3.15.0-dev 5d862c4 every attempt waited for it, then failed after the lock timeout).
+     */
+    public function testAFloodFromALockedOutIpNeverWaitsForItsLock(): void
+    {
+        $this->seed('alice', 3);
+        $this->seed('bob', 1);
+        $holder = $this->holdLock(self::IP);
+        $started = microtime(true);
+
+        $workers = [];
+        foreach (['alice', 'rotating*', 'alice', 'rotating*'] as $username) {
+            $workers[] = $worker = $this->worker('burst', $username, 3, 4, ['10']);
+            $worker->expect('READY');
+        }
+        foreach ($workers as $worker) {
+            $worker->send();
+        }
+        $outcomes = [];
+        foreach ($workers as $worker) {
+            $outcomes = [...$outcomes, ...$worker->rest(20.0)];
+        }
+        $holder->close();
+
+        $this->assertSame(array_fill(0, 40, 'refused'), $outcomes, 'refused at once, none waited for the lock (no TransientStorageFailure)');
+        $this->assertLessThan(AttemptLockRunner::LOCK_TIMEOUT_SECONDS, microtime(true) - $started);
+        $this->assertSame(4, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM login_attempts'), 'nothing recorded');
+    }
+
+    /**
+     * Audit QU-M2 (a): an attempt OUTSIDE any transaction counts the attempt that a host transaction has recorded but not
+     * committed yet: it waits for that commit (MySQL: READ COMMITTED locking read; PostgreSQL: the advisory lock lasts
+     * until the host commits). On MySQL at 5d862c4 both were let through past the threshold of 2.
+     */
+    public function testAnAttemptOutsideATransactionCountsAnAttemptAHostHasNotCommittedYet(): void
+    {
+        $host = $this->worker('host', 'alice', 2, 1000, ['hold']);
+        $host->expect('accepted');
+        $host->expect('HELD');
+
+        $outside = $this->worker('burst', 'alice', 2, 1000, ['1']);
+        $outside->expect('READY');
+        $outside->send();
+        $this->assertNull($outside->line(self::HELD_BACK_SECONDS), 'the attempt outside a transaction waits for the host\'s commit');
+
+        $host->send();
+        $this->assertSame([], $host->rest());
+        $this->assertSame(['refused'], $outside->rest(), 'the second attempt reaches the threshold of 2');
+        $this->assertSame(2, $this->rows('alice'));
+    }
+
+    /**
+     * Audit QU-L1: with DoctrineBundle `replicas:` (keep_replica on), the lock is taken and released on the primary's
+     * session: no lock is left behind, and the next logins of the IP address are not refused by a leaked lock (on MySQL
+     * at 5d862c4 the user lock stayed on the replica session).
+     */
+    public function testWithReplicasTheLockIsTakenAndReleasedOnThePrimary(): void
+    {
+        $mysql = $this->entityManager->getConnection()->getDatabasePlatform() instanceof AbstractMySQLPlatform;
+        $entityManager = AttemptDatabase::entityManager($this->url, true);
+        $limiter = AttemptDatabase::limiter(new LoginAttemptRepository(AttemptDatabase::registry($entityManager), null, new AttemptLockRunner(1)), 5, 1000);
+        $name = AttemptLockRunner::lockName('login_attempts', self::IP);
+
+        for ($i = 0; $i < 3; ++$i) {
+            $this->assertTrue($limiter->consume(AttemptDatabase::request(self::IP, 'alice'))->isAccepted());
+            $this->assertSame(0, (int) $this->entityManager->getConnection()->fetchOne(
+                $mysql ? 'SELECT COUNT(IS_USED_LOCK(?))' : "SELECT COUNT(*) FROM pg_locks WHERE locktype = 'advisory' AND ? <> ''",
+                [$name],
+            ), 'no lock left on any session');
+        }
+        $this->assertSame(3, $this->rows('alice'));
     }
 
     private function assertBurst(string $username, int $maxAttempts, int $perIpCap, ?int $withoutUsername, int $accepted, int $rows): void
@@ -240,6 +309,22 @@ final class LoadReadinessTest extends TestCase
     private function worker(string $command, string $username, int $maxAttempts, int $perIpCap, array $arguments = [], string $ipAddress = self::IP): WorkerProcess
     {
         return $this->workers[] = new WorkerProcess($this->url, $command, [$ipAddress, $username, (string) $maxAttempts, (string) $perIpCap, ...$arguments]);
+    }
+
+    /**
+     * Another session holds the lock of $ipAddress until the returned connection is closed.
+     */
+    private function holdLock(string $ipAddress): Connection
+    {
+        $holder = AttemptDatabase::entityManager($this->url)->getConnection();
+        if ($holder->getDatabasePlatform() instanceof AbstractMySQLPlatform) {
+            $this->assertSame(1, (int) $holder->fetchOne('SELECT GET_LOCK(?, 0)', [AttemptLockRunner::lockName('login_attempts', $ipAddress)]));
+        } else {
+            $holder->beginTransaction();
+            $holder->fetchOne('SELECT pg_advisory_xact_lock(?)', [AttemptLockRunner::lockKey('login_attempts', $ipAddress)]);
+        }
+
+        return $holder;
     }
 
     private function seed(string $username, int $count): void

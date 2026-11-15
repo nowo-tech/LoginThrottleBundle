@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\LoginThrottleBundle\Tests\Transaction;
 
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Connections\PrimaryReadReplicaConnection;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Doctrine\DBAL\Platforms\MySQLPlatform;
@@ -41,7 +42,8 @@ final class AttemptLockRunnerTest extends TestCase
         $this->assertSame('done', $result);
         $name = AttemptLockRunner::lockName('login_attempts', '10.0.0.1');
         $this->assertSame([
-            'SELECT GET_LOCK(?, ?) ' . $name . ' 10',
+            'SELECT GET_LOCK(?, ?) ' . $name . ' 3',
+            'SET TRANSACTION ISOLATION LEVEL READ COMMITTED',
             'begin',
             'unit',
             'commit',
@@ -73,7 +75,7 @@ final class AttemptLockRunnerTest extends TestCase
             $this->assertSame('refused', $failure->getMessage());
         }
 
-        $this->assertSame(['GET_LOCK', 'begin', 'rollBack', 'RELEASE_LOCK'], $this->statements(), 'rolled back, then released');
+        $this->assertSame(['GET_LOCK', 'SET TRANSACTION ISOLATION LEVEL READ COMMITTED', 'begin', 'rollBack', 'RELEASE_LOCK'], $this->statements(), 'rolled back, then released');
     }
 
     /**
@@ -108,6 +110,55 @@ final class AttemptLockRunnerTest extends TestCase
         $connection->expects($this->once())->method('close');
 
         $this->assertSame(7, (new AttemptLockRunner())->run($connection, 'login_attempts', '10.0.0.1', static fn (): int => 7));
+    }
+
+    /**
+     * @return iterable<string, array{mixed}>
+     */
+    public static function unreleasedUserLocks(): iterable
+    {
+        yield 'held by another session' => [0];
+        yield 'not held by this session (a replica session took it)' => [null];
+    }
+
+    /**
+     * Audit QU-L1: a release that reports a lock this session did not hold is a failed release.
+     */
+    #[DataProvider('unreleasedUserLocks')]
+    public function testAUserLockReleaseThatReportsNoLockClosesTheConnection(mixed $released): void
+    {
+        $connection = $this->connection(new MySQLPlatform(), false, ['GET_LOCK' => 1, 'RELEASE_LOCK' => $released]);
+        $connection->expects($this->once())->method('close');
+
+        $this->assertSame(7, (new AttemptLockRunner())->run($connection, 'login_attempts', '10.0.0.1', static fn (): int => 7));
+    }
+
+    public function testAUserLockReleaseThatReportsNoLockInsideTheHostsTransactionIsReported(): void
+    {
+        $connection = $this->connection(new MySQLPlatform(), true, ['GET_LOCK' => 1, 'RELEASE_LOCK' => 0]);
+        $connection->expects($this->never())->method('close');
+
+        $this->expectExceptionMessage('was not held by this session at release');
+        (new AttemptLockRunner())->run($connection, 'login_attempts', '10.0.0.1', static fn (): int => 7);
+    }
+
+    /**
+     * Audit QU-L1: with DoctrineBundle `replicas:` the lock, the unit and the release run on the primary's session.
+     */
+    public function testAPrimaryReadReplicaConnectionIsPinnedToThePrimaryBeforeTheLock(): void
+    {
+        $connection = $this->connection(new MySQLPlatform(), false, ['GET_LOCK' => 1], PrimaryReadReplicaConnection::class);
+        // void on DBAL 4, bool on DBAL 3
+        $returns = 'void' === (string) (new \ReflectionMethod(PrimaryReadReplicaConnection::class, 'ensureConnectedToPrimary'))->getReturnType() ? null : true;
+        $connection->expects($this->once())->method('ensureConnectedToPrimary')->willReturnCallback(function () use ($returns): ?bool {
+            $this->log[] = 'primary';
+
+            return $returns;
+        });
+
+        (new AttemptLockRunner())->run($connection, 'login_attempts', '10.0.0.1', static fn (): int => 7);
+
+        $this->assertSame(['primary', 'GET_LOCK', 'SET TRANSACTION ISOLATION LEVEL READ COMMITTED', 'begin', 'commit', 'RELEASE_LOCK'], $this->statements());
     }
 
     public function testAUserLockThatCannotBeReleasedInsideTheHostsTransactionIsReported(): void
@@ -216,27 +267,27 @@ final class AttemptLockRunnerTest extends TestCase
         $this->assertNotSame($key, AttemptLockRunner::lockKey('app_login_attempts', '10.0.0.1'));
     }
 
-    public function testLockingReadsOnlyInsideTheHostsTransactionOnMySql(): void
+    public function testLockingReadsOnMySqlOnly(): void
     {
         $mysql = $this->connection(new MySQLPlatform(), false, []);
         $postgresql = $this->connection(new PostgreSQLPlatform(), false, []);
 
-        $this->assertTrue((new AttemptLockRunner())->needsLockingReads($mysql, true));
-        $this->assertFalse((new AttemptLockRunner())->needsLockingReads($mysql, false));
-        $this->assertFalse((new AttemptLockRunner())->needsLockingReads($postgresql, true));
-        $this->assertTrue((new AttemptLockRunner(lockingReads: true))->needsLockingReads($postgresql, true));
-        $this->assertFalse((new AttemptLockRunner(lockingReads: false))->needsLockingReads($mysql, true));
-        $this->assertFalse((new AttemptLockRunner(lockingReads: true))->needsLockingReads($mysql, false));
+        $this->assertTrue((new AttemptLockRunner())->needsLockingReads($mysql));
+        $this->assertFalse((new AttemptLockRunner())->needsLockingReads($postgresql));
+        $this->assertTrue((new AttemptLockRunner(lockingReads: true))->needsLockingReads($postgresql));
+        $this->assertFalse((new AttemptLockRunner(lockingReads: false))->needsLockingReads($mysql));
     }
 
     /**
      * A connection mock that logs the statements and answers fetchOne() by the SQL function it calls.
      *
-     * @param array<string, mixed> $answers SQL function => answer (a list: one per call; a Throwable: thrown)
+     * @param array<string, mixed>     $answers SQL function => answer (a list: one per call; a Throwable: thrown); RELEASE_LOCK answers 1 unless given
+     * @param class-string<Connection> $class   The connection class to mock
      */
-    private function connection(AbstractPlatform $platform, bool $hostTransaction, array $answers): MockObject&Connection
+    private function connection(AbstractPlatform $platform, bool $hostTransaction, array $answers, string $class = Connection::class): MockObject&Connection
     {
-        $connection = $this->createMock(Connection::class);
+        $answers += ['RELEASE_LOCK' => 1];
+        $connection = $this->createMock($class);
         $connection->method('getDatabasePlatform')->willReturn($platform);
         $level = $hostTransaction ? 1 : 0;
         $connection->method('isTransactionActive')->willReturnCallback(static function () use (&$level): bool {

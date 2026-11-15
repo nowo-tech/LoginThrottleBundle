@@ -45,6 +45,11 @@ services:
     tags:
       - { name: doctrine.event_listener, event: postGenerateSchemaTable }
 
+  # 3.15: the per-IP lock and unit transaction of the database limiter (option attempt_lock_timeout)
+  Nowo\LoginThrottleBundle\Transaction\AttemptLockRunner:
+    arguments:
+      $lockTimeoutSeconds: '%nowo_login_throttle.attempt_lock_timeout%'
+
   # Repository for LoginAttempt entity (optional, only if Doctrine is installed)
   Nowo\LoginThrottleBundle\Repository\LoginAttemptRepository:
     arguments:

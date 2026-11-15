@@ -67,6 +67,8 @@ address, so the lockout starts at exactly the configured attempt and no race let
   and each `reset()` runs as one unit under a lock of the IP address (MySQL / MariaDB `GET_LOCK()`, PostgreSQL advisory
   transaction lock, SQLite write lock), in one transaction of the bundle's runner (`Transaction\AttemptLockRunner`, on
   nowo-tech/transaction-doctrine's DBAL runner). Events follow the unit. A host store may implement the interface too.
+- Option **`attempt_lock_timeout`** (seconds, default 3): how long an attempt waits for the lock of its IP address
+  before the login fails closed.
 - **`docs/HIGH-LOAD.md`**: units, locks, the races measured on 3.14.0, transactions of the host, failing closed.
 - CI job **Load readiness**: concurrent PHP processes on MySQL 8.4 and PostgreSQL 16, DBAL 4 and DBAL 3
   (`tests/Database`, `--fail-on-skipped`). PhpStanFrankenPhp 1.4 with its load-readiness flags.
@@ -85,10 +87,27 @@ address, so the lockout starts at exactly the configured attempt and no race let
 - **Parallel attempts around the threshold** could all be refused (attempts below the threshold included) and more rows
   than attempts up to the lockout were recorded; exactly `max - 1` attempts now reach the password check, for the
   username bucket, the per-IP cap and the bound without a username.
+- **Under-count on MySQL / MariaDB between an attempt outside any transaction and one a host transaction recorded but
+  had not committed yet** (both let through). The bundle's own MySQL unit is now READ COMMITTED with locking reads: it
+  waits for that commit, then counts the attempt, without gap locks on other IP addresses (audit QU-M2).
 - **`nowo:login-throttle:cleanup`** never deletes rows a database limiter still counts: the age threshold is at least the
   longest database `timeout` (a shorter `--watch-period` / `watch_period` cleared lockouts in progress).
 
+### Known issues
+
+- Inside a transaction of the host the attempt is part of that transaction: a rollback (or no commit) discards it;
+  PostgreSQL REPEATABLE READ / SERIALIZABLE transactions read their snapshot (a fail-closed guard is planned for
+  3.15.x); on MySQL / MariaDB at REPEATABLE READ the locking reads take gap locks that can make attempts of other IP
+  addresses wait for the host's commit. An opt-in isolated connection is planned for 3.16. See HIGH-LOAD.
+
 ### Changed
+
+- An attempt that a limit already refuses is refused **without** taking the lock of its IP address (no unit, nothing
+  recorded, same answer and event), so a flood from a locked-out IP address never queues on the lock holding a worker
+  and a connection per request (audit QU-M1).
+- With DoctrineBundle `replicas:` the bundle pins its connection to the primary before each unit, and a `RELEASE_LOCK`
+  that reports a lock this session did not hold is a failed release: the connection is closed outside a transaction
+  of the host (audit QU-L1).
 
 - A transient storage failure while deciding an attempt (deadlock, lock wait timeout, the IP address lock not granted
   within 10 s) is thrown as `Nowo\TransactionContract\TransientStorageFailure` (the DBAL exception is its `previous`).

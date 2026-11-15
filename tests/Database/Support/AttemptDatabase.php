@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nowo\LoginThrottleBundle\Tests\Database\Support;
 
+use Doctrine\DBAL\Connections\PrimaryReadReplicaConnection;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\DBAL\Tools\DsnParser;
 use Doctrine\ORM\EntityManager;
@@ -14,6 +15,7 @@ use Doctrine\Persistence\Proxy;
 use Nowo\LoginThrottleBundle\Entity\LoginAttempt;
 use Nowo\LoginThrottleBundle\RateLimiter\DatabaseRateLimiter;
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepository;
+use Nowo\LoginThrottleBundle\Transaction\AttemptLockRunner;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -36,13 +38,18 @@ final class AttemptDatabase
         return \is_string($url) && '' !== $url ? $url : null;
     }
 
-    public static function entityManager(string $url): EntityManager
+    public static function entityManager(string $url, bool $replicas = false): EntityManager
     {
         $configuration = ORMSetup::createAttributeMetadataConfiguration([\dirname(__DIR__, 3) . '/src/Entity'], true);
         if (\PHP_VERSION_ID >= 80400 && method_exists($configuration, 'enableNativeLazyObjects')) {
             $configuration->enableNativeLazyObjects(true);
         }
         $parameters = (new DsnParser(['mysql' => 'pdo_mysql', 'postgresql' => 'pdo_pgsql', 'pgsql' => 'pdo_pgsql', 'sqlite' => 'pdo_sqlite']))->parse($url);
+
+        if ($replicas) {
+            // DoctrineBundle `replicas:` with the replica on the same server: a replica session is another session
+            $parameters = ['wrapperClass' => PrimaryReadReplicaConnection::class, 'driver' => $parameters['driver'] ?? 'pdo_mysql', 'primary' => $parameters, 'replica' => [$parameters], 'keepReplica' => true];
+        }
 
         return new EntityManager(DriverManager::getConnection($parameters, $configuration), $configuration);
     }
@@ -63,9 +70,13 @@ final class AttemptDatabase
         (new SchemaTool($entityManager))->createSchema([$entityManager->getClassMetadata(LoginAttempt::class)]);
     }
 
+    /**
+     * The bundle's repository; since 3.15 with a 10 s lock wait, so a worker the tests hold back on purpose never times
+     * out (3.14.0 ignores the extra argument).
+     */
     public static function repository(EntityManager $entityManager, ?ClockInterface $clock = null): LoginAttemptRepository
     {
-        return new LoginAttemptRepository(self::registry($entityManager), $clock);
+        return new LoginAttemptRepository(self::registry($entityManager), $clock, class_exists(AttemptLockRunner::class) ? new AttemptLockRunner(10) : null);
     }
 
     public static function limiter(LoginAttemptRepository $repository, int $maxAttempts, int $maxAttemptsPerIp, ?int $maxAttemptsWithoutUsername = null): DatabaseRateLimiter

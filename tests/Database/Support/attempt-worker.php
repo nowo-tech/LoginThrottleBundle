@@ -9,8 +9,9 @@ declare(strict_types=1);
  *
  * - `burst <count> <without-username bound|->`: prints READY, waits for a line, then consumes `<count>` attempts
  *   (a username ending in `*` gets a unique suffix per attempt) and prints `accepted` / `refused` per attempt;
- * - `paused <clock call>`: consumes one attempt on a repository clock that prints PAUSED on its `<clock call>`-th
- *   reading and waits for a line before it answers (the reads after the attempt's insert start at call 3);
+ * - `paused`: consumes one attempt on a repository clock that prints PAUSED on its first reading after the attempt's
+ *   insert and waits for a line before it answers (call 5 since 3.15: the refusal fast path reads twice first; call 3
+ *   on 3.14.0);
  * - `host <hold|commit>`: opens a transaction of the "host", writes a host row, consumes one attempt and prints the
  *   result; `hold` then prints HELD and waits for a line before it commits;
  * - `snapshot`: opens a transaction of the "host", reads the attempt table (the REPEATABLE READ snapshot starts
@@ -21,6 +22,7 @@ declare(strict_types=1);
  */
 
 use Nowo\LoginThrottleBundle\Tests\Database\Support\AttemptDatabase;
+use Nowo\LoginThrottleBundle\Transaction\AttemptLockRunner;
 use Psr\Clock\ClockInterface;
 
 require dirname(__DIR__, 3) . '/vendor/autoload.php';
@@ -39,7 +41,8 @@ $wait = static function (): void {
 
 $clock = null;
 if ('paused' === $command) {
-    $clock = new class((int) ($arguments[0] ?? 3), $say, $wait) implements ClockInterface {
+    $afterInsert = class_exists(AttemptLockRunner::class) ? 5 : 3;
+    $clock = new class($afterInsert, $say, $wait) implements ClockInterface {
         private int $calls = 0;
 
         public function __construct(private readonly int $pauseAt, private readonly Closure $say, private readonly Closure $wait)

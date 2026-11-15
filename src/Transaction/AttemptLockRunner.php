@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\LoginThrottleBundle\Transaction;
 
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Connections\PrimaryReadReplicaConnection;
 use Doctrine\DBAL\Platforms\AbstractMySQLPlatform;
 use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Platforms\SQLitePlatform;
@@ -19,8 +20,10 @@ use Nowo\TransactionDoctrine\DoctrineTransactionRunner;
  *
  * - a **lock per IP address**, taken before the unit reads anything:
  *   - MySQL / MariaDB: `GET_LOCK()` (a user lock of the session, taken before the transaction starts and always released
- *     in `finally`, also after a failure; when the release itself fails outside a transaction of the host, the
- *     connection is closed so the server drops the lock rather than a worker keeping it, audit lesson QG-M2);
+ *     in `finally`, also after a failure; when the release fails or reports a lock this session did not hold, outside a
+ *     transaction of the host, the connection is closed so the server drops the lock rather than a worker keeping it,
+ *     audit lessons QG-M2 and QU-L1). The unit's own transaction is READ COMMITTED and reads with locking reads (audit
+ *     QU-M2). With DoctrineBundle `replicas:` the connection is pinned to the primary first;
  *   - PostgreSQL: `pg_try_advisory_xact_lock()`, polled until it is granted (the unit's own transaction is READ
  *     COMMITTED, so its reads see what the previous holder committed): held until the end of the transaction, so
  *     inside a transaction the host left open it serialises the host's attempts until the host commits. It never
@@ -29,16 +32,17 @@ use Nowo\TransactionDoctrine\DoctrineTransactionRunner;
  *     would let two processes deadlock when both upgrade to the write lock);
  *   - other platforms: no lock (the limiter still reads the counts back after recording, see the HIGH-LOAD document);
  * - **one transaction per unit**, opened and committed by transaction-doctrine's DBAL runner
- *   ({@see DoctrineTransactionRunner::forConnection()}): the reads of the unit start after the lock, so even MySQL's
- *   REPEATABLE READ snapshot holds every attempt committed before. After any failure nothing of the unit is kept and
+ *   ({@see DoctrineTransactionRunner::forConnection()}) at READ COMMITTED: the reads of the unit start after the lock
+ *   and see every attempt committed before. After any failure nothing of the unit is kept and
  *   no transaction of the bundle stays open; a transient failure (deadlock, lock wait timeout, serialization failure)
  *   becomes {@see TransientStorageFailure}.
  *
  * Inside a transaction the host left open the unit runs directly in it (no runner, no savepoint of its own: the
  * attempt keeps its own savepoint, as before 3.15, so a DBAL 3 host without savepoints never sees its transaction
- * marked rollback-only by a bundle failure). The caller then reads with locking reads on MySQL / MariaDB
- * ({@see self::needsLockingReads()}): the host's snapshot may predate attempts that other requests committed, and a
- * locking read also waits for an attempt another open transaction has not committed yet.
+ * marked rollback-only by a bundle failure). On MySQL / MariaDB the caller reads with locking reads there too
+ * ({@see self::needsLockingReads()}): the host's snapshot may predate attempts that other requests committed. Under a
+ * host REPEATABLE READ transaction those locking reads take gap locks that last until the host commits, so an attempt of
+ * a neighbouring IP address may wait for that commit (docs/HIGH-LOAD.md, Known issues).
  *
  * The bundle never flushes, clears, closes or resets an entity manager here: every statement is DBAL.
  *
@@ -51,8 +55,12 @@ use Nowo\TransactionDoctrine\DoctrineTransactionRunner;
  */
 final readonly class AttemptLockRunner
 {
-    /** Seconds a unit waits for the lock of its IP address before it gives up with a transient failure. */
-    public const LOCK_TIMEOUT_SECONDS = 10;
+    /**
+     * Seconds a unit waits for the lock of its IP address before it gives up with a transient failure (3.15 default,
+     * option {@code attempt_lock_timeout}). A unit takes milliseconds, so a long wait only lengthens an attacker's queue
+     * (audit QU-M1); an attempt that a limit already refuses never waits for the lock at all.
+     */
+    public const LOCK_TIMEOUT_SECONDS = 3;
 
     /** The Retry-After hint of the transient failures, in seconds. */
     public const RETRY_AFTER_SECONDS = 1;
@@ -64,9 +72,8 @@ final readonly class AttemptLockRunner
 
     /**
      * @param int       $lockTimeoutSeconds Seconds a unit waits for the lock of its IP address (at least one)
-     * @param bool|null $lockingReads       Whether a unit inside the host's transaction reads with locking reads: null
-     *                                      (the default) on MySQL / MariaDB only; true for a MySQL-compatible server DBAL
-     *                                      does not detect as MySQL
+     * @param bool|null $lockingReads       Whether a unit reads with locking reads: null (the default) on MySQL / MariaDB
+     *                                      only; true for a MySQL-compatible server DBAL does not detect as MySQL
      */
     public function __construct(private int $lockTimeoutSeconds = self::LOCK_TIMEOUT_SECONDS, private ?bool $lockingReads = null)
     {
@@ -88,6 +95,11 @@ final readonly class AttemptLockRunner
      */
     public function run(Connection $connection, string $table, string $ipAddress, callable $unit): mixed
     {
+        if ($connection instanceof PrimaryReadReplicaConnection) {
+            // DoctrineBundle `replicas:` (audit QU-L1): the lock, the unit and the release on one session, the primary's
+            // (a lock taken on a replica session would be released on the primary, or leak with keep_replica)
+            $connection->ensureConnectedToPrimary();
+        }
         $platform = $connection->getDatabasePlatform();
         $nested = $connection->isTransactionActive();
 
@@ -96,7 +108,15 @@ final readonly class AttemptLockRunner
             $this->acquireUserLock($connection, $name);
 
             try {
-                return $nested ? $unit() : DoctrineTransactionRunner::forConnection($connection, self::RETRY_AFTER_SECONDS)->run($unit);
+                if ($nested) {
+                    return $unit();
+                }
+                // audit QU-M2: the unit's own transaction is READ COMMITTED, so its locking reads take record locks only
+                // (no gap lock stalls another IP address) and wait for an attempt a host transaction has not committed
+                // yet, then see it
+                $connection->executeStatement('SET TRANSACTION ISOLATION LEVEL READ COMMITTED');
+
+                return DoctrineTransactionRunner::forConnection($connection, self::RETRY_AFTER_SECONDS)->run($unit);
             } finally {
                 $this->releaseUserLock($connection, $name);
             }
@@ -123,18 +143,17 @@ final readonly class AttemptLockRunner
     }
 
     /**
-     * Whether a unit on this connection must read with locking reads: MySQL / MariaDB inside a transaction the host
-     * left open (its REPEATABLE READ snapshot may hide committed attempts; a locking read sees them, and waits for an
-     * attempt that another open transaction has not committed yet). A unit in its own transaction reads after the lock,
-     * so its snapshot already holds every committed attempt; PostgreSQL's advisory lock lasts until the commit of the
-     * transaction that recorded the attempt, so its reads never miss one either.
+     * Whether a unit on this connection must read with locking reads: MySQL / MariaDB, in its own READ COMMITTED
+     * transaction and inside a transaction the host left open alike. A locking read sees past a REPEATABLE READ
+     * snapshot, and waits for an attempt that a host transaction has recorded but not committed yet (audit QU-M2: the
+     * user lock is released before the host commits). PostgreSQL's advisory lock lasts until the commit of the
+     * transaction that recorded the attempt, so its reads never miss one.
      *
      * @param Connection $connection The connection of the attempt table
-     * @param bool       $nested     Whether the unit runs inside the host's transaction
      */
-    public function needsLockingReads(Connection $connection, bool $nested): bool
+    public function needsLockingReads(Connection $connection): bool
     {
-        return $nested && ($this->lockingReads ?? $connection->getDatabasePlatform() instanceof AbstractMySQLPlatform);
+        return $this->lockingReads ?? $connection->getDatabasePlatform() instanceof AbstractMySQLPlatform;
     }
 
     /**
@@ -168,17 +187,24 @@ final readonly class AttemptLockRunner
 
     private function releaseUserLock(Connection $connection, string $name): void
     {
+        $failure = null;
+
         try {
-            $connection->fetchOne('SELECT RELEASE_LOCK(?)', [$name]);
+            // 1: released; 0: held by another session; NULL: no such lock on this session (audit QU-L1)
+            $released = 1 === (int) $connection->fetchOne('SELECT RELEASE_LOCK(?)', [$name]);
         } catch (\Throwable $failure) {
-            if ($connection->isTransactionActive()) {
-                // the host's transaction: its connection is not the bundle's to close
-                throw $failure;
-            }
-            // a lock the worker could not release would block this IP address for as long as the worker lives:
-            // closing the session drops it on the server
-            $connection->close();
+            $released = false;
         }
+        if ($released) {
+            return;
+        }
+        if ($connection->isTransactionActive()) {
+            // the host's transaction: its connection is not the bundle's to close
+            throw $failure ?? new \RuntimeException('The login throttle lock of the IP address was not held by this session at release.');
+        }
+        // a lock the worker could not release would block this IP address for as long as the worker lives: closing the
+        // session drops every user lock it holds on the server
+        $connection->close();
     }
 
     private function acquireAdvisoryLock(Connection $connection, int $key): void

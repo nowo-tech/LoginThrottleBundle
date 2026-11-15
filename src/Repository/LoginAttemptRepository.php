@@ -331,7 +331,7 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
         $connection = $entityManager->getConnection();
         $attemptLock = $this->attemptLock ?? new AttemptLockRunner();
         $store = $this;
-        if ($attemptLock->needsLockingReads($connection, $connection->isTransactionActive())) {
+        if ($attemptLock->needsLockingReads($connection)) {
             $store = clone $this;
             // @igor-ignore - set on a per-call copy handed to one unit; the shared service is never changed
             $store->lockingReads = true;
