@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\LoginThrottleBundle\Repository;
 
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\DBAL\LockMode;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\QueryBuilder;
@@ -13,6 +14,7 @@ use Doctrine\Persistence\Mapping\Driver\MappingDriver;
 use Doctrine\Persistence\ObjectManager;
 use Nowo\LoginThrottleBundle\Entity\LoginAttempt;
 use Nowo\LoginThrottleBundle\Throttle\UsernameNormalizer;
+use Nowo\LoginThrottleBundle\Transaction\AttemptLockRunner;
 use Psr\Clock\ClockInterface;
 
 /**
@@ -23,7 +25,7 @@ use Psr\Clock\ClockInterface;
  * @author Héctor Franco Aceituno <hectorfranco@nowo.tech>
  * @copyright 2025 Nowo.tech
  */
-final class LoginAttemptRepository extends ServiceEntityRepository implements LoginAttemptRecorderInterface, LoginAttemptRepositoryInterface, LoginAttemptStoreInterface, LoginAttemptViewRepositoryInterface, LoginAttemptWithoutUsernameReaderInterface
+final class LoginAttemptRepository extends ServiceEntityRepository implements LoginAttemptLockInterface, LoginAttemptRecorderInterface, LoginAttemptRepositoryInterface, LoginAttemptStoreInterface, LoginAttemptViewRepositoryInterface, LoginAttemptWithoutUsernameReaderInterface
 {
     /** Rows per DELETE statement in {@see cleanup()}. */
     public const CLEANUP_BATCH_SIZE = 1000;
@@ -31,12 +33,19 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
     private readonly ManagerRegistry $managerRegistry;
 
     /**
+     * Whether the counts are read with locking reads (`FOR SHARE`): only on the per-call copy {@see withAttemptLock()}
+     * hands to a unit nested in the host's MySQL / MariaDB transaction, never on the shared service (3.15).
+     */
+    private bool $lockingReads = false;
+
+    /**
      * Constructor.
      *
-     * @param ManagerRegistry     $registry The manager registry
-     * @param ClockInterface|null $clock    Time source for the attempt windows (system time when null; REQ-DI-001)
+     * @param ManagerRegistry        $registry    The manager registry
+     * @param ClockInterface|null    $clock       Time source for the attempt windows (system time when null; REQ-DI-001)
+     * @param AttemptLockRunner|null $attemptLock The runner of the units of one IP address (3.15; the default one when null)
      */
-    public function __construct(ManagerRegistry $registry, private readonly ?ClockInterface $clock = null)
+    public function __construct(ManagerRegistry $registry, private readonly ?ClockInterface $clock = null, private readonly ?AttemptLockRunner $attemptLock = null)
     {
         $this->managerRegistry = $registry;
         parent::__construct($registry, LoginAttempt::class);
@@ -298,6 +307,42 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
         $newest = [array_shift($ids)];
 
         return $this->deleteByIds($newest) + (null === $username ? $this->deleteByIds($ids) : $this->forgetUsernameOf($ids));
+    }
+
+    /**
+     * Runs a unit of one IP address under its lock, in its own transaction (3.15, Beacon spec 239).
+     *
+     * See {@see AttemptLockRunner}: a per-IP lock (MySQL / MariaDB `GET_LOCK()`, PostgreSQL advisory transaction lock,
+     * SQLite write lock) taken before any read, and one DBAL transaction per unit, opened and committed by
+     * nowo-tech/transaction-doctrine. Inside a transaction the host left open the unit runs in it, and on MySQL /
+     * MariaDB the store handed to the unit reads the counts with locking reads. The host's entity manager is never
+     * flushed, cleared, closed or reset.
+     *
+     * @template T
+     *
+     * @param string                                                                  $ipAddress The IP address of the unit
+     * @param callable(LoginAttemptRepositoryInterface|LoginAttemptStoreInterface): T $unit      The decision or reset
+     *
+     * @return T What the unit returned
+     */
+    public function withAttemptLock(string $ipAddress, callable $unit): mixed
+    {
+        $entityManager = $this->getEntityManager();
+        $connection = $entityManager->getConnection();
+        $attemptLock = $this->attemptLock ?? new AttemptLockRunner();
+        $store = $this;
+        if ($attemptLock->needsLockingReads($connection)) {
+            $store = clone $this;
+            // @igor-ignore - set on a per-call copy handed to one unit; the shared service is never changed
+            $store->lockingReads = true;
+        }
+
+        return $attemptLock->run(
+            $connection,
+            $entityManager->getClassMetadata(LoginAttempt::class)->getTableName(),
+            $ipAddress,
+            static fn (): mixed => $unit($store),
+        );
     }
 
     /**
@@ -616,8 +661,14 @@ final class LoginAttemptRepository extends ServiceEntityRepository implements Lo
      */
     private function rows(QueryBuilder $qb): array
     {
+        $query = $qb->getQuery();
+        if ($this->lockingReads) {
+            // inside the host's MySQL / MariaDB transaction: past its snapshot, and waiting for attempts not committed yet
+            $query->setLockMode(LockMode::PESSIMISTIC_READ);
+        }
+
         /** @var list<array<string, mixed>> $rows */
-        $rows = $qb->getQuery()->getArrayResult();
+        $rows = $query->getArrayResult();
 
         return $rows;
     }

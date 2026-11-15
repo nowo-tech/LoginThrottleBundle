@@ -62,6 +62,35 @@
 
 ## Unreleased
 
+Target 3.15.0 (Beacon spec 239, load readiness). No configuration change, no migration, no BC break.
+
+1. **Composer.** The bundle now requires `nowo-tech/transaction-contract` ^1.0 and `nowo-tech/transaction-doctrine`
+   ^1.1 (small, no Symfony dependency).
+2. **Attempts are decided one after the other per IP address** (`storage: database`). Each decision and each reset takes
+   a lock of the IP address and runs in a short transaction of the bundle. Nothing to configure; see
+   [HIGH-LOAD](HIGH-LOAD.md). The lock waits up to `attempt_lock_timeout` seconds (new option, default 3), then the
+   request fails closed. An attempt a limit already refuses never takes the lock.
+3. **Transient failures** (deadlock, lock wait timeout, lock not granted) while deciding an attempt are thrown as
+   `Nowo\TransactionContract\TransientStorageFailure` instead of the DBAL exception (now its `previous`). If you
+   caught `Doctrine\DBAL\Exception\RetryableException` around the login, catch `TransientStorageFailure` too. The
+   request still ends before the password check.
+4. **A transaction around the login.** If your application keeps a transaction open while Symfony authenticates
+   (transaction-per-request middleware, `auto_commit: false`, a listener), the attempt is written inside it and is
+   durable only when you commit: commit on failed logins too, or the failed attempts are not counted. Concurrent
+   attempts now wait for that commit (see [HIGH-LOAD](HIGH-LOAD.md#inside-a-transaction-of-your-application)).
+5. **`nowo:login-throttle:cleanup`** keeps the rows younger than the longest database `timeout`, whatever
+   `--watch-period` says. A cron with a shorter period now deletes fewer rows (the ones a limiter still counts stay).
+6. **Your own store** (`LoginAttemptStoreInterface`): nothing changes. Implement the new
+   `LoginAttemptLockInterface` to get the same per-IP serialisation (the limiter then reads and writes through the
+   store `withAttemptLock()` hands to the unit).
+7. **Read replicas:** with DoctrineBundle `replicas:` the bundle pins its connection to the primary for each unit;
+   nothing to do.
+8. **MySQL / MariaDB:** the bundle's own unit runs at `READ COMMITTED`, which needs `binlog_format` `ROW` (the MySQL 8
+   default) or `MIXED`. If your application authenticates inside a `REPEATABLE READ` transaction of its own, attempts of
+   other IP addresses may wait for its commit (gap locks): see [HIGH-LOAD, Known issues](HIGH-LOAD.md#known-issues).
+9. **Galera / multi-primary:** `GET_LOCK()` is local to each node; send the bundle's connection to one node to keep the
+   exact threshold.
+
 ## To 3.14.0
 
 From **3.13.1**:

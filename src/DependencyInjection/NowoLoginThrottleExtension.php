@@ -12,6 +12,7 @@ use Nowo\LoginThrottleBundle\RateLimiter\DatabaseRateLimiterFactory;
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepository;
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface;
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptStoreInterface;
+use Nowo\LoginThrottleBundle\Transaction\AttemptLockRunner;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Config\Definition\Processor;
 use Symfony\Component\Config\FileLocator;
@@ -119,6 +120,7 @@ final class NowoLoginThrottleExtension extends Extension implements PrependExten
         $container->setParameter('nowo_login_throttle.config', $config);
         $container->setParameter('nowo_login_throttle.watch_period', (int) ($config['watch_period'] ?? 3600));
         $container->setParameter('nowo_login_throttle.username_from_passport', (bool) ($config['username_from_passport'] ?? false));
+        $container->setParameter('nowo_login_throttle.attempt_lock_timeout', (int) ($config['attempt_lock_timeout'] ?? AttemptLockRunner::LOCK_TIMEOUT_SECONDS));
 
         $mappingEnabled = $this->resolveRegisterMapping($config['doctrine']['register_mapping'], $this->usesDatabaseStorage($config));
         $container->setParameter(self::MAPPING_ENABLED_PARAMETER, $mappingEnabled);

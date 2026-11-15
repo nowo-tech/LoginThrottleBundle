@@ -7,6 +7,7 @@ namespace Nowo\LoginThrottleBundle\RateLimiter;
 use Nowo\LoginThrottleBundle\Entity\LoginAttempt;
 use Nowo\LoginThrottleBundle\Event\LoginAttemptsClearedEvent;
 use Nowo\LoginThrottleBundle\Event\LoginThrottledEvent;
+use Nowo\LoginThrottleBundle\Repository\LoginAttemptLockInterface;
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptRecorderInterface;
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface;
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptStoreInterface;
@@ -39,6 +40,10 @@ use Symfony\Component\RateLimiter\RateLimit;
  * Since 3.14 the store may be the entity-free {@see LoginAttemptStoreInterface} (or the deprecated
  * {@see LoginAttemptRepositoryInterface}), and when an event dispatcher is given a refused attempt dispatches
  * {@see LoginThrottledEvent} and a cleared bucket {@see LoginAttemptsClearedEvent} (scalars only, after the write).
+ * Since 3.15, when the store implements {@see LoginAttemptLockInterface} (the bundle's repository does), each decision
+ * (read the counts, record, read them again) and each reset runs under a lock of the IP address, in one transaction:
+ * concurrent attempts are decided one after the other, so the lockout starts at exactly the configured attempt (see
+ * docs/HIGH-LOAD.md).
  * On successful login, {@see reset()} clears that IP + username's {@see LoginAttempt} rows (3.11.0: username set to NULL, so they keep counting for the IP); the username is the identifier Symfony authenticates ({@see UsernameNormalizer::forLimiter()}).
  *
  * @author Héctor Franco Aceituno <hectorfranco@nowo.tech>
@@ -98,66 +103,19 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
         // the limit this request is judged by, which {@see RateLimit::getLimit()} must report (3.11.0)
         $limit = $this->rules->limitFor($username);
 
-        // Check if already blocked (IP + username first, then the IP-only cap). Without a username the bucket is the
-        // IP itself, so only the cap applies (3.11.0): those are the rows the cap counts anyway. A tighter bound
-        // without a username (3.13.0) counts the IP's rows without a username, below the cap.
-        $boundsWithoutUsername = null === $username && $this->rules->boundsAttemptsWithoutUsername();
-        $isBlocked = null !== $username && $this->repository->isBlocked($ipAddress, $username, $this->maxAttempts, $this->timeoutSeconds);
-        $isIpBlocked = !$isBlocked && $this->repository->countAttemptsByIp($ipAddress, $this->timeoutSeconds) >= $this->maxAttemptsPerIp;
-        $isBlockedWithoutUsername = $boundsWithoutUsername && !$isIpBlocked && $this->rules->countBucket($ipAddress, null) >= $limit;
-
-        // which limit refused the attempt (3.14, for LoginThrottledEvent); null while accepted
-        $scope = null;
-        $lockoutStarted = false;
-
-        if ($isBlocked || $isIpBlocked || $isBlockedWithoutUsername) {
-            $remaining = 0;
-            $retryAfter = $isBlockedWithoutUsername
-                ? $this->rules->retryAfterWithoutUsername($ipAddress)
-                : $this->calculateRetryAfter($ipAddress, $isBlocked ? $username : null);
-            $accepted = false;
-            $scope = match (true) {
-                $isBlocked => LoginThrottledEvent::SCOPE_USERNAME,
-                $isIpBlocked => LoginThrottledEvent::SCOPE_IP,
-                default => LoginThrottledEvent::SCOPE_WITHOUT_USERNAME,
-            };
-        } else {
-            // Record the attempt
-            $this->record($ipAddress, $username);
-
-            // Count current attempts
-            $count = $this->rules->countBucket($ipAddress, $username);
-            $ipCount = $this->repository->countAttemptsByIp($ipAddress, $this->timeoutSeconds);
-            $remaining = max(0, min($limit - $count, $this->maxAttemptsPerIp - $ipCount));
-
-            // Check if this attempt exceeded either limit
-            if (null !== $username && $count >= $limit) {
-                $retryAfter = $this->calculateRetryAfter($ipAddress, $username);
-                $accepted = false;
-                $scope = LoginThrottledEvent::SCOPE_USERNAME;
-            } elseif ($ipCount >= $this->maxAttemptsPerIp) {
-                $retryAfter = $this->calculateRetryAfter($ipAddress, null);
-                $accepted = false;
-                $scope = LoginThrottledEvent::SCOPE_IP;
-            } elseif ($boundsWithoutUsername && $count >= $limit) {
-                $retryAfter = $this->rules->retryAfterWithoutUsername($ipAddress);
-                $accepted = false;
-                $scope = LoginThrottledEvent::SCOPE_WITHOUT_USERNAME;
-            } else {
-                // Not blocked, retry after is now (immediate retry allowed)
-                $retryAfter = $this->clock?->now() ?? new \DateTimeImmutable();
-                $accepted = true;
-            }
-            $lockoutStarted = null !== $scope;
-        }
-
-        // Ensure retryAfter is never null
-        if (!$retryAfter instanceof \DateTimeImmutable) {
-            $retryAfter = $this->clock?->now() ?? new \DateTimeImmutable();
-        }
+        // 3.15: the whole decision runs under the lock of the IP address when the store offers one, so concurrent
+        // attempts are decided one after the other ({@see LoginAttemptLockInterface})
+        $decide = fn (LoginAttemptRepositoryInterface|LoginAttemptStoreInterface $store): array => $this->decide($store, $ipAddress, $username, $limit);
+        // An attempt that a limit already refuses is refused WITHOUT the lock (audit QU-M1): a flood from a locked-out IP
+        // address never queues on its lock, holding a worker and a connection per request. Refusing is the safe
+        // direction and records nothing; a read that misses a block only sends the attempt to the locked decision,
+        // which reads again under the lock, so the lock still decides every attempt that could be let through.
+        [$remaining, $retryAfter, $accepted, $scope, $lockoutStarted] = $this->repository instanceof LoginAttemptLockInterface
+            ? $this->refusal($this->repository, $this->rules, $ipAddress, $username, $limit) ?? $this->repository->withAttemptLock($ipAddress, $decide)
+            : $decide($this->repository);
 
         if (null !== $scope && $this->eventDispatcher instanceof EventDispatcherInterface) {
-            // after the attempt was written (autocommitted DBAL insert in the bundle's store), scalars only
+            // after the unit committed (or, inside a transaction the host left open, after the write), scalars only
             $this->eventDispatcher->dispatch(new LoginThrottledEvent(
                 $ipAddress,
                 $username,
@@ -197,10 +155,96 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
             return;
         }
 
+        // 3.15: under the lock of the IP address, so it never interleaves with an attempt being decided
+        $clear = static fn (LoginAttemptRepositoryInterface|LoginAttemptStoreInterface $store): int => $store->clearAttempts($ipAddress, $username);
         // @igor-ignore - Mutates attached request-scoped or value object; not worker singleton cache
-        $cleared = $this->repository->clearAttempts($ipAddress, $username);
+        $cleared = $this->repository instanceof LoginAttemptLockInterface ? $this->repository->withAttemptLock($ipAddress, $clear) : $clear($this->repository);
 
         $this->eventDispatcher?->dispatch(new LoginAttemptsClearedEvent($ipAddress, $username, $cleared, $this->firewallName($request)));
+    }
+
+    /**
+     * Decides one attempt: refuses it when a limit is already reached, otherwise records it and reads the counts back.
+     *
+     * @param LoginAttemptRepositoryInterface|LoginAttemptStoreInterface $store     The store to read and write through (the locked one inside {@see LoginAttemptLockInterface::withAttemptLock()})
+     * @param string                                                     $ipAddress IP address
+     * @param string|null                                                $username  Normalised username, null for the IP-only bucket
+     * @param int                                                        $limit     The limit of the attempt's bucket
+     *
+     * @return array{int, \DateTimeImmutable, bool, string|null, bool} Remaining, retry after, accepted, the scope that refused it (null while accepted), whether this attempt started the lockout
+     */
+    private function decide(LoginAttemptRepositoryInterface|LoginAttemptStoreInterface $store, string $ipAddress, ?string $username, int $limit): array
+    {
+        $rules = $store === $this->repository ? $this->rules : $this->rules->withStore($store);
+
+        $refusal = $this->refusal($store, $rules, $ipAddress, $username, $limit);
+        if (null !== $refusal) {
+            return $refusal;
+        }
+
+        // Record the attempt
+        $this->record($store, $ipAddress, $username);
+
+        // Count current attempts
+        $count = $rules->countBucket($ipAddress, $username);
+        $ipCount = $store->countAttemptsByIp($ipAddress, $this->timeoutSeconds);
+        $remaining = max(0, min($limit - $count, $this->maxAttemptsPerIp - $ipCount));
+
+        // Check if this attempt exceeded either limit (which limit refused it: 3.14, for LoginThrottledEvent)
+        $scope = null;
+        if (null !== $username && $count >= $limit) {
+            $retryAfter = $rules->retryAfter($ipAddress, $username);
+            $scope = LoginThrottledEvent::SCOPE_USERNAME;
+        } elseif ($ipCount >= $this->maxAttemptsPerIp) {
+            $retryAfter = $rules->retryAfter($ipAddress, null);
+            $scope = LoginThrottledEvent::SCOPE_IP;
+        } elseif (null === $username && $rules->boundsAttemptsWithoutUsername() && $count >= $limit) {
+            $retryAfter = $rules->retryAfterWithoutUsername($ipAddress);
+            $scope = LoginThrottledEvent::SCOPE_WITHOUT_USERNAME;
+        } else {
+            // Not blocked, retry after is now (immediate retry allowed)
+            $retryAfter = null;
+        }
+
+        // the attempt that reached a limit started the lockout
+        return [$remaining, $retryAfter ?? $this->now(), null === $scope, $scope, null !== $scope];
+    }
+
+    /**
+     * The refusal of an attempt that a limit already refuses (IP + username first, then the IP-only cap), null
+     * otherwise. Without a username the bucket is the IP itself, so only the cap applies (3.11.0): those are the rows
+     * the cap counts anyway. A tighter bound without a username (3.13.0) counts the IP's rows without a username, below
+     * the cap. Nothing is recorded.
+     *
+     * @param LoginAttemptRepositoryInterface|LoginAttemptStoreInterface $store     The store to read through
+     * @param ThrottleRules                                              $rules     The rules on that store
+     * @param string                                                     $ipAddress IP address
+     * @param string|null                                                $username  Normalised username, null for the IP-only bucket
+     * @param int                                                        $limit     The limit of the attempt's bucket
+     *
+     * @return array{int, \DateTimeImmutable, bool, string, bool}|null
+     */
+    private function refusal(LoginAttemptRepositoryInterface|LoginAttemptStoreInterface $store, ThrottleRules $rules, string $ipAddress, ?string $username, int $limit): ?array
+    {
+        if (null !== $username && $store->isBlocked($ipAddress, $username, $this->maxAttempts, $this->timeoutSeconds)) {
+            return [0, $rules->retryAfter($ipAddress, $username) ?? $this->now(), false, LoginThrottledEvent::SCOPE_USERNAME, false];
+        }
+        if ($store->countAttemptsByIp($ipAddress, $this->timeoutSeconds) >= $this->maxAttemptsPerIp) {
+            return [0, $rules->retryAfter($ipAddress, null) ?? $this->now(), false, LoginThrottledEvent::SCOPE_IP, false];
+        }
+        if (null === $username && $rules->boundsAttemptsWithoutUsername() && $rules->countBucket($ipAddress, null) >= $limit) {
+            return [0, $rules->retryAfterWithoutUsername($ipAddress) ?? $this->now(), false, LoginThrottledEvent::SCOPE_WITHOUT_USERNAME, false];
+        }
+
+        return null;
+    }
+
+    /**
+     * The current time, on the injected clock (system time when none is injected).
+     */
+    private function now(): \DateTimeImmutable
+    {
+        return $this->clock?->now() ?? new \DateTimeImmutable();
     }
 
     /**
@@ -229,18 +273,19 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
      * {@see LoginAttemptRepositoryInterface::recordAttempt()}. Neither return value is used: the counts below are
      * read back from the store.
      *
-     * @param string      $ipAddress IP address
-     * @param string|null $username  Normalised username, null for the IP-only bucket
+     * @param LoginAttemptRepositoryInterface|LoginAttemptStoreInterface $store     The store to write through
+     * @param string                                                     $ipAddress IP address
+     * @param string|null                                                $username  Normalised username, null for the IP-only bucket
      */
-    private function record(string $ipAddress, ?string $username): void
+    private function record(LoginAttemptRepositoryInterface|LoginAttemptStoreInterface $store, string $ipAddress, ?string $username): void
     {
-        if ($this->repository instanceof LoginAttemptRecorderInterface) {
-            $this->repository->recordAttemptView($ipAddress, $username);
+        if ($store instanceof LoginAttemptRecorderInterface) {
+            $store->recordAttemptView($ipAddress, $username);
 
             return;
         }
 
-        $this->repository->recordAttempt($ipAddress, $username);
+        $store->recordAttempt($ipAddress, $username);
     }
 
     /**
@@ -253,18 +298,5 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
     private function extractUsername(Request $request): ?string
     {
         return UsernameNormalizer::forLimiter($request, $this->usernameFromPassport);
-    }
-
-    /**
-     * Calculate retry after timestamp.
-     *
-     * @param string      $ipAddress IP address
-     * @param string|null $username  Username
-     *
-     * @return \DateTimeImmutable|null Retry after timestamp
-     */
-    private function calculateRetryAfter(string $ipAddress, ?string $username): ?\DateTimeImmutable
-    {
-        return $this->rules->retryAfter($ipAddress, $username);
     }
 }

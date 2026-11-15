@@ -285,6 +285,68 @@ jobs:
           LOGIN_THROTTLE_TEST_MARIADB_URL: mysql://root:ci-placeholder@127.0.0.1:3307/login_throttle?serverVersion=11.4.0-MariaDB&charset=utf8mb4
         run: vendor/bin/phpunit --no-coverage tests/Repository/LookAlikeUsernameTest.php
 
+  # 3.15 (Beacon spec 239): concurrent logins from separate PHP processes on real servers (tests/Database, run with
+  # --fail-on-skipped), then the whole suite on that doctrine/dbal. Passwordless services.
+  load:
+    name: Load readiness (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: 'MySQL 8.4', url: 'mysql://root@127.0.0.1:3306/login_throttle?serverVersion=8.4.0&charset=utf8mb4', dbal: '' }
+          - { name: 'PostgreSQL 16', url: 'postgresql://postgres@127.0.0.1:5432/login_throttle?serverVersion=16&charset=utf8', dbal: '' }
+          - { name: 'MySQL 8.4, DBAL 3', url: 'mysql://root@127.0.0.1:3306/login_throttle?serverVersion=8.4.0&charset=utf8mb4', dbal: '^3.8.2' }
+          - { name: 'PostgreSQL 16, DBAL 3', url: 'postgresql://postgres@127.0.0.1:5432/login_throttle?serverVersion=16&charset=utf8', dbal: '^3.8.2' }
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+          MYSQL_DATABASE: login_throttle
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd "mysqladmin ping -h127.0.0.1 -uroot --silent"
+          --health-interval 5s --health-timeout 5s --health-retries 30
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: login_throttle
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: json, pdo_mysql, pdo_pgsql, pdo_sqlite
+          coverage: none
+          tools: composer:v2
+
+      - name: Install dependencies
+        run: composer update --prefer-dist --no-progress --no-interaction
+
+      - name: Use DBAL 3
+        if: ${{ matrix.dbal != '' }}
+        run: composer require --no-interaction --no-progress --with-all-dependencies "doctrine/dbal:${{ matrix.dbal }}"
+
+      - name: Concurrent logins on the server
+        timeout-minutes: 10
+        env:
+          LOGIN_THROTTLE_TEST_DATABASE_URL: ${{ matrix.url }}
+        run: vendor/bin/phpunit --no-coverage --fail-on-skipped tests/Database
+
+      - name: Whole suite on this doctrine/dbal
+        timeout-minutes: 10
+        run: vendor/bin/phpunit --no-coverage
+
   coverage:
     name: Code Coverage
     runs-on: ubuntu-latest

@@ -9,6 +9,7 @@ use Nowo\LoginThrottleBundle\Doctrine\TablePrefixListener;
 use Nowo\LoginThrottleBundle\RateLimiter\DatabaseRateLimiterFactory;
 use Nowo\LoginThrottleBundle\Service\LoginThrottleStatusProvider;
 use Nowo\LoginThrottleBundle\Service\LoginThrottleStatusProviderInterface;
+use Nowo\LoginThrottleBundle\Transaction\AttemptLockRunner;
 use PHPUnit\Framework\TestCase;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
@@ -358,6 +359,21 @@ final class NowoLoginThrottleExtensionTest extends TestCase
         $this->extension->load([['storage' => 'database', 'username_from_passport' => true]], $this->container);
 
         $this->assertSame('%nowo_login_throttle.username_from_passport%', $this->container->getDefinition(DatabaseRateLimiterFactory::class)->getArgument('$usernameFromPassport'));
+    }
+
+    /**
+     * 3.15 (audit QU-M1): the lock wait of the per-IP unit is an option, 3 s by default.
+     */
+    public function testTheAttemptLockTimeoutReachesTheLockRunner(): void
+    {
+        $this->extension->load([['storage' => 'database']], $this->container);
+        $this->assertSame(AttemptLockRunner::LOCK_TIMEOUT_SECONDS, $this->container->getParameter('nowo_login_throttle.attempt_lock_timeout'));
+        $this->assertSame(3, AttemptLockRunner::LOCK_TIMEOUT_SECONDS);
+        $this->assertSame('%nowo_login_throttle.attempt_lock_timeout%', $this->container->getDefinition(AttemptLockRunner::class)->getArgument('$lockTimeoutSeconds'));
+
+        $container = new ContainerBuilder();
+        $this->extension->load([['storage' => 'database', 'attempt_lock_timeout' => 1]], $container);
+        $this->assertSame(1, $container->getParameter('nowo_login_throttle.attempt_lock_timeout'));
     }
 
     public function testStatusProviderInterfaceAliasesTheDefaultProvider(): void
