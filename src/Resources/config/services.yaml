@@ -26,6 +26,8 @@ services:
     arguments:
       $repository: '@?nowo_login_throttle.attempt_store'
       $defaultWatchPeriod: '%nowo_login_throttle.watch_period%'
+      # 3.15: never below the longest database timeout (rows a limiter still counts are kept)
+      $firewalls: '%nowo_login_throttle.firewalls%'
 
   # REQ-ORM-002: removed by the extension when nowo_login_throttle.doctrine.table_prefix is empty.
   Nowo\LoginThrottleBundle\Doctrine\TablePrefixListener:

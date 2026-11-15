@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\LoginThrottleBundle\Throttle;
 
 use Nowo\LoginThrottleBundle\RateLimiter\DatabaseRateLimiter;
+use Nowo\LoginThrottleBundle\Repository\LoginAttemptLockInterface;
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface;
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptStoreInterface;
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptViewRepositoryInterface;
@@ -118,6 +119,17 @@ final readonly class ThrottleRules
             $ipCount,
             $this->maxAttemptsPerIp,
         );
+    }
+
+    /**
+     * The same rules read through another store (3.15): the one {@see LoginAttemptLockInterface::withAttemptLock()}
+     * hands to a unit, which may read with locking reads.
+     *
+     * @param LoginAttemptRepositoryInterface|LoginAttemptStoreInterface $repository The store to read through
+     */
+    public function withStore(LoginAttemptRepositoryInterface|LoginAttemptStoreInterface $repository): self
+    {
+        return new self($repository, $this->maxAttempts, $this->timeoutSeconds, $this->maxAttemptsPerIp, $this->maxAttemptsWithoutUsername);
     }
 
     /**

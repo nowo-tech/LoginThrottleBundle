@@ -15,6 +15,10 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
  * Prunes old LoginAttempt rows when using database storage.
+ *
+ * Since 3.15 it never deletes a row a database limiter still counts: the age threshold is at least the longest
+ * {@code timeout} of the database firewalls (a {@code --watch-period} or a {@code watch_period} below it would have
+ * cleared lockouts in progress, letting a locked-out client try again at once).
  */
 #[AsCommand(
     name: 'nowo:login-throttle:cleanup',
@@ -22,9 +26,15 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 )]
 final class CleanupLoginAttemptsCommand extends Command
 {
+    /**
+     * @param LoginAttemptRepositoryInterface|LoginAttemptStoreInterface|null $repository         The attempt store (null without database storage)
+     * @param int                                                             $defaultWatchPeriod Age threshold in seconds when no option is given
+     * @param array<array-key, mixed>                                         $firewalls          The {@code nowo_login_throttle.firewalls} parameter: the longest database {@code timeout} is the lowest threshold (3.15)
+     */
     public function __construct(
         private readonly LoginAttemptRepositoryInterface|LoginAttemptStoreInterface|null $repository = null,
         private readonly int $defaultWatchPeriod = 3600,
+        private readonly array $firewalls = [],
     ) {
         parent::__construct();
     }
@@ -59,6 +69,12 @@ final class CleanupLoginAttemptsCommand extends Command
             return self::FAILURE;
         }
 
+        $longestTimeout = $this->longestDatabaseTimeout();
+        if ($seconds < $longestTimeout) {
+            $io->note(\sprintf('Keeping the attempts of the last %d seconds: a database limiter still counts them (its timeout is %d seconds).', $longestTimeout, $longestTimeout));
+            $seconds = $longestTimeout;
+        }
+
         if ($input->getOption('dry-run')) {
             $count = $this->repository->countOlderThan($seconds);
             $io->note(\sprintf(
@@ -74,5 +90,20 @@ final class CleanupLoginAttemptsCommand extends Command
         $io->success(\sprintf('Deleted %d login attempt row(s) older than %d seconds.', $deleted, $seconds));
 
         return self::SUCCESS;
+    }
+
+    /**
+     * The longest {@code timeout} (seconds) of the firewalls with database storage; 0 without any.
+     */
+    private function longestDatabaseTimeout(): int
+    {
+        $longest = 0;
+        foreach ($this->firewalls as $firewall) {
+            if (\is_array($firewall) && 'database' === ($firewall['storage'] ?? null) && is_numeric($firewall['timeout'] ?? null)) {
+                $longest = max($longest, (int) $firewall['timeout']);
+            }
+        }
+
+        return $longest;
     }
 }

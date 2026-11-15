@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Nowo\LoginThrottleBundle\Tests\Repository;
 
 use Doctrine\DBAL\DriverManager;
-use Doctrine\DBAL\Exception;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\DBAL\Tools\DsnParser;
 use Doctrine\ORM\EntityManager;
@@ -139,7 +138,8 @@ final class OpenHostTransactionTest extends TestCase
         } finally {
             try {
                 $connection->rollBack(); // the server already ended the transaction
-            } catch (Exception) {
+            } catch (\Throwable) {
+                // DBAL 4 wraps the driver error, DBAL 3 does not
             }
         }
     }

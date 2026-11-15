@@ -48,7 +48,7 @@ final class ExactCollationListenerTest extends TestCase
         yield 'mysql 8.0' => [new MySQL80Platform(), 'utf8mb4_0900_bin'];
         yield 'mysql 5.7 or server_version without patch' => [new MySQLPlatform(), 'utf8mb4_bin'];
         yield 'postgresql' => [new PostgreSQLPlatform(), null];
-        yield 'sqlite' => [new SQLitePlatform(), null];
+        yield 'sqlite' => [self::sqlitePlatform(), null];
     }
 
     #[DataProvider('platforms')]
@@ -95,7 +95,7 @@ final class ExactCollationListenerTest extends TestCase
 
     public function testCollateInPlaceOnOlderDbal(): void
     {
-        $table = $this->generatedTable($this->registryOn(new SQLitePlatform()), null);
+        $table = $this->generatedTable($this->registryOn(self::sqlitePlatform()), null);
 
         $this->assertNull(ExactCollationListener::collate($table, 'username', 'utf8mb4_nopad_bin', false));
         $this->assertSame('utf8mb4_nopad_bin', self::collationOf($table, 'username'));
@@ -212,5 +212,17 @@ final class ExactCollationListenerTest extends TestCase
         }
 
         return new EntityManager(DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true], $configuration), $configuration, new EventManager());
+    }
+
+    /**
+     * SQLitePlatform on DBAL 4, SqlitePlatform on DBAL 3 (CI job "Load readiness" runs the suite on both).
+     */
+    private static function sqlitePlatform(): AbstractPlatform
+    {
+        $class = class_exists(SQLitePlatform::class) ? SQLitePlatform::class : 'Doctrine\\DBAL\\Platforms\\SqlitePlatform';
+        $platform = new $class();
+        \assert($platform instanceof AbstractPlatform);
+
+        return $platform;
     }
 }
