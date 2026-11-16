@@ -2,7 +2,7 @@
 
 **Baseline spec**: [`spec.md`](spec.md)  
 **Package**: `nowo-tech/login-throttle-bundle`  
-**Last audited**: 2026-10-21
+**Last audited**: 2026-11-16 (v3.15.0)
 
 ## Symfony config
 
@@ -15,6 +15,7 @@
 | Source file | Spec section | Requirement IDs |
 | --- | --- | --- |
 | `NowoLoginThrottleBundle.php` | Bundle entry | FR-BUNDLE-001 |
+| `DependencyInjection/Compiler/AttemptStorePass.php` | Store alias resolution | FR-ORM-006 |
 | `DependencyInjection/Configuration.php` | Config tree | FR-CFG-001 |
 | `DependencyInjection/NowoLoginThrottleExtension.php` | DI extension | FR-CFG-002 |
 
@@ -33,6 +34,15 @@
 | `Repository/LoginAttemptRepository.php` | Attempt queries/cleanup | FR-ORM-002 |
 | `Repository/LoginAttemptRepositoryInterface.php` | Repository contract for DI / tests | FR-ORM-002 |
 | `Doctrine/TablePrefixListener.php` | `doctrine.table_prefix` metadata listener | FR-ORM-004 |
+| `Doctrine/ExactCollationListener.php` | Byte-exact NO PAD collation (REQ-SEC-006) | FR-ORM-005 |
+| `Repository/LoginAttemptStoreInterface.php` | Entity-free store port | FR-ORM-006 |
+| `Repository/LoginAttemptRecorderInterface.php` | Entity-free write port | FR-ORM-006 |
+| `Repository/LoginAttemptViewRepositoryInterface.php` | Entity-free read port | FR-ORM-006 |
+| `Repository/LoginAttemptWithoutUsernameReaderInterface.php` | Reads without a username | FR-ORM-006 |
+| `Repository/LoginAttemptView.php` | Read model of one attempt | FR-ORM-006 |
+| `Repository/LoginAttemptLockInterface.php` | Per-IP serialisation port | FR-ORM-008 |
+| `Transaction/AttemptLockRunner.php` | Per-IP lock + own transaction | FR-ORM-008 |
+| `Testing/LoginAttemptStoreContractTestCase.php` | Store conformance tests for hosts | FR-ORM-007 |
 
 ## Rate limiting
 
@@ -40,12 +50,19 @@
 | --- | --- | --- |
 | `RateLimiter/DatabaseRateLimiter.php` | DB-backed limiter | FR-LIMIT-001 |
 | `RateLimiter/DatabaseRateLimiterFactory.php` | Limiter factory | FR-LIMIT-001 |
+| `Throttle/ThrottleRules.php` | Limiter rules | FR-LIMIT-003 |
+| `Throttle/ThrottleStatus.php` | Read-only bucket state | FR-LIMIT-003, FR-SVC-002 |
+| `Throttle/UsernameNormalizer.php` | Username extraction / normalisation | FR-LIMIT-003 |
+| `Event/LoginThrottledEvent.php` | Refused attempt event | FR-LIMIT-004 |
+| `Event/LoginAttemptsClearedEvent.php` | Bucket cleared event | FR-LIMIT-004 |
 
 ## Services
 
 | Source file | Spec section | Requirement IDs |
 | --- | --- | --- |
 | `Service/LoginThrottleInfoService.php` | Throttle status info | FR-SVC-001 |
+| `Service/LoginThrottleStatusProviderInterface.php` | Status port | FR-SVC-002 |
+| `Service/LoginThrottleStatusProvider.php` | Default status provider | FR-SVC-002 |
 
 ## Translations
 
@@ -81,12 +98,12 @@
 | Category | Files | Mapped |
 | --- | ---: | ---: |
 | Symfony config | 1 | 1 |
-| Bundle & DI | 3 | 3 |
+| Bundle & DI | 4 | 4 |
 | CLI | 2 | 2 |
-| Persistence | 4 | 4 |
-| Rate limiting | 2 | 2 |
-| Services | 1 | 1 |
+| Persistence | 13 | 13 |
+| Rate limiting | 7 | 7 |
+| Services | 3 | 3 |
 | Translations | 24 | 24 |
-| **Total production sources** | **37** | **37** |
+| **Total production sources** | **54** | **54** |
 
-Audit command (production count): `git ls-files src | wc -l` → **37** (2026-10-21).
+Audit command (production count): `git ls-files src | wc -l` → **54** (2026-11-16).

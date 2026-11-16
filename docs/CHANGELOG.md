@@ -57,6 +57,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation
+
+- Spec Kit baseline brought up to date for 3.9–3.15 (REQ-SPECKIT-001/003): `code-inventory.md` maps 54/54 files, and `spec.md` gains FR-ORM-005…008, FR-LIMIT-003/004 and FR-SVC-002.
+- README: the test count and coverage figures in "Tests and coverage" now match CI.
+
+### Tests
+
+- `phpunit.xml.dist` points at the PHPUnit 11.5 schema, the version CI installs. This removes the "PHPUnit Deprecations: 1" reported by every run.
+
 ## [3.15.0] - 2026-11-15
 
 Load readiness (Beacon spec 239): with `storage: database`, concurrent logins are decided one after the other per IP
