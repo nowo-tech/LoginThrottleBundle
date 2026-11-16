@@ -64,7 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Tests
 
-- `phpunit.xml.dist` points at the PHPUnit 11.5 schema, the version CI installs. This removes the "PHPUnit Deprecations: 1" reported by every run.
+- `phpunit.xml.dist` is on the PHPUnit 11.5 schema, the version CI installs. `restrictDeprecations` became `ignoreIndirectDeprecations` (same meaning), which removes the "PHPUnit Deprecations: 1" reported by every run.
 
 ## [3.15.0] - 2026-11-15
 
