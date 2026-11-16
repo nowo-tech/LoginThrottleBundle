@@ -375,8 +375,8 @@ The bundle requires 100% code coverage. The CI/CD pipeline validates this requir
 
 | Scope | Detail |
 |-------|--------|
-| **PHPUnit** | `composer test` / `make test` — suite under `tests/` (109 tests). |
-| **PHP lines** | **100%** line coverage required (CI fails below 100%). Run `composer test-coverage` / `make test-coverage`. |
+| **PHPUnit** | `composer test` / `make test` — suite under `tests/` (454 tests; the real-database tests run in the CI job on PostgreSQL, MySQL and MariaDB). |
+| **PHP lines** | **100%** (1390/1390 lines; CI fails below 100%). Run `composer test-coverage` / `make test-coverage`. |
 
 CI runs tests, PHPStan, and PHP-CS-Fixer on push/PR (see `.github/workflows/ci.yml`).
 - TS/JS: N/A

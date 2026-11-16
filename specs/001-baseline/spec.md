@@ -68,14 +68,23 @@ Drop-in Symfony bundle wrapping native **`login_throttling`**: sensible defaults
 - **FR-ORM-004**: `Doctrine\TablePrefixListener` prepends `doctrine.table_prefix` to the `LoginAttempt` table and its index names only; registered only when the prefix is not empty (REQ-ORM-002).
 - **FR-ORM-003**: Under long-lived workers, `LoginAttemptRepository` detaches written/loaded attempts, resets a closed EntityManager via `ManagerRegistry`, and builds DQL through a live manager (ORM 3 `ServiceEntityRepository` proxy safe).
 
+- **FR-ORM-005**: `Doctrine\ExactCollationListener` sets a byte-exact NO PAD collation on `username` / `ip_address` on MySQL / MariaDB: `utf8mb4_nopad_bin` on MariaDB, `utf8mb4_0900_bin` on MySQL 8.0+, and `utf8mb4_bin` with a warning on MySQL 5.7 or a short `server_version`. The repository re-checks every row with `===` (REQ-SEC-006, 3.11.0).
+- **FR-ORM-006**: Entity-free store ports (REQ-ARCH-001): `LoginAttemptViewRepositoryInterface` and the `LoginAttemptView` read model (3.9), `LoginAttemptRecorderInterface` (3.12), `LoginAttemptWithoutUsernameReaderInterface` (3.13.0) and `LoginAttemptStoreInterface` (3.14). The store interface is the twin of the deprecated `LoginAttemptRepositoryInterface`. `AttemptStorePass` points the internal store alias at the store interface first, else at the deprecated repository interface, else at the bundle repository.
+- **FR-ORM-007**: `Testing\LoginAttemptStoreContractTestCase` holds the conformance tests a host store extends to check the limiter's contract, including the `clearAttempts()` rule (3.14).
+- **FR-ORM-008**: `LoginAttemptLockInterface` + `Transaction\AttemptLockRunner` serialise the units of one IP address: an attempt decision or a reset after a successful login. The lock is a per-IP lock (`GET_LOCK()` on MySQL / MariaDB) inside the bundle's own READ COMMITTED unit on the primary connection, bounded by `attempt_lock_timeout` and with a lock-free deny fast path (3.15, Beacon spec 239).
+
 ### Rate limiting
 
 - **FR-LIMIT-001**: `DatabaseRateLimiter`, `DatabaseRateLimiterFactory` — Symfony RateLimiter integration backed by Doctrine.
 - **FR-LIMIT-002**: Limiter and factory hold no per-request mutable state (safe under FrankenPHP scenario B).
 
+- **FR-LIMIT-003**: `Throttle\ThrottleRules` is the single place for the limiter rules: limits, per-IP cap, bound without a username, retry time. `ThrottleStatus` is its read-only result, and `UsernameNormalizer` extracts and normalises the submitted identifier the same way for the limiter, the status provider and the info service (3.9).
+- **FR-LIMIT-004**: The database limiter dispatches `Event\LoginThrottledEvent` for every refused attempt and `Event\LoginAttemptsClearedEvent` after a successful login clears its IP + username bucket. Both events carry scalars only and are dispatched after the store write (REQ-ARCH-001 rule 4, 3.14).
+
 ### Services & i18n
 
 - **FR-SVC-001**: `LoginThrottleInfoService` — remaining attempts / lockout info for UI.
+- **FR-SVC-002**: `LoginThrottleStatusProviderInterface` / `LoginThrottleStatusProvider` report the HTTP-free throttling state of a bucket, using the limiter's own `ThrottleRules` (3.9).
 - **FR-I18N-001**: 24 locale files for throttle error messages.
 
 ### Worker / static analysis
@@ -87,7 +96,7 @@ Drop-in Symfony bundle wrapping native **`login_throttling`**: sensible defaults
 
 ## Success Criteria
 
-- **SC-001**: **37/37** production files under `src/` mapped in [`code-inventory.md`](code-inventory.md) (audited 2026-10-21; `git ls-files src | wc -l`).
+- **SC-001**: **54/54** production files under `src/` mapped in [`code-inventory.md`](code-inventory.md) (audited 2026-11-16 on v3.15.0; `git ls-files src | wc -l`).
 - **SC-002**: Config keys match [`docs/CONFIGURATION.md`](../../docs/CONFIGURATION.md).
 - **SC-003**: 100% PHPUnit line coverage on `src/` (project standard).
 
