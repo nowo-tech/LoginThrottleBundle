@@ -64,6 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- composer.json now requires nowo-tech/transaction-doctrine ^1.6, which 3.16.0 already needed: with 1.5, an answer built by transaction-doctrine's responder (`map_transient_failures`, or a host that leaves the answer to it) has no `X-Conflict-Code` header, although 3.16.0 documents `CONFLICT_001` on every conflict answer (no class not found; found by the new `deps-floor` job).
 - Demo: `demo/symfony8/composer.lock` now installs nowo-tech/transaction-doctrine 1.6.0. The locks of 3.15.0 and 3.16.0 did not install nowo-tech/transaction-doctrine or nowo-tech/transaction-contract, which the bundle already required (^1.5): the demo installs from its lock, so it failed with class not found (`ConflictResponsePolicy`). The bundle's composer.json constraint was already right; hosts are not affected.
 
 ## [3.16.0] - 2026-11-18
