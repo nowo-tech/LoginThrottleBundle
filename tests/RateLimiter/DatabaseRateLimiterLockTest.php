@@ -6,7 +6,9 @@ namespace Nowo\LoginThrottleBundle\Tests\RateLimiter;
 
 use Nowo\LoginThrottleBundle\Event\LoginThrottledEvent;
 use Nowo\LoginThrottleBundle\RateLimiter\DatabaseRateLimiter;
+use Nowo\LoginThrottleBundle\Tests\Support\LockingConflictStore;
 use Nowo\LoginThrottleBundle\Tests\Support\LockingDelegateStore;
+use Nowo\LoginThrottleBundle\Transaction\LoginThrottleStorageFailure;
 use PHPUnit\Framework\TestCase;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -81,5 +83,23 @@ final class DatabaseRateLimiterLockTest extends TestCase
 
         $scopes = array_map(static fn (object $event): string => $event instanceof LoginThrottledEvent ? $event->scope . ($event->lockoutStarted ? '+' : '') : '', $events->events);
         $this->assertSame(['username+', 'username', 'ip+', 'ip', 'without_username+', 'without_username'], $scopes);
+    }
+
+    /**
+     * 3.16 (REQ-RUNTIME-003 rule 6): a lock conflict is a refusal, never an allow. The failure leaves consume() as it is,
+     * so the firewall cannot go on to the password check, and nothing is recorded.
+     */
+    public function testALockConflictIsNeverAnAllow(): void
+    {
+        $store = new LockingConflictStore();
+        $limiter = new DatabaseRateLimiter($store, 3, 600, 10, null, false, 2);
+
+        try {
+            $limiter->consume(Request::create('/login', 'POST', ['_username' => 'alice'], [], [], ['REMOTE_ADDR' => '10.0.0.1']));
+            $this->fail('A conflict must not be answered as an allow.');
+        } catch (LoginThrottleStorageFailure $failure) {
+            $this->assertSame(['10.0.0.1'], $store->units);
+            $this->assertSame(0, $store->inner->countAttemptsByIp('10.0.0.1', 600), 'nothing recorded');
+        }
     }
 }

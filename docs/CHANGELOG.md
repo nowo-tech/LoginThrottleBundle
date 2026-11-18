@@ -57,8 +57,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Conflict answer (REQ-RUNTIME-003 rule 6): a lock conflict of the attempt store (the lock of the IP address not granted within `attempt_lock_timeout`, a deadlock, a lock wait timeout, a serialization failure) on a login of a guarded firewall is answered **409 + `Retry-After: 1` + `CONFLICT_001`** by the bundle instead of a 500. It fails closed (never a success or a redirect; the attempt counts as a refusal, never as an allow) and is identical whatever the account (existing, unknown, locked, no username): the answer is built from a fresh failure, so nothing of the request, the username, the IP address or the storage error reaches the body.
+- `nowo_login_throttle.conflict_response.mode` (`bundle` default, or `host` to leave the exception to the application) and `conflict_response.status` (`409` or `503`; null follows `nowo_transaction_doctrine.conflict_response.status` when NowoTransactionDoctrineBundle is registered, else 409). JSON, XHR and `/api/` requests get `{"error", "code", "message"}`, other requests the platform's "try again" page.
+- `Nowo\LoginThrottleBundle\Transaction\LoginThrottleStorageFailure` (a `TransientStorageFailure`, so existing catch blocks keep working) and `EventSubscriber\StorageFailureSubscriber`.
+- `docs/CONCURRENCY.md`: write paths, conflict codes, host options, residual risks.
+- CI: Load readiness also runs on MariaDB 11.4 (DBAL 4 and 3).
+
+### Changed
+
+- `nowo-tech/transaction-doctrine` requires `^1.5` (conflict codes).
+- Every transient failure of the attempt store now leaves `AttemptLockRunner` (and so the limiter and the repository) as `LoginThrottleStorageFailure`, with the original failure as `previous`; a deadlock or lock wait timeout inside a transaction the host left open is converted too (it was a raw DBAL exception).
+
 ### Documentation
 
+- `docs/HIGH-LOAD.md` links to `docs/CONCURRENCY.md` and describes the 3.16 answer.
 - Spec Kit baseline brought up to date for 3.9–3.15 (REQ-SPECKIT-001/003): `code-inventory.md` maps 54/54 files, and `spec.md` gains FR-ORM-005…008, FR-LIMIT-003/004 and FR-SVC-002.
 - README: the test count and coverage figures in "Tests and coverage" now match CI.
 

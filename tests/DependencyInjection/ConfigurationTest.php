@@ -33,6 +33,28 @@ final class ConfigurationTest extends TestCase
         $this->assertNotNull($treeBuilder);
     }
 
+    public function testConflictResponseDefaultsToTheBundleAnsweringWithTheSharedStatus(): void
+    {
+        $config = $this->processor->processConfiguration($this->configuration, []);
+
+        $this->assertSame(['mode' => 'bundle', 'status' => null], $config['conflict_response']);
+    }
+
+    public function testConflictResponseAcceptsHostModeAnd503(): void
+    {
+        $host = $this->processor->processConfiguration($this->configuration, [['conflict_response' => ['mode' => 'host']]]);
+        $unavailable = $this->processor->processConfiguration($this->configuration, [['conflict_response' => ['status' => 503]]]);
+
+        $this->assertSame('host', $host['conflict_response']['mode']);
+        $this->assertSame(503, $unavailable['conflict_response']['status']);
+    }
+
+    public function testConflictResponseRejectsOtherStatusesAndModes(): void
+    {
+        $this->expectException(InvalidConfigurationException::class);
+        $this->processor->processConfiguration($this->configuration, [['conflict_response' => ['status' => 500]]]);
+    }
+
     public function testDefaultConfiguration(): void
     {
         $config = $this->processor->processConfiguration($this->configuration, []);

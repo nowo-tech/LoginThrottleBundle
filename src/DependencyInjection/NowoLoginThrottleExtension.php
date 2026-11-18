@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\LoginThrottleBundle\DependencyInjection;
 
 use Nowo\LoginThrottleBundle\DependencyInjection\Compiler\AttemptStorePass;
+use Nowo\LoginThrottleBundle\DependencyInjection\Compiler\ConflictResponsePass;
 use Nowo\LoginThrottleBundle\Doctrine\ExactCollationListener;
 use Nowo\LoginThrottleBundle\Doctrine\TablePrefixListener;
 use Nowo\LoginThrottleBundle\RateLimiter\DatabaseRateLimiter;
@@ -122,6 +123,8 @@ final class NowoLoginThrottleExtension extends Extension implements PrependExten
         $container->setParameter('nowo_login_throttle.username_from_passport', (bool) ($config['username_from_passport'] ?? false));
         $container->setParameter('nowo_login_throttle.attempt_lock_timeout', (int) ($config['attempt_lock_timeout'] ?? AttemptLockRunner::LOCK_TIMEOUT_SECONDS));
 
+        $container->setParameter(ConflictResponsePass::PARAMETER, $config['conflict_response']);
+
         $mappingEnabled = $this->resolveRegisterMapping($config['doctrine']['register_mapping'], $this->usesDatabaseStorage($config));
         $container->setParameter(self::MAPPING_ENABLED_PARAMETER, $mappingEnabled);
 
@@ -178,6 +181,11 @@ final class NowoLoginThrottleExtension extends Extension implements PrependExten
         // Load services.yaml after parameters are set (needed for parameter references)
         $loader = new YamlFileLoader($container, new FileLocator(__DIR__ . '/../Resources/config'));
         $loader->load('services.yaml');
+
+        // 3.16: the firewalls a lock conflict is answered on (StorageFailureSubscriber)
+        /** @var array<string, mixed> $guarded */
+        $guarded = $container->getParameter('nowo_login_throttle.firewalls');
+        $container->setParameter('nowo_login_throttle.guarded_firewalls', array_map(strval(...), array_keys($guarded)));
 
         // REQ-ORM-002: the table prefix listener only exists when a prefix is configured.
         $tablePrefix = (string) $config['doctrine']['table_prefix'];

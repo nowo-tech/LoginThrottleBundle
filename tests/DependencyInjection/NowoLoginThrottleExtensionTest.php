@@ -216,6 +216,27 @@ final class NowoLoginThrottleExtensionTest extends TestCase
         $this->assertSame('database', $securityConfig['storage']);
     }
 
+    public function testTheGuardedFirewallsAndTheConflictResponseAreParameters(): void
+    {
+        $this->extension->load([[
+            'conflict_response' => ['mode' => 'host', 'status' => 503],
+            'firewalls' => [
+                'main' => ['storage' => 'database'],
+                'api' => ['storage' => 'cache'],
+            ],
+        ]], $this->container);
+
+        $this->assertSame(['main', 'api'], $this->container->getParameter('nowo_login_throttle.guarded_firewalls'));
+        $this->assertSame(['mode' => 'host', 'status' => 503], $this->container->getParameter('nowo_login_throttle.conflict_response'));
+    }
+
+    public function testTheSingleFirewallIsGuarded(): void
+    {
+        $this->extension->load([['firewall' => 'secure']], $this->container);
+
+        $this->assertSame(['secure'], $this->container->getParameter('nowo_login_throttle.guarded_firewalls'));
+    }
+
     public function testLoadWithMultipleFirewallsSharesDatabaseLimiterByConfig(): void
     {
         $configs = [

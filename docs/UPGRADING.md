@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+  - [Lock conflicts on the login are answered 409 (REQ-RUNTIME-003)](#lock-conflicts-on-the-login-are-answered-409-req-runtime-003)
 - [To 3.15.0](#to-3150)
 - [To 3.14.0](#to-3140)
   - [To 3.14.0](#to-3140-1)
@@ -62,6 +63,23 @@
 - [Notes](#notes)
 
 ## Unreleased
+
+### Lock conflicts on the login are answered 409 (REQ-RUNTIME-003)
+
+Minor version, no migration. Until now a lock conflict of the attempt store (`TransientStorageFailure`) went into your
+login flow and ended as a 500 unless you mapped it yourself. The bundle now answers it on the login paths of the
+firewalls it guards: **409 + `Retry-After: 1` + `CONFLICT_001`**, the same for every account, never a success.
+
+- **You mapped `TransientStorageFailure` yourself** (a listener at priority above -64, which is any default listener):
+  your answer wins, nothing changes. To keep full control, set `nowo_login_throttle.conflict_response.mode: host`: the
+  bundle then registers no listener and the exception reaches you as before.
+- **You want 503**: `nowo_login_throttle.conflict_response.status: 503` (or `nowo_transaction_doctrine.conflict_response.status`
+  with NowoTransactionDoctrineBundle).
+- **You catch `TransientStorageFailure`** around the login: it still works, `LoginThrottleStorageFailure` is one. A
+  deadlock inside a transaction you left open is now a `LoginThrottleStorageFailure` too (it was the raw DBAL exception).
+- `nowo-tech/transaction-doctrine` must be `^1.5`.
+
+See [CONCURRENCY](CONCURRENCY.md).
 
 ## To 3.15.0
 

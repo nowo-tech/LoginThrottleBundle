@@ -347,6 +347,7 @@ The GitHub Actions CI/CD pipeline automatically:
 - [Demo with FrankenPHP](docs/DEMO-FRANKENPHP.md)
 - [FrankenPHP worker audit](docs/FRANKENPHP-WORKER-AUDIT.md)
 - [High load](docs/HIGH-LOAD.md)
+- [Concurrency (conflict answer, codes, residual risks)](docs/CONCURRENCY.md)
 - [Database storage](docs/DATABASE_STORAGE.md)
 - [Migration from Anyx](docs/MIGRATION_FROM_ANYX.md)
 - [Translations](docs/TRANSLATIONS.md)

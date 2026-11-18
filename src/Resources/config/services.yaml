@@ -50,6 +50,13 @@ services:
     arguments:
       $lockTimeoutSeconds: '%nowo_login_throttle.attempt_lock_timeout%'
 
+  # 3.16 (REQ-RUNTIME-003 rule 6): 409 + Retry-After + CONFLICT_001 for a lock conflict on a guarded login; the policy and
+  # responder are wired by ConflictResponsePass, which removes the subscriber with conflict_response.mode: host.
+  Nowo\LoginThrottleBundle\EventSubscriber\StorageFailureSubscriber:
+    arguments:
+      $security: '@?security.helper'
+      $firewalls: '%nowo_login_throttle.guarded_firewalls%'
+
   # Repository for LoginAttempt entity (optional, only if Doctrine is installed)
   Nowo\LoginThrottleBundle\Repository\LoginAttemptRepository:
     arguments:
