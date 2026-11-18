@@ -25,6 +25,19 @@ use Nowo\TransactionDoctrine\ConflictCode;
  */
 final class LoginThrottleStorageFailure extends TransientStorageFailure
 {
+    /**
+     * Request attribute set by the limiter when the failure comes from the authentication of a login. Only such a failure
+     * is answered by {@see StorageFailureSubscriber}: host code on a guarded firewall that raises the exception through the
+     * public API keeps the host's rendering.
+     */
+    public const REQUEST_ATTRIBUTE = '_nowo_login_throttle_conflict';
+
+    /** The failure came from deciding an attempt, before the password check. */
+    public const DURING_ATTEMPT = 'attempt';
+
+    /** The failure came from the reset after a successful login: the login must not complete. */
+    public const DURING_SUCCESS = 'success';
+
     /** The message of every answer: the same whatever the account. */
     public const MESSAGE = 'The login could not be checked right now. Retry later.';
 

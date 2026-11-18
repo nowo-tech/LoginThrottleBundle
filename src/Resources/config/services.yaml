@@ -55,6 +55,7 @@ services:
   Nowo\LoginThrottleBundle\EventSubscriber\StorageFailureSubscriber:
     arguments:
       $security: '@?security.helper'
+      $tokenStorage: '@?security.token_storage'
       $firewalls: '%nowo_login_throttle.guarded_firewalls%'
 
   # Repository for LoginAttempt entity (optional, only if Doctrine is installed)

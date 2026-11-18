@@ -65,6 +65,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `docs/CONCURRENCY.md`: write paths, conflict codes, host options, residual risks.
 - CI: Load readiness also runs on MariaDB 11.4 (DBAL 4 and 3).
 
+### Fixed
+
+- A conflict in the reset after a right password no longer leaves the login completed: the token is cleared and the session invalidated before the 409.
+- Every conflict answer carries `X-Conflict-Code: CONFLICT_001` (HTML and JSON, 409 and 503), and the answer never depends on a commit mark of the request (transaction-doctrine 1.6), so it cannot become an account-existence oracle.
+- Only failures raised while authenticating are answered by the bundle; the plain reads that refuse an attempt are classified like the locked unit.
+
 ### Changed
 
 - `nowo-tech/transaction-doctrine` requires `^1.5` (conflict codes).

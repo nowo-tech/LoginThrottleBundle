@@ -21,9 +21,8 @@ kernel not reset, in standard and DDD hosts alike.
 | Path | Transaction | Control | Conflict answer |
 |------|-------------|---------|-----------------|
 | Failed login: count, insert one row, count again (`DatabaseRateLimiter::consume()`) | One unit, `READ COMMITTED`, opened by transaction-doctrine's DBAL runner; in a transaction the host left open: an explicit savepoint of its own | Per-IP lock (`GET_LOCK` / advisory transaction lock / SQLite write lock) taken first; locking reads on MySQL / MariaDB | 409 + `Retry-After` + `CONFLICT_001` |
-| Successful login: clear the bucket (`reset()`) | One unit, same lock | Same | 409 + `Retry-After` + `CONFLICT_001` (the exception leaves the success event; the login does not complete) |
+| Successful login: clear the bucket (`reset()`) | One unit, same lock | Same | 409 + `Retry-After` + `CONFLICT_001`; the bundle ends that login first (token cleared, session invalidated, no remember-me cookie), so the next request is anonymous |
 | `nowo:login-throttle:cleanup` (expired rows, in batches) | One short transaction per batch | Batched deletes by id; no lock, a lost race deletes nothing twice | Console error, run it again |
-| GDPR erase / anonymise (by id) | One statement per batch | Updates and deletes by primary key | Raised to the caller as `LoginThrottleStorageFailure` |
 | An attempt a limit already refuses | None (plain reads) | Refusing is the safe direction, nothing is recorded | Not a conflict |
 
 Not conflicts, and not mapped to 409: a unique-constraint violation (the table has none that the bundle can hit) and a
@@ -44,7 +43,7 @@ decides, or keeps nothing. So the bundle answers `CONFLICT_001` only (`LoginThro
 When a `LoginThrottleStorageFailure` leaves the limiter on a firewall listed in `nowo_login_throttle`, the bundle
 answers (`EventSubscriber\StorageFailureSubscriber`, `kernel.exception`, priority -64):
 
-- **409** with `Retry-After: 1`, `Cache-Control: no-store, private` and `CONFLICT_001`: JSON
+- **409** with `Retry-After: 1`, `X-Conflict-Code: CONFLICT_001` (also at 503), `Cache-Control: no-store, private` and `CONFLICT_001`: JSON
   `{"error": "concurrency_conflict", "code": "CONFLICT_001", "message": "..."}` for JSON, XHR and `/api/` requests, else
   the platform's "try again" page with `data-conflict-code` (nowo-tech/transaction-doctrine's responder).
 - **Fails closed.** The limiter raises before the password check, so no credential is verified while it cannot count,
@@ -53,7 +52,23 @@ answers (`EventSubscriber\StorageFailureSubscriber`, `kernel.exception`, priorit
   whether the account exists, is unknown, is locked, has a wrong or the right password, or no username was sent.
   Nothing of the request, the username, the IP address or the storage error reaches the response or the responder's log.
 
-A failure raised on a route outside the guarded firewalls, or by code of yours, is left to your application.
+- **Only logins.** Only a failure the limiter raised while authenticating (it marks the request) is answered. A
+  `LoginThrottleStorageFailure` that code of yours raises through the store's public API on a guarded firewall, a failure
+  on a route outside the guarded firewalls and every other exception are left to your application. The plain reads that
+  refuse an attempt are covered like the locked unit.
+- **A conflict after a right password ends the login.** Symfony has already stored the token when the reset runs, so the
+  bundle clears the token storage, invalidates the session and drops the remember-me cookie before it answers: the next
+  request is anonymous (kernel test `ConflictAnswerKernelTest`).
+
+### Deliberate exemption from the request-level code (rule 6)
+
+transaction-doctrine 1.6 answers `CONFLICT_002` when the request already committed something (a commit mark on the
+request). This bundle does **not** follow that detection: the responder gets a copy of the request without the mark, a
+fresh failure, and the code and header are fixed to `CONFLICT_001`. Reason: a host listener that commits only for existing
+accounts (a "last seen" write, an audit row) would otherwise turn the code, the `_partial` error key and the
+`Retry-After` into an account-existence oracle on the login. The attempt itself never commits anything a client could
+repeat, so `CONFLICT_001` is true for what the bundle did. The commit of host code on the same request is the host's to
+report. Needs owner OK as an exemption of REQ-RUNTIME-003 rule 6.
 
 ## Host options
 
@@ -70,16 +85,16 @@ nowo_login_throttle:
 - **Your own page:** a `kernel.exception` listener at a priority above -64 sets its response first; the bundle's
   subscriber skips an event that already has one. Keep the status, `Retry-After` and the same body for every account.
 - **503:** `status: 503`.
-- **NowoTransactionDoctrineBundle:** its `conflict_response` template, translations, JSON error key, path prefixes and
-  formatters apply to this answer.
+- **NowoTransactionDoctrineBundle:** with no `status` set, its `conflict_response` template, translations, JSON error key,
+  path prefixes and formatters apply to this answer. With `status` set, the bundle builds its own responder: the
+  template, `json_error` and `json_path_prefixes` of that bundle are not used (defaults), only its translations and Twig.
 
 ## Residual risks
 
-- **A conflict after a successful password.** The reset after a successful login can lose the lock too; the answer is
-  the same 409, so a visitor who provoked contention on their own IP address (by holding its lock with other requests)
-  could tell "password right" from "password wrong" for that one request. They need the password right for the
-  difference to show, and contention on their own address only, so it adds nothing to a brute force. Keep
-  `attempt_lock_timeout` short.
+- **A conflict after a successful password.** The reset can lose the lock too; the answer is the same 409 and the
+  login is ended, so a visitor who provoked contention on their own IP address could still tell "password right" from
+  "password wrong" for that one request only through timing or retries, never through a session. The right attempt is
+  recorded. Keep `attempt_lock_timeout` short.
 - **A lock flood.** Many attempts of one IP address queue on its lock for up to `attempt_lock_timeout`; the ones that a
   limit already refuses never take it. A distributed attack from many addresses takes one lock each.
 - **MySQL / MariaDB `REPEATABLE READ` host transaction around the login:** gap locks may make neighbouring IP addresses
