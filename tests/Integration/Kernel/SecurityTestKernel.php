@@ -6,6 +6,7 @@ namespace Nowo\LoginThrottleBundle\Tests\Integration\Kernel;
 
 use Doctrine\Bundle\DoctrineBundle\DoctrineBundle;
 use Nowo\LoginThrottleBundle\NowoLoginThrottleBundle;
+use Nowo\TransactionDoctrine\Symfony\NowoTransactionDoctrineBundle;
 use Symfony\Bundle\FrameworkBundle\FrameworkBundle;
 use Symfony\Bundle\SecurityBundle\SecurityBundle;
 use Symfony\Component\Config\Loader\LoaderInterface;
@@ -22,7 +23,11 @@ final class SecurityTestKernel extends Kernel
     /**
      * @param \Closure(ContainerBuilder): void $services Host services and aliases
      */
-    public function __construct(private readonly string $caseId, private readonly \Closure $services)
+    /**
+     * @param array<string, mixed> $throttle            nowo_login_throttle options added to the defaults
+     * @param bool                 $transactionDoctrine Register NowoTransactionDoctrineBundle with map_transient_failures
+     */
+    public function __construct(private readonly string $caseId, private readonly \Closure $services, private readonly array $throttle = [], private readonly bool $transactionDoctrine = false)
     {
         parent::__construct('test', false);
     }
@@ -33,6 +38,9 @@ final class SecurityTestKernel extends Kernel
         yield new SecurityBundle();
         yield new DoctrineBundle();
         yield new NowoLoginThrottleBundle();
+        if ($this->transactionDoctrine) {
+            yield new NowoTransactionDoctrineBundle();
+        }
     }
 
     public function getProjectDir(): string
@@ -76,12 +84,15 @@ final class SecurityTestKernel extends Kernel
                 ]],
                 'access_control' => [['path' => '^/home', 'roles' => 'ROLE_USER']],
             ]);
-            $container->loadFromExtension('nowo_login_throttle', [
+            $container->loadFromExtension('nowo_login_throttle', $this->throttle + [
                 'doctrine' => ['register_mapping' => false],
                 'storage' => 'database',
                 'max_count_attempts' => 5,
                 'firewall' => 'main',
             ]);
+            if ($this->transactionDoctrine) {
+                $container->loadFromExtension('nowo_transaction_doctrine', ['conflict_response' => ['enabled' => true, 'map_transient_failures' => true]]);
+            }
             $container->register(SecurityTestController::class, SecurityTestController::class)->setPublic(true)->addTag('controller.service_arguments');
             ($this->services)($container);
         });

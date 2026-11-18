@@ -7,24 +7,16 @@ namespace Nowo\LoginThrottleBundle\Tests\EventSubscriber;
 use Nowo\LoginThrottleBundle\EventSubscriber\StorageFailureSubscriber;
 use Nowo\LoginThrottleBundle\Transaction\LoginThrottleStorageFailure;
 use Nowo\TransactionContract\TransientStorageFailure;
-use Nowo\TransactionDoctrine\Symfony\Conflict\ConflictResponseContext;
-use Nowo\TransactionDoctrine\Symfony\Conflict\ConflictResponseFormatterInterface;
 use Nowo\TransactionDoctrine\Symfony\Conflict\ConflictResponsePolicy;
-use Nowo\TransactionDoctrine\Symfony\EventListener\ConcurrencyConflictResponder;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Bundle\SecurityBundle\Security\FirewallConfig;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\Session\Session;
-use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Symfony\Component\HttpKernel\KernelEvents;
-use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorage;
-use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
-use Symfony\Component\Security\Core\User\InMemoryUser;
 
 /**
  * 3.16 (REQ-RUNTIME-003 rule 6): 409 + Retry-After + CONFLICT_001 on the guarded logins, the same answer whatever the
@@ -187,72 +179,6 @@ final class StorageFailureSubscriberTest extends TestCase
         $this->subscriber(['main'])->onException($event);
 
         $this->assertNull($event->getResponse());
-    }
-
-    /**
-     * F3: transaction-doctrine 1.6 reads a commit mark of the request. A host that committed for an existing account would
-     * get another code, so the responder never sees the mark: the code is 001 and the answer the same for everyone.
-     */
-    public function testTheCommitMarkOfTheRequestNeverReachesTheResponder(): void
-    {
-        $seen = [];
-        $formatter = new class($seen) implements ConflictResponseFormatterInterface {
-            /** @param list<bool> $seen */
-            public function __construct(private array &$seen)
-            {
-            }
-
-            public function format(Request $request, ConflictResponseContext $context): ?Response
-            {
-                $this->seen[] = $request->attributes->has('_nowo_transaction_doctrine_commit_mark');
-
-                return null;
-            }
-        };
-        $responder = new ConcurrencyConflictResponder(new ConflictResponsePolicy(), [], [$formatter]);
-        $answers = [];
-        foreach ([true, false] as $committedForThisAccount) {
-            $event = $this->event(new LoginThrottleStorageFailure(), 'main', ['_username' => $committedForThisAccount ? 'alice' : 'nobody']);
-            if ($committedForThisAccount) {
-                $event->getRequest()->attributes->set('_nowo_transaction_doctrine_commit_mark', new \stdClass());
-            }
-            (new StorageFailureSubscriber($this->security, ['main'], null, $responder))->onException($event);
-            $answers[] = [$event->getResponse()?->getStatusCode(), $event->getResponse()?->headers->get('X-Conflict-Code'), $event->getResponse()?->getContent()];
-            $this->assertTrue($event->getRequest()->attributes->has('_nowo_transaction_doctrine_commit_mark') === $committedForThisAccount, 'the real request is untouched');
-        }
-
-        $this->assertSame([false, false], $seen);
-        $this->assertSame($answers[0], $answers[1]);
-        $this->assertSame('CONFLICT_001', $answers[0][1]);
-    }
-
-    /** F1: a conflict in the reset after a right password ends that login. */
-    public function testAConflictAfterARightPasswordEndsTheLogin(): void
-    {
-        $tokens = new TokenStorage();
-        $tokens->setToken(new UsernamePasswordToken(new InMemoryUser('alice', null), 'main'));
-        $event = $this->event(new LoginThrottleStorageFailure(), 'main', mark: LoginThrottleStorageFailure::DURING_SUCCESS);
-        $request = $event->getRequest();
-        $session = new Session(new MockArraySessionStorage());
-        $session->set('_security_main', 'serialized-token');
-        $request->setSession($session);
-        $request->attributes->set('_security_remember_me_cookie', 'cookie');
-
-        (new StorageFailureSubscriber($this->security, ['main'], null, null, $tokens))->onException($event);
-
-        $this->assertSame(409, $event->getResponse()?->getStatusCode());
-        $this->assertNull($tokens->getToken());
-        $this->assertFalse($session->has('_security_main'));
-        $this->assertFalse($request->attributes->has('_security_remember_me_cookie'));
-    }
-
-    public function testAConflictAfterARightPasswordWithoutSessionOrTokenStorageStillAnswers(): void
-    {
-        $event = $this->event(new LoginThrottleStorageFailure(), 'main', mark: LoginThrottleStorageFailure::DURING_SUCCESS);
-
-        $this->subscriber(['main'])->onException($event);
-
-        $this->assertSame(409, $event->getResponse()?->getStatusCode());
     }
 
     /**

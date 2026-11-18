@@ -67,6 +67,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The login is ended and the commit mark removed by a listener above every renderer (priority 128, both `conflict_response` modes): a right password plus a reset conflict no longer leaves the user logged in with `mode: host`, a host `kernel.exception` listener, or transaction-doctrine's `map_transient_failures` responder, and that responder answers `CONFLICT_001` whatever the host committed (audit TJ-2).
 - A conflict in the reset after a right password no longer leaves the login completed: the token is cleared and the session invalidated before the 409.
 - Every conflict answer carries `X-Conflict-Code: CONFLICT_001` (HTML and JSON, 409 and 503), and the answer never depends on a commit mark of the request (transaction-doctrine 1.6), so it cannot become an account-existence oracle.
 - Only failures raised while authenticating are answered by the bundle; the plain reads that refuse an attempt are classified like the locked unit.

@@ -56,19 +56,23 @@ answers (`EventSubscriber\StorageFailureSubscriber`, `kernel.exception`, priorit
   `LoginThrottleStorageFailure` that code of yours raises through the store's public API on a guarded firewall, a failure
   on a route outside the guarded firewalls and every other exception are left to your application. The plain reads that
   refuse an attempt are covered like the locked unit.
-- **A conflict after a right password ends the login.** Symfony has already stored the token when the reset runs, so the
-  bundle clears the token storage, invalidates the session and drops the remember-me cookie before it answers: the next
-  request is anonymous (kernel test `ConflictAnswerKernelTest`).
+- **A conflict after a right password ends the login, whoever answers.** Symfony has already stored the token when the
+  reset runs, so `LoginConflictListener` (`kernel.exception`, priority 128, registered in both `conflict_response`
+  modes, sets no response) clears the token storage, invalidates the session and drops the remember-me cookie before any
+  renderer runs: the bundle's subscriber, a listener of yours, transaction-doctrine's `map_transient_failures`
+  responder, or no answer at all (`mode: host`). The next request is anonymous (kernel tests in `ConflictAnswerKernelTest`).
 
-### Deliberate exemption from the request-level code (rule 6)
+### Deliberate exemption from the request-level code (rule 6), owner-approved 2026-11-18
 
 transaction-doctrine 1.6 answers `CONFLICT_002` when the request already committed something (a commit mark on the
-request). This bundle does **not** follow that detection: the responder gets a copy of the request without the mark, a
-fresh failure, and the code and header are fixed to `CONFLICT_001`. Reason: a host listener that commits only for existing
+request). This bundle does **not** follow that detection: a listener at priority 128 (`LoginConflictListener`, both modes,
+above every renderer, including the `map_transient_failures` responder of transaction-doctrine and your own listeners)
+removes the mark from the real request when the limiter raised the failure, and the bundle's answer is built from a
+fresh failure with the code and header fixed to `CONFLICT_001`. Reason: a host listener that commits only for existing
 accounts (a "last seen" write, an audit row) would otherwise turn the code, the `_partial` error key and the
 `Retry-After` into an account-existence oracle on the login. The attempt itself never commits anything a client could
 repeat, so `CONFLICT_001` is true for what the bundle did. The commit of host code on the same request is the host's to
-report. Needs owner OK as an exemption of REQ-RUNTIME-003 rule 6.
+report. Owner-approved exemption of REQ-RUNTIME-003 rule 6 (2026-11-18).
 
 ## Host options
 
@@ -91,10 +95,13 @@ nowo_login_throttle:
 
 ## Residual risks
 
-- **A conflict after a successful password.** The reset can lose the lock too; the answer is the same 409 and the
-  login is ended, so a visitor who provoked contention on their own IP address could still tell "password right" from
-  "password wrong" for that one request only through timing or retries, never through a session. The right attempt is
-  recorded. Keep `attempt_lock_timeout` short.
+- **A conflict after a successful password.** The reset can lose the lock too. The login is ended and the answer is
+  409, while a wrong password under the same contention gets the normal failure (a redirect to the login page): the
+  **status** tells a right password from a wrong one for that request. It is bounded: it needs the right password, and
+  that attempt is recorded, so it is no help to a brute force. Keep `attempt_lock_timeout` short.
+- **Writes of your listeners before the reset.** `InteractiveLoginEvent` listeners, and `LoginSuccessEvent` listeners at
+  priority 0 or above, run before the reset: a "last login" or audit write there is committed for a login the bundle may
+  then end. Put such writes after the throttle (a lower priority) if they must not exist for an ended login.
 - **A lock flood.** Many attempts of one IP address queue on its lock for up to `attempt_lock_timeout`; the ones that a
   limit already refuses never take it. A distributed attack from many addresses takes one lock each.
 - **MySQL / MariaDB `REPEATABLE READ` host transaction around the login:** gap locks may make neighbouring IP addresses
