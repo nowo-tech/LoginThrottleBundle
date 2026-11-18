@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[3.16.0] - 2026-11-18](#3160---2026-11-18)
 - [[3.15.0] - 2026-11-15](#3150---2026-11-15)
 - [[3.14.0] - 2026-11-14](#3140---2026-11-14)
 - [[3.13.1] - 2026-11-14](#3131---2026-11-14)
@@ -57,6 +58,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.16.0] - 2026-11-18
+
 ### Added
 
 - Conflict answer (REQ-RUNTIME-003 rule 6): a lock conflict of the attempt store (the lock of the IP address not granted within `attempt_lock_timeout`, a deadlock, a lock wait timeout, a serialization failure) on a login of a guarded firewall is answered **409 + `Retry-After: 1` + `CONFLICT_001`** by the bundle instead of a 500. It fails closed (never a success or a redirect; the attempt counts as a refusal, never as an allow) and is identical whatever the account (existing, unknown, locked, no username): the answer is built from a fresh failure, so nothing of the request, the username, the IP address or the storage error reaches the body.
@@ -82,6 +85,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `docs/HIGH-LOAD.md` links to `docs/CONCURRENCY.md` and describes the 3.16 answer.
 - Spec Kit baseline brought up to date for 3.9–3.15 (REQ-SPECKIT-001/003): `code-inventory.md` maps 54/54 files, and `spec.md` gains FR-ORM-005…008, FR-LIMIT-003/004 and FR-SVC-002.
 - README: the test count and coverage figures in "Tests and coverage" now match CI.
+
+[3.16.0]: https://github.com/nowo-tech/LoginThrottleBundle/releases/tag/v3.16.0
 
 ## [3.15.0] - 2026-11-15
 
