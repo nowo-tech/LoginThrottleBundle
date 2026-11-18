@@ -10,6 +10,7 @@ and the lockout starts at exactly the configured attempt.
 
 ## Table of contents
 
+- [Concurrency, codes and host options](CONCURRENCY.md)
 - [What the bundle writes](#what-the-bundle-writes)
 - [One unit per attempt, one lock per IP address](#one-unit-per-attempt-one-lock-per-ip-address)
 - [Races that no longer happen](#races-that-no-longer-happen)
@@ -34,8 +35,10 @@ One table, `login_attempts` (with your `doctrine.table_prefix`):
   lose their username (they keep counting for the IP address until they expire);
 - `nowo:login-throttle:cleanup` deletes expired rows in batches.
 
-The bundle has no HTTP route of its own, so it never answers 503 or 409 itself: a throttled login keeps Symfony's
-`login_throttling` answer (`TooManyLoginAttemptsAuthenticationException`, your login page's error).
+The bundle has no HTTP route of its own. A throttled login keeps Symfony's `login_throttling` answer
+(`TooManyLoginAttemptsAuthenticationException`, your login page's error). Since 3.16 a lock conflict of the store is
+answered by the bundle on the login paths it guards: 409 + `Retry-After` + `CONFLICT_001` (see
+[CONCURRENCY](CONCURRENCY.md)).
 
 ## One unit per attempt, one lock per IP address
 
@@ -69,7 +72,8 @@ Every other attempt, and every reset, is **one unit** of `Transaction\AttemptLoc
    With DoctrineBundle `replicas:` the connection is pinned to the primary before the lock, so the lock, the unit and
    the release share one session. After any failure
    nothing of the unit is kept and no transaction of the bundle stays open; a transient failure (deadlock, lock wait
-   timeout, serialization failure) becomes `Nowo\TransactionContract\TransientStorageFailure` (Retry-After hint: 1 s).
+   timeout, serialization failure) becomes `Nowo\LoginThrottleBundle\Transaction\LoginThrottleStorageFailure`, a
+   `Nowo\TransactionContract\TransientStorageFailure` (Retry-After hint: 1 s; 3.16: before it was the contract's class itself).
 
 The events follow the unit: `LoginThrottledEvent` and `LoginAttemptsClearedEvent` are dispatched after it committed,
 never inside it (inside a transaction of yours: after the unit's writes, before your commit; see
@@ -137,12 +141,13 @@ it on authentication failures too.
 | Failure | Result |
 |---------|--------|
 | The database is down, a statement fails | The DBAL exception propagates out of `consume()`: the request ends in an error (500) **before the password is checked**. No credential is verified while the limiter cannot count. |
-| The lock of the IP address is not granted within `attempt_lock_timeout` (3 s by default), a deadlock, a lock wait timeout | `TransientStorageFailure` (Retry-After 1 s) out of `consume()`: the same, before the password check. Nothing of the attempt is kept. |
+| The lock of the IP address is not granted within `attempt_lock_timeout` (3 s by default), a deadlock, a lock wait timeout | `LoginThrottleStorageFailure` (a `TransientStorageFailure`, Retry-After 1 s) out of `consume()`, before the password check. Nothing of the attempt is kept. Since 3.16 the bundle answers it **409 + `Retry-After` + `CONFLICT_001`** on the guarded logins ([CONCURRENCY](CONCURRENCY.md)). |
 | The same during `reset()` (after a **successful** login) | The exception propagates out of Symfony's `LoginSuccessEvent`; the password was right, so this is not a brute-force path. The bucket keeps its rows (the user may meet the lockout sooner). |
 
 This is the behaviour of every earlier version (the exception class of a transient failure is new: it was the DBAL
-exception, which stays its `previous`). The bundle never turns a storage failure into an accepted attempt. Map
-`TransientStorageFailure` to a 503 in your own error handling if you want a softer page.
+exception, which stays its `previous`). The bundle never turns a storage failure into an accepted attempt. Since 3.16
+the bundle maps the transient failure to a 409 itself; set `conflict_response.mode: host` to map it in your own error
+handling, or `conflict_response.status: 503` for a 503 (see [CONCURRENCY](CONCURRENCY.md)).
 
 ## Your entity manager is yours
 

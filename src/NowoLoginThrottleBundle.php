@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\LoginThrottleBundle;
 
 use Nowo\LoginThrottleBundle\DependencyInjection\Compiler\AttemptStorePass;
+use Nowo\LoginThrottleBundle\DependencyInjection\Compiler\ConflictResponsePass;
 use Nowo\LoginThrottleBundle\DependencyInjection\Configuration;
 use Nowo\LoginThrottleBundle\DependencyInjection\NowoLoginThrottleExtension;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -46,6 +47,7 @@ final class NowoLoginThrottleBundle extends Bundle
         parent::build($container);
 
         $container->addCompilerPass(new AttemptStorePass());
+        $container->addCompilerPass(new ConflictResponsePass());
     }
 
     /**

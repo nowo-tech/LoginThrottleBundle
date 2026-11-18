@@ -13,6 +13,10 @@ use Nowo\LoginThrottleBundle\Repository\LoginAttemptRepositoryInterface;
 use Nowo\LoginThrottleBundle\Repository\LoginAttemptStoreInterface;
 use Nowo\LoginThrottleBundle\Throttle\ThrottleRules;
 use Nowo\LoginThrottleBundle\Throttle\UsernameNormalizer;
+use Nowo\LoginThrottleBundle\Transaction\LoginThrottleStorageFailure;
+use Nowo\TransactionContract\TransientStorageFailure;
+use Nowo\TransactionDoctrine\TransientFailureClassifier;
+use Nowo\TransactionDoctrine\TransientFailureKind;
 use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\RateLimiter\RequestRateLimiterInterface;
@@ -90,13 +94,60 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
     }
 
     /**
+     * Consumes a token: see {@see self::consumeUnit()}. 3.16: a transient failure of the store (also the plain reads that
+     * refuse an attempt) leaves as {@see LoginThrottleStorageFailure}, and the request is marked so the bundle answers it
+     * as a conflict (never as an allow: the exception stops the login before the password check).
+     */
+    public function consume(Request $request): RateLimit
+    {
+        return $this->guarded($request, LoginThrottleStorageFailure::DURING_ATTEMPT, fn (): RateLimit => $this->consumeUnit($request));
+    }
+
+    /**
+     * Resets the bucket after a successful login: see {@see self::resetUnit()}. 3.16: a transient failure leaves as
+     * {@see LoginThrottleStorageFailure}, marked as coming from the success of a login (the bundle then ends that login).
+     */
+    public function reset(Request $request): void
+    {
+        $this->guarded($request, LoginThrottleStorageFailure::DURING_SUCCESS, function () use ($request): null {
+            $this->resetUnit($request);
+
+            return null;
+        });
+    }
+
+    /**
+     * @template T
+     *
+     * @param callable(): T $call
+     *
+     * @return T
+     */
+    private function guarded(Request $request, string $phase, callable $call): mixed
+    {
+        try {
+            return $call();
+        } catch (\Throwable $failure) {
+            if (!$failure instanceof LoginThrottleStorageFailure) {
+                if (!$failure instanceof TransientStorageFailure && !(new TransientFailureClassifier())->classify($failure) instanceof TransientFailureKind) {
+                    throw $failure;
+                }
+                $failure = LoginThrottleStorageFailure::from($failure);
+            }
+            $request->attributes->set(LoginThrottleStorageFailure::REQUEST_ATTRIBUTE, $phase);
+
+            throw $failure;
+        }
+    }
+
+    /**
      * Consume a token for the given request.
      *
      * @param Request $request The request
      *
      * @return RateLimit The rate limit state
      */
-    public function consume(Request $request): RateLimit
+    private function consumeUnit(Request $request): RateLimit
     {
         $ipAddress = $request->getClientIp() ?? 'unknown';
         $username = $this->extractUsername($request);
@@ -146,7 +197,7 @@ final class DatabaseRateLimiter implements RequestRateLimiterInterface
      *
      * @param Request $request The request
      */
-    public function reset(Request $request): void
+    private function resetUnit(Request $request): void
     {
         $ipAddress = $request->getClientIp() ?? 'unknown';
         $username = $this->extractUsername($request);

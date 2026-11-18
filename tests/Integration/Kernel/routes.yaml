@@ -1,0 +1,6 @@
+login:
+  path: /login
+  controller: Nowo\LoginThrottleBundle\Tests\Integration\Kernel\SecurityTestController
+home:
+  path: /home
+  controller: Nowo\LoginThrottleBundle\Tests\Integration\Kernel\SecurityTestController

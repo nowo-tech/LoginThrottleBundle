@@ -4,9 +4,15 @@ declare(strict_types=1);
 
 namespace Nowo\LoginThrottleBundle\Tests\RateLimiter;
 
+use Doctrine\DBAL\Driver\Exception;
+use Doctrine\DBAL\Exception\DeadlockException;
 use Nowo\LoginThrottleBundle\Event\LoginThrottledEvent;
 use Nowo\LoginThrottleBundle\RateLimiter\DatabaseRateLimiter;
+use Nowo\LoginThrottleBundle\Tests\Support\LockingConflictStore;
 use Nowo\LoginThrottleBundle\Tests\Support\LockingDelegateStore;
+use Nowo\LoginThrottleBundle\Tests\Support\LockingReadFailingStore;
+use Nowo\LoginThrottleBundle\Transaction\LoginThrottleStorageFailure;
+use Nowo\TransactionContract\TransientStorageFailure;
 use PHPUnit\Framework\TestCase;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -81,5 +87,76 @@ final class DatabaseRateLimiterLockTest extends TestCase
 
         $scopes = array_map(static fn (object $event): string => $event instanceof LoginThrottledEvent ? $event->scope . ($event->lockoutStarted ? '+' : '') : '', $events->events);
         $this->assertSame(['username+', 'username', 'ip+', 'ip', 'without_username+', 'without_username'], $scopes);
+    }
+
+    /**
+     * 3.16 (REQ-RUNTIME-003 rule 6): a lock conflict is a refusal, never an allow. The failure leaves consume() as it is,
+     * so the firewall cannot go on to the password check, and nothing is recorded.
+     */
+    public function testALockConflictIsNeverAnAllow(): void
+    {
+        $store = new LockingConflictStore();
+        $limiter = new DatabaseRateLimiter($store, 3, 600, 10, null, false, 2);
+
+        try {
+            $limiter->consume(Request::create('/login', 'POST', ['_username' => 'alice'], [], [], ['REMOTE_ADDR' => '10.0.0.1']));
+            $this->fail('A conflict must not be answered as an allow.');
+        } catch (LoginThrottleStorageFailure $failure) {
+            $this->assertSame(['10.0.0.1'], $store->units);
+            $this->assertSame(0, $store->inner->countAttemptsByIp('10.0.0.1', 600), 'nothing recorded');
+        }
+    }
+
+    /** F5: the plain reads that refuse an attempt are guarded too; the request is marked as an attempt. */
+    public function testATransientFailureOfTheRefusalReadsIsAConflictMarkedOnTheRequest(): void
+    {
+        $limiter = new DatabaseRateLimiter(new LockingReadFailingStore(new TransientStorageFailure(2)), 3, 600, 10, null, false, 2);
+        $request = Request::create('/login', 'POST', ['_username' => 'alice'], [], [], ['REMOTE_ADDR' => '10.0.0.1']);
+
+        try {
+            $limiter->consume($request);
+            $this->fail('A conflict must not be answered as an allow.');
+        } catch (LoginThrottleStorageFailure $failure) {
+            $this->assertSame(2, $failure->retryAfterSeconds());
+        }
+        $this->assertSame(LoginThrottleStorageFailure::DURING_ATTEMPT, $request->attributes->get(LoginThrottleStorageFailure::REQUEST_ATTRIBUTE));
+    }
+
+    public function testARawDeadlockOfTheReadsIsConvertedAndAFailureThatIsNotTransientIsNot(): void
+    {
+        $deadlock = new DeadlockException($this->createStub(Exception::class), null);
+        $limiter = new DatabaseRateLimiter(new LockingReadFailingStore($deadlock), 3, 600, 10, null, false, 2);
+        $request = Request::create('/login', 'POST', ['_username' => 'alice']);
+
+        try {
+            $limiter->consume($request);
+            $this->fail('A conflict must not be answered as an allow.');
+        } catch (LoginThrottleStorageFailure $failure) {
+            $this->assertSame($deadlock, $failure->getPrevious());
+        }
+
+        $other = Request::create('/login', 'POST', ['_username' => 'alice']);
+        $this->expectException(\LogicException::class);
+
+        try {
+            (new DatabaseRateLimiter(new LockingReadFailingStore(new \LogicException('a bug')), 3, 600, 10, null, false, 2))->consume($other);
+        } finally {
+            $this->assertFalse($other->attributes->has(LoginThrottleStorageFailure::REQUEST_ATTRIBUTE), 'a bug is not a conflict');
+        }
+    }
+
+    /** F1: the reset after a right password marks the request as a success, so the bundle can end that login. */
+    public function testAConflictOfTheResetIsMarkedAsComingFromASuccess(): void
+    {
+        $store = new LockingConflictStore();
+        $limiter = new DatabaseRateLimiter($store, 3, 600, 10, null, false, 2);
+        $request = Request::create('/login', 'POST', ['_username' => 'alice'], [], [], ['REMOTE_ADDR' => '10.0.0.1']);
+
+        try {
+            $limiter->reset($request);
+            $this->fail('The reset must fail closed.');
+        } catch (LoginThrottleStorageFailure) {
+            $this->assertSame(LoginThrottleStorageFailure::DURING_SUCCESS, $request->attributes->get(LoginThrottleStorageFailure::REQUEST_ATTRIBUTE));
+        }
     }
 }

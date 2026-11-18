@@ -11,6 +11,8 @@ use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Platforms\SQLitePlatform;
 use Nowo\TransactionContract\TransientStorageFailure;
 use Nowo\TransactionDoctrine\DoctrineTransactionRunner;
+use Nowo\TransactionDoctrine\TransientFailureClassifier;
+use Nowo\TransactionDoctrine\TransientFailureKind;
 
 /**
  * The bundle's runner for the units of one IP address (3.15, Beacon spec 239): an attempt decision (read the counts,
@@ -89,11 +91,37 @@ final readonly class AttemptLockRunner
      * @param string        $ipAddress  The IP address of the unit
      * @param callable(): T $unit       The unit
      *
-     * @throws TransientStorageFailure When the lock was not granted in time, or the storage failed transiently
+     * @throws LoginThrottleStorageFailure When the lock was not granted in time, or the storage failed transiently (3.16:
+     *                                     always this type, a {@see TransientStorageFailure}, with the storage error as previous)
      *
      * @return T What the unit returned
      */
     public function run(Connection $connection, string $table, string $ipAddress, callable $unit): mixed
+    {
+        try {
+            return $this->runUnit($connection, $table, $ipAddress, $unit);
+        } catch (LoginThrottleStorageFailure $failure) {
+            throw $failure;
+        } catch (TransientStorageFailure $failure) {
+            throw LoginThrottleStorageFailure::from($failure);
+        } catch (\Throwable $failure) {
+            // a deadlock or lock wait timeout inside the host's open transaction (no runner there) is still a conflict
+            if ((new TransientFailureClassifier())->classify($failure) instanceof TransientFailureKind) {
+                throw LoginThrottleStorageFailure::from($failure);
+            }
+
+            throw $failure;
+        }
+    }
+
+    /**
+     * @template T
+     *
+     * @param callable(): T $unit
+     *
+     * @return T
+     */
+    private function runUnit(Connection $connection, string $table, string $ipAddress, callable $unit): mixed
     {
         if ($connection instanceof PrimaryReadReplicaConnection) {
             // DoctrineBundle `replicas:` (audit QU-L1): the lock, the unit and the release on one session, the primary's
@@ -215,7 +243,7 @@ final readonly class AttemptLockRunner
         $granted = $connection->fetchOne('SELECT GET_LOCK(?, ?)', [$name, max(1, $this->lockTimeoutSeconds)]);
         // 1: granted; 0: timed out; NULL: an error (the session was killed, out of memory)
         if (1 !== (int) $granted) {
-            throw new TransientStorageFailure(self::RETRY_AFTER_SECONDS);
+            throw new LoginThrottleStorageFailure(self::RETRY_AFTER_SECONDS);
         }
     }
 
@@ -247,7 +275,7 @@ final readonly class AttemptLockRunner
         $pause = self::POLL_BASE_MICROSECONDS;
         while (!$connection->fetchOne('SELECT pg_try_advisory_xact_lock(?)', [$key])) {
             if (microtime(true) >= $deadline) {
-                throw new TransientStorageFailure(self::RETRY_AFTER_SECONDS);
+                throw new LoginThrottleStorageFailure(self::RETRY_AFTER_SECONDS);
             }
             usleep($pause);
             $pause = min(self::POLL_CAP_MICROSECONDS, $pause * 2);

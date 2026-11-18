@@ -6,12 +6,15 @@ namespace Nowo\LoginThrottleBundle\Tests\Transaction;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Connections\PrimaryReadReplicaConnection;
+use Doctrine\DBAL\Driver\Exception;
 use Doctrine\DBAL\DriverManager;
+use Doctrine\DBAL\Exception\DeadlockException;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Doctrine\DBAL\Platforms\MySQLPlatform;
 use Doctrine\DBAL\Platforms\OraclePlatform;
 use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Nowo\LoginThrottleBundle\Transaction\AttemptLockRunner;
+use Nowo\LoginThrottleBundle\Transaction\LoginThrottleStorageFailure;
 use Nowo\TransactionContract\TransientStorageFailure;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -279,6 +282,59 @@ final class AttemptLockRunnerTest extends TestCase
         });
 
         $this->assertSame(['begin', 'unit', 'commit'], $this->statements());
+    }
+
+    /**
+     * 3.16 (REQ-RUNTIME-003 rule 6): every transient failure leaves the runner as the bundle's own type, so one subscriber
+     * can answer it, whoever raised it first.
+     */
+    public function testALockNotGrantedIsTheBundlesFailure(): void
+    {
+        $connection = $this->connection(new MySQLPlatform(), false, ['GET_LOCK' => 0]);
+
+        $this->expectException(LoginThrottleStorageFailure::class);
+        (new AttemptLockRunner())->run($connection, 'login_attempts', '10.0.0.1', static fn (): null => null);
+    }
+
+    public function testATransientFailureOfTheUnitBecomesTheBundlesFailureWithTheOriginalAsPrevious(): void
+    {
+        $connection = $this->connection(new MySQLPlatform(), false, ['GET_LOCK' => 1]);
+        $original = new TransientStorageFailure(5);
+
+        try {
+            (new AttemptLockRunner())->run($connection, 'login_attempts', '10.0.0.1', static function () use ($original): never {
+                throw $original;
+            });
+            $this->fail('The failure must reach the caller.');
+        } catch (LoginThrottleStorageFailure $failure) {
+            $this->assertSame($original, $failure->getPrevious());
+            $this->assertSame(5, $failure->retryAfterSeconds());
+        }
+    }
+
+    public function testADeadlockInsideTheHostsTransactionBecomesTheBundlesFailure(): void
+    {
+        $connection = $this->connection(new MySQLPlatform(), true, ['GET_LOCK' => 1]);
+        $deadlock = new DeadlockException($this->createStub(Exception::class), null);
+
+        try {
+            (new AttemptLockRunner())->run($connection, 'login_attempts', '10.0.0.1', static function () use ($deadlock): never {
+                throw $deadlock;
+            });
+            $this->fail('The failure must reach the caller.');
+        } catch (LoginThrottleStorageFailure $failure) {
+            $this->assertSame($deadlock, $failure->getPrevious());
+        }
+    }
+
+    public function testAFailureThatIsNotTransientIsNotAConflict(): void
+    {
+        $connection = $this->connection(new MySQLPlatform(), false, ['GET_LOCK' => 1]);
+
+        $this->expectException(\LogicException::class);
+        (new AttemptLockRunner())->run($connection, 'login_attempts', '10.0.0.1', static function (): never {
+            throw new \LogicException('a bug');
+        });
     }
 
     public function testLockNamesAndKeysArePerTableAndIpAddress(): void
