@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[3.16.1] - 2026-11-19](#3161---2026-11-19)
 - [[3.16.0] - 2026-11-18](#3160---2026-11-18)
 - [[3.15.0] - 2026-11-15](#3150---2026-11-15)
 - [[3.14.0] - 2026-11-14](#3140---2026-11-14)
@@ -58,6 +59,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.16.1] - 2026-11-19
+
 ### Changed
 
 - CI: new `deps-floor` job (as in BreadcrumbKit). It checks that the demo lock installs every nowo-tech requirement of the bundle (`.scripts/check-demo-lock.py`), then downgrades nowo-tech/transaction-* to the lowest versions composer.json allows (`composer update 'nowo-tech/transaction-*' --prefer-lowest`) and runs PHPStan and the tests there, so a call to a newer API than the constraint allows fails the pull request.
@@ -66,6 +69,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - composer.json now requires nowo-tech/transaction-doctrine ^1.6, which 3.16.0 already needed: with 1.5, an answer built by transaction-doctrine's responder (`map_transient_failures`, or a host that leaves the answer to it) has no `X-Conflict-Code` header, although 3.16.0 documents `CONFLICT_001` on every conflict answer (no class not found; found by the new `deps-floor` job).
 - Demo: `demo/symfony8/composer.lock` now installs nowo-tech/transaction-doctrine 1.6.0. The locks of 3.15.0 and 3.16.0 did not install nowo-tech/transaction-doctrine or nowo-tech/transaction-contract, which the bundle already required (^1.5): the demo installs from its lock, so it failed with class not found (`ConflictResponsePolicy`). The bundle's composer.json constraint was already right; hosts are not affected.
+
+[3.16.1]: https://github.com/nowo-tech/LoginThrottleBundle/releases/tag/v3.16.1
 
 ## [3.16.0] - 2026-11-18
 

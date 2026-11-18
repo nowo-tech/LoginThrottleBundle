@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 3.16.1](#to-3161)
 - [To 3.16.0](#to-3160)
   - [Lock conflicts on the login are answered 409 (REQ-RUNTIME-003)](#lock-conflicts-on-the-login-are-answered-409-req-runtime-003)
 - [To 3.15.0](#to-3150)
@@ -64,6 +65,14 @@
 - [Notes](#notes)
 
 ## Unreleased
+
+## To 3.16.1
+
+From **3.16.0**:
+
+```bash
+composer update nowo-tech/login-throttle-bundle
+```
 
 ## To 3.16.0
 
