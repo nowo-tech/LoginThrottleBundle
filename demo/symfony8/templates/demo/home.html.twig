@@ -3,26 +3,22 @@
 {% block title %}Home - Login Throttle Demo{% endblock %}
 
 {% block nowo_ui_page_header %}
-    {{ include(nowo_ui_partial('page_header'), {title: title}) }}
+    {{ include(nowo_ui_partial('page_header'), {title: title, intro: message}) }}
 {% endblock %}
 
 {% block body %}
-    <section class="nowo-ui-card">
-        <div class="nowo-ui-card__body">
-            <p>{{ message|raw }}</p>
-            <h2 class="nowo-ui-card__title">Features</h2>
+    {% embed '@NowoUiKit/demo_platform/_section.html.twig' with {title: 'Features', kind: 'list', features: features} %}
+        {% block section_body %}
             <ul>
                 {% for feature in features %}
                     <li>{{ feature|raw }}</li>
                 {% endfor %}
             </ul>
-        </div>
-    </section>
+        {% endblock %}
+    {% endembed %}
 
-    <section class="nowo-ui-card">
-        <div class="nowo-ui-card__body">
-            <h2 class="nowo-ui-card__title">Multiple firewalls configuration</h2>
-            <p>This demo showcases <strong>3 different firewalls</strong> with independent throttling settings:</p>
+    {% embed '@NowoUiKit/demo_platform/_section.html.twig' with {title: 'Multiple firewalls configuration', intro: 'Three firewalls with independent throttling settings.', kind: 'content', firewalls: firewalls} %}
+        {% block section_body %}
             <div class="nowo-ui-cards">
                 {% for firewall in firewalls %}
                     <section class="nowo-ui-card">
@@ -32,29 +28,27 @@
                             <p><strong>Max Attempts:</strong> <span class="nowo-ui-badge nowo-ui-badge--primary">{{ firewall.max_attempts }}</span></p>
                             <p><strong>Timeout:</strong> <span class="nowo-ui-badge nowo-ui-badge--info">{{ firewall.timeout }}</span></p>
                             <p><strong>Storage:</strong> <span class="nowo-ui-badge nowo-ui-badge--success">{{ firewall.storage }}</span></p>
-                            <a href="{{ firewall.path }}" class="nowo-ui-btn nowo-ui-btn--primary">Test {{ firewall.name }} Login</a>
+                            <a href="{{ firewall.path }}" class="nowo-ui-btn nowo-ui-btn--outline">Test {{ firewall.name }} Login</a>
                         </div>
                     </section>
                 {% endfor %}
             </div>
-        </div>
-    </section>
+        {% endblock %}
+    {% endembed %}
 
-    <section class="nowo-ui-card">
-        <div class="nowo-ui-card__body">
-            <h2 class="nowo-ui-card__title">How to test multiple firewalls</h2>
+    {% embed '@NowoUiKit/demo_platform/_section.html.twig' with {title: 'How to test multiple firewalls', kind: 'list'} %}
+        {% block section_body %}
             <ol>
                 <li><strong>Main Firewall</strong> (<a href="{{ path('login') }}">/login</a>): Try 3 wrong attempts, blocked for 10 minutes</li>
                 <li><strong>API Firewall</strong> (<a href="{{ path('api_login_page') }}">/api/login-page</a>): Try 5 wrong attempts, blocked for 5 minutes (more lenient)</li>
                 <li><strong>Admin Firewall</strong> (<a href="{{ path('admin_login') }}">/admin/login</a>): Try 3 wrong attempts, blocked for 30 minutes (very strict)</li>
             </ol>
             <p><strong>Note:</strong> Each firewall has independent throttling. Being blocked in one firewall doesn't affect the others!</p>
-        </div>
-    </section>
+        {% endblock %}
+    {% endembed %}
 
-    <section class="nowo-ui-card">
-        <div class="nowo-ui-card__body">
-            <h2 class="nowo-ui-card__title">Configuration comparison</h2>
+    {% embed '@NowoUiKit/demo_platform/_section.html.twig' with {title: 'Configuration comparison', kind: 'table', firewalls: firewalls} %}
+        {% block section_body %}
             <table class="nowo-ui-data-table">
                 <thead>
                     <tr>
@@ -69,7 +63,7 @@
                     {% for firewall in firewalls %}
                         <tr>
                             <td><strong>{{ firewall.name }}</strong></td>
-                            <td>{{ firewall.max_attempts }}</td>
+                            <td class="nowo-ui-cell--num">{{ firewall.max_attempts }}</td>
                             <td>{{ firewall.timeout }}</td>
                             <td>{{ firewall.storage }}</td>
                             <td>
@@ -85,6 +79,6 @@
                     {% endfor %}
                 </tbody>
             </table>
-        </div>
-    </section>
+        {% endblock %}
+    {% endembed %}
 {% endblock %}

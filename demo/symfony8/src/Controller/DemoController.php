@@ -27,7 +27,7 @@ class DemoController extends AbstractController
 
         return $this->render('demo/home.html.twig', [
             'title' => 'Login Throttle Bundle - Demo',
-            'message' => 'This demo showcases the Login Throttle Bundle with <strong>multiple firewalls</strong> and different throttling configurations.',
+            'message' => 'This demo showcases the Login Throttle Bundle with multiple firewalls and different throttling configurations.',
             'features' => [
                 'Multiple firewalls with independent throttling settings',
                 'Main firewall: 3 attempts, 10 minutes (cache storage)',

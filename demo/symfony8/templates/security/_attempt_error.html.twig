@@ -1,7 +1,8 @@
-{#- Authentication error + throttle info shared by the three login pages. Parameter: timer_id (countdown element id). -#}
-{% if error %}
-    <div class="nowo-ui-flash nowo-ui-flash--error" role="alert">
-        <p><strong>Authentication Error</strong> {{ error.messageKey|trans(error.messageData, 'security') }}</p>
+{#- Throttle status shared by the three login pages (the authentication error itself is the shell's error flash, see
+    base.html.twig). Parameter: timer_id (countdown element id). -#}
+{% if error and attempt_info %}
+    {% embed '@NowoUiKit/demo_platform/_section.html.twig' with {title: 'Throttle status', intro: 'What the bundle knows about the failed attempts of this sign-in.', kind: 'detail', attempt_info: attempt_info, timer_id: timer_id} %}
+    {% block section_body %}
         {% if attempt_info %}
             {% if attempt_info.is_blocked %}
                 <p><strong>{{ 'nowo_login_throttle.error.account_blocked'|trans({'%max_attempts%': attempt_info.max_attempts}, 'NowoLoginThrottleBundle') }}</strong></p>
@@ -49,5 +50,6 @@
                 {% endif %}
             {% endif %}
         {% endif %}
-    </div>
+    {% endblock %}
+    {% endembed %}
 {% endif %}

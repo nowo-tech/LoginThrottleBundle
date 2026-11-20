@@ -45,12 +45,12 @@ class SecurityController extends AbstractController
             $session->set('login_info_shown', true);
             $this->addFlash('info', [
                 'title' => '🔐 Main Firewall - Demo Login',
-                'message' => 'This is the <strong>main</strong> firewall. Configuration: <strong>3 attempts</strong>, <strong>10 minutes</strong> timeout. Use <strong>demo@example.com</strong> / <strong>demo123</strong> or <strong>admin@example.com</strong> / <strong>admin123</strong>',
+                'message' => 'This is the main firewall. Configuration: 3 attempts, 10 minutes timeout. Use demo@example.com / demo123 or admin@example.com / admin123',
             ]);
 
             $this->addFlash('info', [
                 'title' => '🧪 Multiple Firewalls Demo',
-                'message' => 'This demo includes <strong>3 different firewalls</strong> with different throttling settings. Try <a href="' . $this->generateUrl('api_login_page') . '">API login</a> (5 attempts) or <a href="' . $this->generateUrl('admin_login') . '">Admin login</a> (3 attempts, 30 min timeout).',
+                'message' => 'This demo includes 3 different firewalls with different throttling settings. Try the API login (5 attempts) or the Admin login (3 attempts, 30 min timeout) from the menu.',
             ]);
         }
 

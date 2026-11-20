@@ -21,7 +21,7 @@
         "doctrine/orm": "^3.0",
         "nowo-tech/form-kit-bundle": "^2.22",
         "nowo-tech/login-throttle-bundle": "@dev",
-        "nowo-tech/ui-kit-bundle": "^2.49",
+        "nowo-tech/ui-kit-bundle": "^2.60",
         "symfony/console": "^8.0",
         "symfony/dotenv": "^8.0",
         "symfony/flex": "^2.0",
