@@ -359,12 +359,12 @@ jobs:
       - name: MySQL
         env:
           LOGIN_THROTTLE_TEST_MYSQL_URL: mysql://root:ci-placeholder@127.0.0.1:3306/login_throttle?serverVersion=8.4.0&charset=utf8mb4
-        run: vendor/bin/phpunit --no-coverage tests/Repository/OpenHostTransactionTest.php tests/Repository/LookAlikeUsernameTest.php
+        run: vendor/bin/phpunit --no-coverage tests/Repository/OpenHostTransactionTest.php tests/Repository/LookAlikeUsernameTest.php tests/Doctrine/SchemaCollationDatabaseTest.php
 
       - name: MariaDB (REQ-SEC-006 look-alike usernames)
         env:
           LOGIN_THROTTLE_TEST_MARIADB_URL: mysql://root:ci-placeholder@127.0.0.1:3307/login_throttle?serverVersion=11.4.0-MariaDB&charset=utf8mb4
-        run: vendor/bin/phpunit --no-coverage tests/Repository/LookAlikeUsernameTest.php
+        run: vendor/bin/phpunit --no-coverage tests/Repository/LookAlikeUsernameTest.php tests/Doctrine/SchemaCollationDatabaseTest.php
 
   # 3.15 (Beacon spec 239): concurrent logins from separate PHP processes on real servers (tests/Database, run with
   # --fail-on-skipped), then the whole suite on that doctrine/dbal. Passwordless services.

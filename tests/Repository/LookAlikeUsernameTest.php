@@ -408,7 +408,7 @@ final class LookAlikeUsernameTest extends TestCase
         $connection->executeStatement('DROP TABLE IF EXISTS login_attempts');
         $entityManager = new EntityManager($connection, $configuration, new EventManager());
         if ($exactCollation) {
-            $entityManager->getEventManager()->addEventListener([ToolEvents::postGenerateSchemaTable], new ExactCollationListener($this->registry($entityManager)));
+            $entityManager->getEventManager()->addEventListener([ToolEvents::postGenerateSchema], new ExactCollationListener());
         }
         (new SchemaTool($entityManager))->createSchema([$entityManager->getClassMetadata(LoginAttempt::class)]);
 

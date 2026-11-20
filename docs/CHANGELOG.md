@@ -63,6 +63,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Requires `nowo-tech/transaction-doctrine` ^1.8.1 (fixes GHSA-9wh3-m3m5-jffx and GHSA-65w2-9r4h-848g).
 
+### Fixed
+
+- Schema: the collation of the key columns (`username`, `ip_address`) is now applied on `postGenerateSchema`, once the schema tool has added every foreign key, instead of replacing the `login_attempts` table on `postGenerateSchemaTable` (audit XI). On DBAL 4.5+ `ExactCollationListener` replaced the table with `setClassTable()`, and ORM 3.7–3.8's schema tool then added the foreign keys that start on that table to the replaced object, so on MySQL / MariaDB they were lost from the generated schema, with their indexes (the table has no foreign key today, so nothing was lost yet; a host association onto it would have been). On DBAL 4.5+ the tables are now rebuilt with their table editor and swapped into a new schema (`GenerateSchemaEventArgs::setSchema()`), which keeps every foreign key and index; on older DBAL (and ORM versions without `setSchema()`) the column options are set in place. Managers that do not map the bundle entities are skipped, the exact collations are unchanged, and `ExactCollationListener::postGenerateSchemaTable()` stays as a deprecated no-op (the constructor's registry argument is unused but kept).
+
 ## [3.16.1] - 2026-11-19
 
 ### Changed
