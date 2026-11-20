@@ -48,7 +48,7 @@ final class SchemaCollationDatabaseTest extends TestCase
     public static function databases(): iterable
     {
         foreach (['mysql' => 'LOGIN_THROTTLE_TEST_MYSQL_URL', 'mariadb' => 'LOGIN_THROTTLE_TEST_MARIADB_URL'] as $name => $variable) {
-            $url = \getenv($variable);
+            $url = getenv($variable);
             yield $name => [\is_string($url) && '' !== $url ? $url : null];
         }
     }
@@ -71,7 +71,7 @@ final class SchemaCollationDatabaseTest extends TestCase
         $this->manager = $manager;
 
         $first = LoginAttempt::class;
-        $this->classes = \array_map(static function (ClassMetadata $metadata) use ($first): ClassMetadata {
+        $this->classes = array_map(static function (ClassMetadata $metadata) use ($first): ClassMetadata {
             if ($metadata->getName() !== $first) {
                 return $metadata;
             }
@@ -79,7 +79,7 @@ final class SchemaCollationDatabaseTest extends TestCase
             $metadata->mapManyToOne(['fieldName' => 'parent', 'targetEntity' => $first, 'joinColumns' => [['name' => 'parent_id', 'referencedColumnName' => 'id', 'onDelete' => 'CASCADE']]]);
 
             return $metadata;
-        }, \array_values($manager->getMetadataFactory()->getAllMetadata()));
+        }, array_values($manager->getMetadataFactory()->getAllMetadata()));
         $tool = new SchemaTool($manager);
         $tool->dropSchema($this->classes);
         $tool->createSchema($this->classes);
@@ -89,12 +89,12 @@ final class SchemaCollationDatabaseTest extends TestCase
         $schemaManager = $connection->createSchemaManager();
         $foreignKeys = [];
         foreach ($schemaManager->listTableForeignKeys($table) as $foreignKey) {
-            $foreignKeys[] = \strtolower(\implode(',', $foreignKey->getUnquotedLocalColumns()) . '->' . $foreignKey->getForeignTableName() . ' ' . ($foreignKey->getOption('onDelete') ?? '-'));
+            $foreignKeys[] = strtolower(implode(',', $foreignKey->getUnquotedLocalColumns()) . '->' . $foreignKey->getForeignTableName() . ' ' . ($foreignKey->getOption('onDelete') ?? '-'));
         }
         self::assertContains('parent_id->' . $table . ' cascade', $foreignKeys);
         $indexed = false;
         foreach ($schemaManager->listTableIndexes($table) as $index) {
-            $indexed = $indexed || ['parent_id'] === \array_map(\strtolower(...), $index->getUnquotedColumns());
+            $indexed = $indexed || ['parent_id'] === array_map(strtolower(...), $index->getUnquotedColumns());
         }
         self::assertTrue($indexed, 'the index of the foreign key');
 
