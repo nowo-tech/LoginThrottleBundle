@@ -28,6 +28,7 @@ use Doctrine\ORM\Tools\ToolEvents;
 use Nowo\LoginThrottleBundle\Doctrine\ExactCollationListener;
 use Nowo\LoginThrottleBundle\Entity\LoginAttempt;
 use Nowo\LoginThrottleBundle\Tests\Fixtures\Entity\HostAccount;
+use Nowo\LoginThrottleBundle\Tests\Fixtures\NoServerConnection;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -345,6 +346,9 @@ final class ExactCollationListenerTest extends TestCase
         if (\PHP_VERSION_ID >= 80400) {
             $configuration->enableNativeLazyObjects(true);
         }
+
+        // nothing connects: the platform comes from `serverVersion`, and DBAL 3 would read the current database from the server
+        $params['wrapperClass'] = NoServerConnection::class;
 
         return new EntityManager(DriverManager::getConnection($params, $configuration), $configuration, new EventManager());
     }
