@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[3.16.3] - 2026-11-21](#3163---2026-11-21)
 - [[3.16.2] - 2026-11-21](#3162---2026-11-21)
 - [[3.16.1] - 2026-11-19](#3161---2026-11-19)
 - [[3.16.0] - 2026-11-18](#3160---2026-11-18)
@@ -60,6 +61,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.16.3] - 2026-11-21
+
 ### Tests
 
 - Tests only: the collation listener test builds its MySQL / MariaDB platforms without a server on DBAL 3 too. DBAL 3's schema tool reads the current database from the server (`SELECT DATABASE()`), which connected and failed with `SQLSTATE[HY000] [2002]` in the DBAL 3 load-readiness jobs; the test connections now answer it themselves (`NoServerConnection`). No source change.
@@ -77,6 +80,8 @@ Not tagged: its release CI failed on a test-only issue. Its changes ship in 3.16
 - Schema: the collation of the key columns (`username`, `ip_address`) is now applied on `postGenerateSchema`, once the schema tool has added every foreign key, instead of replacing the `login_attempts` table on `postGenerateSchemaTable` (audit XI). On DBAL 4.5+ `ExactCollationListener` replaced the table with `setClassTable()`, and ORM 3.7–3.8's schema tool then added the foreign keys that start on that table to the replaced object, so on MySQL / MariaDB they were lost from the generated schema, with their indexes (the table has no foreign key today, so nothing was lost yet; a host association onto it would have been). On DBAL 4.5+ the tables are now rebuilt with their table editor and swapped into a new schema (`GenerateSchemaEventArgs::setSchema()`), which keeps every foreign key and index; on older DBAL (and ORM versions without `setSchema()`) the column options are set in place. Managers that do not map the bundle entities are skipped, the exact collations are unchanged, and `ExactCollationListener::postGenerateSchemaTable()` stays as a deprecated no-op (the constructor's registry argument is unused but kept).
 
 [3.16.2]: https://github.com/nowo-tech/LoginThrottleBundle/releases/tag/v3.16.2
+
+[3.16.3]: https://github.com/nowo-tech/LoginThrottleBundle/releases/tag/v3.16.3
 
 ## [3.16.1] - 2026-11-19
 
