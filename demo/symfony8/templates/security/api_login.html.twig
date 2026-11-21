@@ -3,66 +3,66 @@
 {% block title %}API Login - Login Throttle Demo{% endblock %}
 
 {% block nowo_ui_page_header %}
-    {{ include(nowo_ui_partial('page_header'), {title: 'API Login'}) }}
+    {{ include(nowo_ui_partial('page_header'), {title: 'API Login', intro: 'The API firewall is more lenient than the main one: 5 attempts, blocked for 5 minutes.'}) }}
 {% endblock %}
 
 {% block body %}
-    <div class="nowo-ui-flash nowo-ui-flash--info" role="note">
-        <p><strong>API firewall configuration</strong></p>
-        <p><strong>Max Attempts:</strong> <span class="nowo-ui-badge nowo-ui-badge--primary">5</span>
-            <strong>Timeout:</strong> <span class="nowo-ui-badge nowo-ui-badge--primary">5 minutes</span>
-            <strong>Storage:</strong> <span class="nowo-ui-badge nowo-ui-badge--neutral">Database</span></p>
-        <p>This firewall is more lenient for API usage (5 attempts vs 3 for main).</p>
-    </div>
+    {% embed '@NowoUiKit/demo_platform/_section.html.twig' with {title: 'API firewall configuration', kind: 'detail'} %}
+        {% block section_body %}
+            <p><strong>Max Attempts:</strong> <span class="nowo-ui-badge nowo-ui-badge--primary">5</span>
+                <strong>Timeout:</strong> <span class="nowo-ui-badge nowo-ui-badge--primary">5 minutes</span>
+                <strong>Storage:</strong> <span class="nowo-ui-badge nowo-ui-badge--neutral">Database</span></p>
+            <p>This firewall is more lenient for API usage (5 attempts vs 3 for main).</p>
+        {% endblock %}
+    {% endembed %}
 
-    <section class="nowo-ui-card">
-        <div class="nowo-ui-card__body">
-            <p>For API testing, use JSON POST request to <code>{{ path('api_login') }}</code> with <code>email</code> and <code>password</code> fields.</p>
-            <p>Or test via this form (simulates API call):</p>
+    {% embed '@NowoUiKit/demo_platform/_section.html.twig' with {title: 'Sign in through the API', intro: 'For API testing, send a JSON POST request to ' ~ path('api_login') ~ ' with email and password fields, or use this form (it simulates the API call).', kind: 'form', login_form: login_form} %}
+        {% block section_body %}
             {{ form_start(login_form, {attr: {id: 'apiLoginForm'}}) }}
                 {{ form_errors(login_form) }}
                 {{ form_rest(login_form) }}
             {{ form_end(login_form, {render_rest: false}) }}
             <script>
-                document.getElementById('apiLoginForm').addEventListener('submit', function(e) {
-                    e.preventDefault();
-                    const formData = new FormData(this);
-                    const data = {
-                        email: formData.get('email'),
-                        password: formData.get('password')
-                    };
-                    
-                    fetch('{{ path('api_login') }}', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(data)
-                    })
-                    .then(response => {
-                        if (response.ok) {
-                            window.location.href = '{{ path('api_home') }}';
-                        } else {
-                            alert('Login failed. Please check your credentials.');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        alert('An error occurred. Please try again.');
+                    document.getElementById('apiLoginForm').addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        const formData = new FormData(this);
+                        const data = {
+                            email: formData.get('email'),
+                            password: formData.get('password')
+                        };
+                        
+                        fetch('{{ path('api_login') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(data)
+                        })
+                        .then(response => {
+                            if (response.ok) {
+                                window.location.href = '{{ path('api_home') }}';
+                            } else {
+                                alert('Login failed. Please check your credentials.');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            alert('An error occurred. Please try again.');
+                        });
                     });
-                });
-            </script>
-        </div>
-    </section>
+                </script>
+        {% endblock %}
+    {% endembed %}
 
-    <div class="nowo-ui-flash nowo-ui-flash--info" role="note">
-        <p><strong>Demo credentials</strong></p>
-        <ul>
-            <li><strong>demo@example.com</strong> / <code>demo123</code></li>
-            <li><strong>admin@example.com</strong> / <code>admin123</code></li>
-        </ul>
-        <p><strong>Tip:</strong> Try 5 wrong attempts to see API throttling (more lenient than main firewall).</p>
-    </div>
+    {% embed '@NowoUiKit/demo_platform/_section.html.twig' with {title: 'Demo credentials', kind: 'detail'} %}
+        {% block section_body %}
+            <ul>
+                <li><strong>demo@example.com</strong> / <code>demo123</code></li>
+                <li><strong>admin@example.com</strong> / <code>admin123</code></li>
+            </ul>
+            <p><strong>Tip:</strong> Try 5 wrong attempts to see API throttling (more lenient than main firewall).</p>
+        {% endblock %}
+    {% endembed %}
 
     {{ include('security/_other_firewalls.html.twig', {links: [
         {path: path('login'), label: 'Main Login', note: '3 attempts, 10 min'},

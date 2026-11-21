@@ -74,6 +74,7 @@ Not tagged: its release CI failed on a test-only issue. Its changes ship in 3.16
 ### Changed
 
 - Requires `nowo-tech/transaction-doctrine` ^1.8.1 (fixes GHSA-9wh3-m3m5-jffx and GHSA-65w2-9r4h-848g).
+- Demo: runs in UiKit's demo platform shell (`@NowoUiKit/demo_platform/layout.html.twig`, UiKit ^2.60): the demo declares itself in `templates/base.html.twig` (one aside item per firewall, sign-in and user menu from the shell), the pages use the page header and section cards, the flashes are plain text in the shell's flash region (a failed sign-in is its error flash, the attempts and the countdown are a "Throttle status" card), the demo's own masthead is gone, and a Playwright e2e (`make test-e2e`: demo-platform rules, axe, firewall flows) is added.
 
 ### Fixed
 

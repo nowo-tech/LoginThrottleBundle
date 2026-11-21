@@ -44,7 +44,7 @@ class AdminController extends AbstractController
             $session->set('admin_login_info_shown', true);
             $this->addFlash('warning', [
                 'title' => '🔒 Admin Panel - Strict Throttling',
-                'message' => 'Admin panel has very strict throttling: <strong>3 attempts</strong> and <strong>30 minutes</strong> timeout. Use <strong>admin@example.com</strong> / <strong>admin123</strong>',
+                'message' => 'Admin panel has very strict throttling: 3 attempts and 30 minutes timeout. Use admin@example.com / admin123',
             ]);
         }
 

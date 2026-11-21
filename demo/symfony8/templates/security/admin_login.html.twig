@@ -3,36 +3,38 @@
 {% block title %}Admin Login - Login Throttle Demo{% endblock %}
 
 {% block nowo_ui_page_header %}
-    {{ include(nowo_ui_partial('page_header'), {title: 'Admin Panel Login'}) }}
+    {{ include(nowo_ui_partial('page_header'), {title: 'Admin Panel Login', intro: 'The admin firewall is very strict: 3 attempts, blocked for 30 minutes.'}) }}
 {% endblock %}
 
 {% block body %}
     {{ include('security/_attempt_error.html.twig', {timer_id: 'countdown-timer-admin'}) }}
 
-    <div class="nowo-ui-flash nowo-ui-flash--warning" role="note">
-        <p><strong>Admin firewall: very strict configuration</strong></p>
-        <p><strong>Max Attempts:</strong> <span class="nowo-ui-badge nowo-ui-badge--warning">3</span>
-            <strong>Timeout:</strong> <span class="nowo-ui-badge nowo-ui-badge--warning">30 minutes</span>
-            <strong>Storage:</strong> <span class="nowo-ui-badge nowo-ui-badge--neutral">Database</span></p>
-        <p><strong>Warning:</strong> Admin panel has the strictest throttling. Only 3 attempts allowed with 30 minutes timeout!</p>
-    </div>
+    {% embed '@NowoUiKit/demo_platform/_section.html.twig' with {title: 'Admin firewall: very strict configuration', kind: 'detail'} %}
+        {% block section_body %}
+            <p><strong>Max Attempts:</strong> <span class="nowo-ui-badge nowo-ui-badge--warning">3</span>
+                <strong>Timeout:</strong> <span class="nowo-ui-badge nowo-ui-badge--warning">30 minutes</span>
+                <strong>Storage:</strong> <span class="nowo-ui-badge nowo-ui-badge--neutral">Database</span></p>
+            <p><strong>Warning:</strong> Admin panel has the strictest throttling. Only 3 attempts allowed with 30 minutes timeout!</p>
+        {% endblock %}
+    {% endembed %}
 
-    <section class="nowo-ui-card">
-        <div class="nowo-ui-card__body">
+    {% embed '@NowoUiKit/demo_platform/_section.html.twig' with {title: 'Sign in', kind: 'form', login_form: login_form} %}
+        {% block section_body %}
             {{ form_start(login_form) }}
                 {{ form_errors(login_form) }}
                 {{ form_rest(login_form) }}
             {{ form_end(login_form, {render_rest: false}) }}
-        </div>
-    </section>
+        {% endblock %}
+    {% endembed %}
 
-    <div class="nowo-ui-flash nowo-ui-flash--info" role="note">
-        <p><strong>Admin credentials</strong></p>
-        <ul>
-            <li><strong>admin@example.com</strong> / <code>admin123</code> <span class="nowo-ui-badge nowo-ui-badge--success">Admin User Only</span></li>
-        </ul>
-        <p><strong>Tip:</strong> After 3 failed attempts, you'll be blocked for 30 minutes!</p>
-    </div>
+    {% embed '@NowoUiKit/demo_platform/_section.html.twig' with {title: 'Admin credentials', kind: 'detail'} %}
+        {% block section_body %}
+            <ul>
+                <li><strong>admin@example.com</strong> / <code>admin123</code> <span class="nowo-ui-badge nowo-ui-badge--success">Admin User Only</span></li>
+            </ul>
+            <p><strong>Tip:</strong> After 3 failed attempts, you'll be blocked for 30 minutes!</p>
+        {% endblock %}
+    {% endembed %}
 
     {{ include('security/_other_firewalls.html.twig', {links: [
         {path: path('login'), label: 'Main Login', note: '3 attempts, 10 min'},

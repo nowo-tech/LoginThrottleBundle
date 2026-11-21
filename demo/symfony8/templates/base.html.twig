@@ -1,46 +1,28 @@
-{#- REQ-DEMO-014: the demo shell is UiKit's admin layout with UiKit's default theme (nowo-ui.css from the bundle's own
-    asset package, no CSS framework, no CDN, no inline styles). The light/dark toggle is UiKit's. -#}
-{% extends '@NowoUiKit/layout/admin.html.twig' %}
+{#- REQ-DEMO-014: the demo runs inside UiKit's shared demo platform shell (@NowoUiKit/demo_platform/layout.html.twig).
+    This file only declares the demo (nowo_ui_demo_platform). There is one session per firewall, so the user menu
+    logs out of the firewall the current page belongs to. -#}
+{% extends '@NowoUiKit/demo_platform/layout.html.twig' %}
+{% set _route = app.request.attributes.get('_route')|default('') %}
+{% set nowo_ui_demo_platform = {
+    bundle: 'Login Throttle',
+    home_route: 'demo_home',
+    repository: 'https://github.com/nowo-tech/LoginThrottleBundle',
+    translation_domain: false,
+    auth: {login_route: 'login', logout_route: _route starts with 'admin_' ? 'admin_logout' : 'logout'},
+    nav: [
+        {label: 'Overview', route: 'demo_home', section: 'Demo'},
+        {label: 'Main login', route: 'login', section: 'Firewalls'},
+        {label: 'API login', route: 'api_login_page', section: 'Firewalls'},
+        {label: 'Admin login', route: 'admin_login', active: ['admin_login', 'admin_home'], section: 'Firewalls'},
+    ],
+} %}
+{% block nowo_ui_document_title %}{% block title %}Login Throttle Demo{% endblock %} — Symfony 8{% endblock %}
 
-{% block nowo_ui_document_title %}{% block title %}Login Throttle Demo{% endblock %}{% endblock %}
-
-{% block nowo_ui_navigation %}
-    {% set _route = app.request.attributes.get('_route') %}
-    <header class="nowo-ui-header" data-testid="demo-masthead">
-        <a class="nowo-ui-brand" href="{{ path('demo_home') }}">LoginThrottleBundle</a>
-        <nav class="nowo-ui-menu" aria-label="LoginThrottleBundle">
-            {% for item in [
-                {route: 'demo_home', label: 'Overview'},
-                {route: 'login', label: 'Main login'},
-                {route: 'api_login_page', label: 'API login'},
-                {route: 'admin_login', label: 'Admin login'},
-            ] %}
-                <a class="nowo-ui-link" href="{{ path(item.route) }}"{% if _route == item.route %} aria-current="page"{% endif %}>{{ item.label }}</a>
-            {% endfor %}
-        </nav>
-        <div class="nowo-ui-header__end">
-            {% if app.user %}
-                <span class="nowo-ui-muted">Logged in as: <strong>{{ app.user.userIdentifier }}</strong></span>
-                <a class="nowo-ui-link" href="{{ path(_route starts with 'admin_' ? 'admin_logout' : 'logout') }}">Logout</a>
-            {% endif %}
-            {{ include('@NowoUiKitBundle/partials/_theme_toggle.html.twig', { compact: true }, false) }}
-        </div>
-    </header>
-{% endblock %}
-
-{# The demo flashes carry small HTML snippets (links, strong), so they keep their own rendering with UiKit's classes. #}
+{#- A failed sign-in joins the session flashes in the shell's flash region, under the page header. -#}
 {% block nowo_ui_flashes %}
-    {% for type, messages in app.flashes(['success', 'error', 'warning', 'info']) %}
-        {% for message in messages %}
-            <div class="nowo-ui-flash nowo-ui-flash--{{ type }}" role="alert">
-                {% if message is iterable and message.title is defined %}
-                    <strong>{{ message.title|raw }}</strong> {{ message.message|raw }}
-                {% else %}
-                    {{ message|raw }}
-                {% endif %}
-            </div>
-        {% endfor %}
-    {% endfor %}
+    {% set _messages = app.flashes %}
+    {% if (error ?? null) %}
+        {% set _messages = _messages|merge({error: (_messages.error ?? [])|merge(['Authentication error: ' ~ error.messageKey|trans(error.messageData, 'security')])}) %}
+    {% endif %}
+    {{ include('@NowoUiKit/demo_platform/_flashes.html.twig', {flash_messages: _messages}) }}
 {% endblock %}
-
-{% block nowo_ui_content %}{% block body %}{% endblock %}{% endblock %}
