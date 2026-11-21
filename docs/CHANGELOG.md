@@ -60,7 +60,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Tests
+
+- Tests only: the collation listener test builds its MySQL / MariaDB platforms without a server on DBAL 3 too. DBAL 3's schema tool reads the current database from the server (`SELECT DATABASE()`), which connected and failed with `SQLSTATE[HY000] [2002]` in the DBAL 3 load-readiness jobs; the test connections now answer it themselves (`NoServerConnection`). No source change.
+
 ## [3.16.2] - 2026-11-21
+
+Not tagged: its release CI failed on a test-only issue. Its changes ship in 3.16.3.
 
 ### Changed
 
