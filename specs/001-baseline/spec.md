@@ -87,6 +87,11 @@ Drop-in Symfony bundle wrapping native **`login_throttling`**: sensible defaults
 - **FR-SVC-002**: `LoginThrottleStatusProviderInterface` / `LoginThrottleStatusProvider` report the HTTP-free throttling state of a bucket, using the limiter's own `ThrottleRules` (3.9).
 - **FR-I18N-001**: 24 locale files for throttle error messages.
 
+### Conflict answer (REQ-RUNTIME-003 rule 6, 3.16)
+
+- **FR-CONC-001**: When the attempt store fails transiently (lock not granted, deadlock, lock wait timeout, serialization failure) the limiter raises `Transaction\LoginThrottleStorageFailure` (a `TransientStorageFailure`, generic message, always `CONFLICT_001`). `StorageFailureSubscriber` answers it for a login on a guarded firewall with 409 (or 503, `nowo_login_throttle.conflict_response.status`) + `Retry-After` + `X-Conflict-Code`, never a 2xx or a redirect (fails closed); `ConflictResponsePass` wires it by `conflict_response.mode` (`bundle` default: transaction-doctrine's policy and responder when registered; `host`: the subscriber is removed and the host maps the failure).
+- **FR-CONC-002**: `LoginConflictListener` (priority 128, both modes, stateless) ends the login when the failure comes from the reset after a right password (token cleared, session invalidated, remember-me cookie dropped) and removes transaction-doctrine's commit mark from the request, so the answer is identical whether the account exists, is locked or the password is right (no account-existence oracle).
+
 ### Worker / static analysis
 
 - **FR-WORKER-001**: Bundle is viable under FrankenPHP worker with kernel not reset between requests (see [`docs/FRANKENPHP-WORKER-AUDIT.md`](../../docs/FRANKENPHP-WORKER-AUDIT.md)).
