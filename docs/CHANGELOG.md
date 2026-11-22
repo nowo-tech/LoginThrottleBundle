@@ -61,6 +61,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- REQ-SEC-006: the bundle now declares its own identity / access-key columns, so the knowledge that `username` and
+  `ip_address` of the attempts table are throttle *keys* lives here instead of in each host.
+  `Nowo\LoginThrottleBundle\Doctrine\LoginThrottleExactKeyColumns` implements
+  `Nowo\MigrationsKitContracts\Collation\ExactKeyColumnsInterface` (new runtime dependency
+  `nowo-tech/migrations-kit-contracts` ^1.0, interfaces and value objects only), and MigrationsKit's
+  `nowo:migrations:check-key-collations` discovers it by autoconfiguration: a host registers **nothing**, and a host
+  that excused those two columns by hand in `nowo_migrations_kit.collation_check.ignore_columns` can now delete those
+  entries (see UPGRADING). The table name is resolved from `nowo_login_throttle.doctrine.table_prefix`, never a
+  literal, and the columns are declared *inactive* (reported as skipped, never as a failure) when the `LoginAttempt`
+  entity is not mapped, so a `storage: cache` host is not told about a table it does not have. The declaration is
+  built on every call and memoises nothing (REQ-RUNTIME-002).
+- Tests: the bundle's own REQ-SEC-006 gate over its own declaration, on MySQL 8.4 and MariaDB 11.4 in CI
+  (`tests/Doctrine/ExactKeyColumnsMySqlTest.php`, `ExactKeyColumnsMariaDbTest.php`, extending MigrationsKit's
+  `ExactKeyColumnsTestCase`). The schema is created by the schema tool with the bundle's own prefix and collation
+  listeners under a non-empty table prefix, so a key column left on the server default fails this bundle's pipeline,
+  and the declaration is proved to follow the configured table name.
+
 ## [3.16.3] - 2026-11-21
 
 ### Tests

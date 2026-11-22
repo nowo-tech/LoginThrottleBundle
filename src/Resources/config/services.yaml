@@ -45,6 +45,14 @@ services:
     tags:
       - { name: doctrine.event_listener, event: postGenerateSchema }
 
+  # REQ-SEC-006: the bundle's own declaration of its identity / access-key columns. MigrationsKit tags it by
+  # autoconfiguration (nowo:migrations:check-key-collations), so a host registers nothing; without MigrationsKit the
+  # unused private service is simply removed from the container.
+  Nowo\LoginThrottleBundle\Doctrine\LoginThrottleExactKeyColumns:
+    arguments:
+      $tablePrefix: '%nowo_login_throttle.doctrine.table_prefix%'
+      $mappingEnabled: '%nowo_login_throttle.doctrine.mapping_enabled%'
+
   # 3.15: the per-IP lock and unit transaction of the database limiter (option attempt_lock_timeout)
   Nowo\LoginThrottleBundle\Transaction\AttemptLockRunner:
     arguments:
