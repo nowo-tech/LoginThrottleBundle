@@ -2,7 +2,7 @@
 
 **Baseline spec**: [`spec.md`](spec.md)  
 **Package**: `nowo-tech/login-throttle-bundle`  
-**Last audited**: 2026-11-16 (v3.15.0)
+**Last audited**: 2026-11-22 (v3.16.3)
 
 ## Symfony config
 
@@ -60,6 +60,10 @@
 
 | Source file | Spec section | Requirement IDs |
 | --- | --- | --- |
+| `DependencyInjection/Compiler/ConflictResponsePass.php` | 3.16: wires the conflict answer by `conflict_response.mode` (`host` removes the subscriber; `bundle` uses transaction-doctrine's policy/responder or 409 + `Retry-After: 1`) | FR-CONC-001 |
+| `EventSubscriber/StorageFailureSubscriber.php` | 3.16: answers a transient attempt-store failure of a guarded login with 409 (or 503) + `Retry-After` + `CONFLICT_001`; fails closed, not an account oracle | FR-CONC-001, FR-CONC-002 |
+| `EventSubscriber/LoginConflictListener.php` | 3.16: above every renderer, ends the login when the failure came from the post-password reset and removes the commit mark so the code is always `CONFLICT_001` | FR-CONC-002 |
+| `Transaction/LoginThrottleStorageFailure.php` | 3.16: `TransientStorageFailure` raised by the bundle only, generic message, always `ConflictCode::RetrySafe` | FR-CONC-001 |
 | `Service/LoginThrottleInfoService.php` | Throttle status info | FR-SVC-001 |
 | `Service/LoginThrottleStatusProviderInterface.php` | Status port | FR-SVC-002 |
 | `Service/LoginThrottleStatusProvider.php` | Default status provider | FR-SVC-002 |
@@ -102,8 +106,8 @@
 | CLI | 2 | 2 |
 | Persistence | 13 | 13 |
 | Rate limiting | 7 | 7 |
-| Services | 3 | 3 |
+| Services | 7 | 7 |
 | Translations | 24 | 24 |
-| **Total production sources** | **54** | **54** |
+| **Total production sources** | **58** | **58** |
 
-Audit command (production count): `git ls-files src | wc -l` → **54** (2026-11-16).
+Audit command (production count): `git ls-files src | wc -l` → **58** (2026-11-22).
