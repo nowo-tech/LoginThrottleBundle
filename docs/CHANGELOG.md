@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[3.17.0] - 2026-11-23](#3170---2026-11-23)
 - [[3.16.3] - 2026-11-21](#3163---2026-11-21)
 - [[3.16.2] - 2026-11-21](#3162---2026-11-21)
 - [[3.16.1] - 2026-11-19](#3161---2026-11-19)
@@ -61,6 +62,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.17.0] - 2026-11-23
+
 ### Added
 
 - REQ-SEC-006: the bundle now declares its own identity / access-key columns, so the knowledge that `username` and
@@ -101,6 +104,7 @@ Not tagged: its release CI failed on a test-only issue. Its changes ship in 3.16
 
 [3.16.2]: https://github.com/nowo-tech/LoginThrottleBundle/releases/tag/v3.16.2
 
+[3.17.0]: https://github.com/nowo-tech/LoginThrottleBundle/releases/tag/v3.17.0
 [3.16.3]: https://github.com/nowo-tech/LoginThrottleBundle/releases/tag/v3.16.3
 
 ## [3.16.1] - 2026-11-19

@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 3.17.0](#to-3170)
   - [The bundle declares its own identity / access-key columns (REQ-SEC-006)](#the-bundle-declares-its-own-identity--access-key-columns-req-sec-006)
 - [To 3.16.3](#to-3163)
 - [To 3.16.2](#to-3162)
@@ -68,6 +69,14 @@
 - [Notes](#notes)
 
 ## Unreleased
+
+## To 3.17.0
+
+From **3.16.3**:
+
+```bash
+composer update nowo-tech/login-throttle-bundle
+```
 
 ### The bundle declares its own identity / access-key columns (REQ-SEC-006)
 
