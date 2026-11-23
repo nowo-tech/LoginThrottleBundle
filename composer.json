@@ -34,6 +34,7 @@
         "doctrine/dbal": "^3.8.2 || ^4.0",
         "doctrine/doctrine-bundle": "^2.10 || ^3.0",
         "doctrine/orm": "^3.7",
+        "nowo-tech/migrations-kit-contracts": "^1.0",
         "nowo-tech/transaction-contract": "^1.0",
         "nowo-tech/transaction-doctrine": "^1.8.1",
         "psr/clock": "^1.0",
@@ -50,6 +51,7 @@
     "require-dev": {
         "friendsofphp/php-cs-fixer": "^3.0",
         "igor-php/igor-php": "^0.10.0",
+        "nowo-tech/migrations-kit-bundle": "^2.8",
         "nowo-tech/phpstan-frankenphp": "^1.4",
         "phpstan/phpstan": "^2.0",
         "phpstan/phpstan-phpunit": "^2.0",
