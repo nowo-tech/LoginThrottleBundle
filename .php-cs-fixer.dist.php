@@ -5,6 +5,7 @@ declare(strict_types=1);
 use PhpCsFixer\Runner\Parallel\ParallelConfig;
 
 $finder = PhpCsFixer\Finder::create()
+    ->notPath('#^demo/[^/]+/config/(bundles|reference)\.php$#')
     ->in(__DIR__ . '/src')
     ->in(__DIR__ . '/tests')
     ->name('*.php');
@@ -14,7 +15,8 @@ return (new PhpCsFixer\Config())
     ->setParallelConfig(new ParallelConfig(2))
     ->setRiskyAllowed(true)
     ->setRules([
-        '@PSR12' => true,
+        '@PER-CS' => true,
+        '@PER-CS:risky' => true,
         '@Symfony' => true,
         '@Symfony:risky' => true,
         '@PHP81Migration' => true,
