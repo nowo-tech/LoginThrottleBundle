@@ -69,6 +69,7 @@ Drop-in Symfony bundle wrapping native **`login_throttling`**: sensible defaults
 - **FR-ORM-003**: Under long-lived workers, `LoginAttemptRepository` detaches written/loaded attempts, resets a closed EntityManager via `ManagerRegistry`, and builds DQL through a live manager (ORM 3 `ServiceEntityRepository` proxy safe).
 
 - **FR-ORM-005**: `Doctrine\ExactCollationListener` sets a byte-exact NO PAD collation on `username` / `ip_address` on MySQL / MariaDB: `utf8mb4_nopad_bin` on MariaDB, `utf8mb4_0900_bin` on MySQL 8.0+, and `utf8mb4_bin` with a warning on MySQL 5.7 or a short `server_version`. The repository re-checks every row with `===` (REQ-SEC-006, 3.11.0).
+- **FR-ORM-009**: `Doctrine\LoginThrottleExactKeyColumns` (3.17.0, REQ-SEC-006) is the bundle's own declaration of its two access-key columns (`username`, `ip_address`) for MigrationsKit's `ExactKeyColumnsInterface`, so `nowo:migrations:check-key-collations` asserts the byte-exact collation instead of trusting it; MigrationsKit tags it by autoconfiguration (a host registers nothing and can drop the `collation_check.ignore_columns` entries it kept by hand). The table name is `doctrine.table_prefix` + `login_attempts`; the columns are declared inactive (skipped, with the condition `nowo_login_throttle.doctrine.register_mapping: the LoginAttempt entity is mapped`) when the entity is not mapped. Stateless and database-free (worker safe). The service is private and simply removed from the container when MigrationsKit is absent.
 - **FR-ORM-006**: Entity-free store ports (REQ-ARCH-001): `LoginAttemptViewRepositoryInterface` and the `LoginAttemptView` read model (3.9), `LoginAttemptRecorderInterface` (3.12), `LoginAttemptWithoutUsernameReaderInterface` (3.13.0) and `LoginAttemptStoreInterface` (3.14). The store interface is the twin of the deprecated `LoginAttemptRepositoryInterface`. `AttemptStorePass` points the internal store alias at the store interface first, else at the deprecated repository interface, else at the bundle repository.
 - **FR-ORM-007**: `Testing\LoginAttemptStoreContractTestCase` holds the conformance tests a host store extends to check the limiter's contract, including the `clearAttempts()` rule (3.14).
 - **FR-ORM-008**: `LoginAttemptLockInterface` + `Transaction\AttemptLockRunner` serialise the units of one IP address: an attempt decision or a reset after a successful login. The lock is a per-IP lock (`GET_LOCK()` on MySQL / MariaDB) inside the bundle's own READ COMMITTED unit on the primary connection, bounded by `attempt_lock_timeout` and with a lock-free deny fast path (3.15, Beacon spec 239).
@@ -101,7 +102,7 @@ Drop-in Symfony bundle wrapping native **`login_throttling`**: sensible defaults
 
 ## Success Criteria
 
-- **SC-001**: **54/54** production files under `src/` mapped in [`code-inventory.md`](code-inventory.md) (audited 2026-11-16 on v3.15.0; `git ls-files src | wc -l`).
+- **SC-001**: **59/59** production files under `src/` mapped in [`code-inventory.md`](code-inventory.md) (audited 2026-11-25 on v3.17.0; `git ls-files src | wc -l`).
 - **SC-002**: Config keys match [`docs/CONFIGURATION.md`](../../docs/CONFIGURATION.md).
 - **SC-003**: 100% PHPUnit line coverage on `src/` (project standard).
 
