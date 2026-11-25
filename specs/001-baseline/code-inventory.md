@@ -2,7 +2,7 @@
 
 **Baseline spec**: [`spec.md`](spec.md)  
 **Package**: `nowo-tech/login-throttle-bundle`  
-**Last audited**: 2026-11-22 (v3.16.3)
+**Last audited**: 2026-11-25 (v3.17.0)
 
 ## Symfony config
 
@@ -35,6 +35,7 @@
 | `Repository/LoginAttemptRepositoryInterface.php` | Repository contract for DI / tests | FR-ORM-002 |
 | `Doctrine/TablePrefixListener.php` | `doctrine.table_prefix` metadata listener | FR-ORM-004 |
 | `Doctrine/ExactCollationListener.php` | Byte-exact NO PAD collation (REQ-SEC-006) | FR-ORM-005 |
+| `Doctrine/LoginThrottleExactKeyColumns.php` | Declares `username` / `ip_address` as exact-key columns for MigrationsKit's `nowo:migrations:check-key-collations` (prefix-aware, inactive when unmapped; REQ-SEC-006) | FR-ORM-009 |
 | `Repository/LoginAttemptStoreInterface.php` | Entity-free store port | FR-ORM-006 |
 | `Repository/LoginAttemptRecorderInterface.php` | Entity-free write port | FR-ORM-006 |
 | `Repository/LoginAttemptViewRepositoryInterface.php` | Entity-free read port | FR-ORM-006 |
@@ -104,10 +105,10 @@
 | Symfony config | 1 | 1 |
 | Bundle & DI | 4 | 4 |
 | CLI | 2 | 2 |
-| Persistence | 13 | 13 |
+| Persistence | 14 | 14 |
 | Rate limiting | 7 | 7 |
 | Services | 7 | 7 |
 | Translations | 24 | 24 |
-| **Total production sources** | **58** | **58** |
+| **Total production sources** | **59** | **59** |
 
-Audit command (production count): `git ls-files src | wc -l` → **58** (2026-11-22).
+Audit command (production count): `git ls-files src | wc -l` → **59** (2026-11-25).
